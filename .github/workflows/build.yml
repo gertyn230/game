@@ -32,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Cargo.lock v4 -> v3 (cargo в образе старый)
+        run: sed -i 's/^version = 4$/version = 3/' Cargo.lock
       - name: Build APK (cargo-quad-apk в Docker)
         env:
           PV_SERVER: ${{ vars.PV_SERVER }}
