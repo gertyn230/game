@@ -923,8 +923,8 @@ fn draw_menu(
             let bw = body.w.min(fs * 22.0);
             let y_start = body.y + fs;
 
-            // Мова
-            text(font, "Мова / Language / Язык:", body.x + pad, y_start, fs * 1.1, WHITE);
+            // === МОВА ===
+            text(font, texts.language, body.x + pad, y_start, fs * 1.1, WHITE);
             let lang_names = ["🇺🇦 Українська", "🇬🇧 English", "🇷🇺 Русский"];
             let current_lang = match settings.language {
                 Language::Ukrainian => 0,
@@ -941,17 +941,86 @@ fn draw_menu(
                 fs,
             );
 
-            // Інші дії
+            // === МУЗИКА ===
+            let y_music = y_start + fs * 5.5;
+            text(font, &format!("🎵 {}", texts.music), body.x + pad, y_music, fs * 1.1, WHITE);
+
+            // Перемикач вкл/викл
+            let toggle_w = fs * 8.0;
+            ui.button(
+                font,
+                Rect::new(body.x, y_music + fs * 1.5, toggle_w, bh * 0.9),
+                if settings.music_enabled { texts.yes } else { texts.no },
+                Cmd::ToggleMusic,
+                true,
+                if settings.music_enabled { 0x2f7d36 } else { 0x8a3b2e },
+                fs,
+            );
+
+            // Повзунок гучності
+            if settings.music_enabled {
+                let slider_y = y_music + fs * 1.5 + bh * 0.9 + fs * 0.8;
+                let slider_w = bw * 0.7;
+                draw_rectangle(body.x, slider_y, slider_w, fs * 1.5, ha(0x000000, 0.4));
+                draw_rectangle(body.x, slider_y, slider_w * settings.music_volume, fs * 1.5, hx(0x2f7d36));
+                draw_rectangle_lines(body.x, slider_y, slider_w, fs * 1.5, 2.0, hx(0x4a6fa5));
+                text(font, &format!("{}: {}%", texts.volume, (settings.music_volume * 100.0) as i32), body.x + pad, slider_y + fs * 1.1, fs * 0.9, WHITE);
+
+                // Кнопки +/-
+                let btn_size = fs * 2.0;
+                ui.button(font, Rect::new(body.x + slider_w + fs, slider_y, btn_size, fs * 1.5), "-", Cmd::MusicVolume(-0.1), true, 0x6b5a3a, fs);
+                ui.button(font, Rect::new(body.x + slider_w + fs + btn_size + fs * 0.5, slider_y, btn_size, fs * 1.5), "+", Cmd::MusicVolume(0.1), true, 0x6b5a3a, fs);
+            }
+
+            // === ЗВУКИ ===
+            let y_sound = if settings.music_enabled { y_music + fs * 7.0 } else { y_music + fs * 4.0 };
+            text(font, &format!("🔊 {}", texts.sounds), body.x + pad, y_sound, fs * 1.1, WHITE);
+
+            // Перемикач вкл/викл
+            ui.button(
+                font,
+                Rect::new(body.x, y_sound + fs * 1.5, toggle_w, bh * 0.9),
+                if settings.sounds_enabled { texts.yes } else { texts.no },
+                Cmd::ToggleSound,
+                true,
+                if settings.sounds_enabled { 0x2f7d36 } else { 0x8a3b2e },
+                fs,
+            );
+
+            // Повзунок гучності
+            if settings.sounds_enabled {
+                let slider_y = y_sound + fs * 1.5 + bh * 0.9 + fs * 0.8;
+                let slider_w = bw * 0.7;
+                draw_rectangle(body.x, slider_y, slider_w, fs * 1.5, ha(0x000000, 0.4));
+                draw_rectangle(body.x, slider_y, slider_w * settings.sound_volume, fs * 1.5, hx(0x2f7d36));
+                draw_rectangle_lines(body.x, slider_y, slider_w, fs * 1.5, 2.0, hx(0x4a6fa5));
+                text(font, &format!("{}: {}%", texts.volume, (settings.sound_volume * 100.0) as i32), body.x + pad, slider_y + fs * 1.1, fs * 0.9, WHITE);
+
+                // Кнопки +/-
+                let btn_size = fs * 2.0;
+                ui.button(font, Rect::new(body.x + slider_w + fs, slider_y, btn_size, fs * 1.5), "-", Cmd::SoundVolume(-0.1), true, 0x6b5a3a, fs);
+                ui.button(font, Rect::new(body.x + slider_w + fs + btn_size + fs * 0.5, slider_y, btn_size, fs * 1.5), "+", Cmd::SoundVolume(0.1), true, 0x6b5a3a, fs);
+            }
+
+            // === ІНШІ ДІЇ ===
+            let y_actions = if settings.music_enabled && settings.sounds_enabled {
+                y_sound + fs * 7.0
+            } else if settings.music_enabled || settings.sounds_enabled {
+                y_sound + fs * 4.0
+            } else {
+                y_sound + fs * 3.5
+            };
+
             let items: [(&str, Cmd); 4] = [
-                ("Построить мост (2 доски, лицом к воде)", Cmd::Bridge),
-                ("Лодка: сесть / выйти", Cmd::Boat),
-                ("Приручить волка (сырое мясо)", Cmd::Tame),
-                ("Сменить имя", Cmd::NameOpen),
+                ("🌉 Построить мост (2 доски)", Cmd::Bridge),
+                ("🚣 Лодка: сесть / выйти", Cmd::Boat),
+                ("🐺 Приручить волка (мясо)", Cmd::Tame),
+                ("✏️ Сменить имя", Cmd::NameOpen),
             ];
             for (i, (l, c)) in items.iter().enumerate() {
                 ui.button(
                     font,
-                    Rect::new(body.x, y_start + fs * 5.0 + i as f32 * (bh + 8.0), bw, bh),
+                    Rect::new(body.x, y_actions + i as f32 * (bh + 8.0), bw, bh),
                     l,
                     *c,
                     true,
@@ -959,7 +1028,6 @@ fn draw_menu(
                     fs,
                 );
             }
-            text(font, "Игра продолжается, пока меню открыто!", body.x, body.y + fs * 18.5, fs * 0.9, ha(0xffffff, 0.6));
         }
     }
 }
