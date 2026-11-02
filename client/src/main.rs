@@ -468,6 +468,8 @@ async fn main() {
             let (sx, sy) = wp(f.0, f.1);
             draw_fire(sx, sy, u, now);
         }
+        let me_row = py.floor() as i32;
+        let mut labels: Vec<(String, f32, f32)> = vec![];
         // Малюємо "могилу" з речами після смерті
         if let Some((dx, dy, _, _)) = g.death_drop {
             let (sx, sy) = wp(dx, dy);
@@ -477,8 +479,6 @@ async fn main() {
             draw_rectangle_lines(sx - 6.0 * u, sy - 6.0 * u, 12.0 * u, 12.0 * u, 1.5, Color::new(1.0, 0.8, 0.3, pulse));
             labels.push(("💀 Твої речі".into(), sx, sy - 10.0 * u));
         }
-        let me_row = py.floor() as i32;
-        let mut labels: Vec<(String, f32, f32)> = vec![];
         let swing = g.fx.as_ref().and_then(|f| {
             let p = ((now - f.t) / 0.26) as f32;
             (f.tool > 0 && (0.0..1.0).contains(&p)).then_some((f.tool, p))
