@@ -648,13 +648,18 @@ async fn main() {
         let pad = fs * 0.5;
         // полоски состояния
         let (bw, bh) = (fs * 8.5, fs * 1.25);
-        for (i, (v, c, l)) in [(g.hunger, 0xe0933a, "Сытость"), (g.thirst, 0x4aa3df, "Жажда"), (g.energy, 0xd9c23f, "Энергия"), (g.hp, 0xd9534f, "Здоровье")].iter().enumerate() {
+        for (i, (v, c, l)) in [
+            (g.hunger, 0xe0933a, texts.hunger),
+            (g.thirst, 0x4aa3df, texts.thirst),
+            (g.energy, 0xd9c23f, texts.energy),
+            (g.hp, 0xd9534f, texts.health)
+        ].iter().enumerate() {
             bar(&font, pad, pad + i as f32 * (bh + 4.0), bw, bh, *v, *c, l, fs);
         }
         let mut ly = pad + 4.0 * (bh + 4.0) + fs * 0.9;
-        let (status, scol) = if connected { ("онлайн", 0x6fbf73) } else { ("нет связи", 0xd9534f) };
+        let (status, scol) = if connected { (texts.online, 0x6fbf73) } else { ("❌", 0xd9534f) };
         draw_circle(pad + fs * 0.4, ly - fs * 0.3, fs * 0.28, hx(scol));
-        text(&font, &format!("Игроков: {} ({})", online.max(usize::from(connected)), status), pad + fs * 1.0, ly, fs * 0.9, WHITE);
+        text(&font, &format!("{}: {} ({})", texts.online, online.max(usize::from(connected)), status), pad + fs * 1.0, ly, fs * 0.9, WHITE);
         for o in others.values().take(5) {
             ly += fs * 1.1;
             text(&font, &format!("• {}", o.st.name), pad + fs * 0.6, ly, fs * 0.85, ha(0xffffff, 0.9));
@@ -746,7 +751,7 @@ async fn main() {
             let n = ql.len().min(5);
             let total = n as f32 * (qw + 6.0);
             if n > 0 {
-                text_c(&font, "Быстрый крафт", cx, sh - pad - qh - fs * 0.6 - 4.0, fs * 0.8, ha(0xffffff, 0.85));
+                text_c(&font, texts.quick_craft, cx, sh - pad - qh - fs * 0.6 - 4.0, fs * 0.8, ha(0xffffff, 0.85));
             }
             for (j, &ri) in ql.iter().take(5).enumerate() {
                 let r = Rect::new(cx - total / 2.0 + j as f32 * (qw + 6.0), sh - pad - qh, qw, qh);
@@ -757,15 +762,20 @@ async fn main() {
             let ar = Rect::new(sw - ab - pad, sh - ab - pad - qh * 0.2, ab, ab);
             draw_circle(ar.x + ab / 2.0, ar.y + ab / 2.0, ab / 2.0, ha(if hold { 0x2f7d36 } else { 0x58b85f }, 0.9));
             draw_circle_lines(ar.x + ab / 2.0, ar.y + ab / 2.0, ab / 2.0, 3.0, ha(0x1f5a25, 0.9));
-            text_c(&font, "Добыть", ar.x + ab / 2.0, ar.y + ab / 2.0 + fs * 0.35, fs * 1.1, WHITE);
+            text_c(&font, texts.action, ar.x + ab / 2.0, ar.y + ab / 2.0 + fs * 0.35, fs * 1.1, WHITE);
             ui.btns_push_circle(ar, Cmd::Act);
             let (bw2, bh2) = (ab * 0.62, fs * 2.3);
-            for (i, (l, c)) in [("Меню", Cmd::Menu), ("Копать", Cmd::Dig), ("Пить", Cmd::Drink), ("Есть", Cmd::Eat)].iter().enumerate() {
+            for (i, (l, c)) in [
+                (texts.menu, Cmd::Menu),
+                (texts.dig, Cmd::Dig),
+                (texts.drink, Cmd::Drink),
+                (texts.eat, Cmd::Eat)
+            ].iter().enumerate() {
                 let r = Rect::new(sw - bw2 - pad, ar.y - (i as f32 + 1.0) * (bh2 + 6.0), bw2, bh2);
                 ui.button(&font, r, l, *c, true, if *c == Cmd::Menu { 0x4a6fa5 } else { 0x6b5a3a }, fs);
             }
         } else {
-            draw_menu(&mut ui, &font, &g, now, sw, sh, fs, &market, &posted, my_id, &board_score, &board_fish, &settings);
+            draw_menu(&mut ui, &font, &g, now, sw, sh, fs, &market, &posted, my_id, &board_score, &board_fish, &settings, texts);
         }
         // джойстик
         if joy_id.is_some() && !ui.menu {
@@ -794,6 +804,7 @@ fn draw_menu(
     board_score: &[(String, u32)],
     board_fish: &[(String, f32, u32)],
     settings: &Settings,
+    texts: &Texts,
 ) {
     let pad = fs * 0.6;
     let p = Rect::new(sw * 0.03, sh * 0.03, sw * 0.94, sh * 0.94);
@@ -801,13 +812,13 @@ fn draw_menu(
     draw_rectangle(p.x, p.y, p.w, p.h, ha(0x1d1f1b, 0.95));
     draw_rectangle_lines(p.x, p.y, p.w, p.h, 3.0, hx(0x6b5a3a));
     // вкладки
-    let tabs = ["Крафт", "Рынок", "Рейтинг", "Налаштування"];
+    let tabs = [texts.craft, texts.market, texts.leaderboard, texts.settings];
     let tw = (p.w - pad * 3.0 - fs * 6.5 - 16.0) / 4.0;
     for (i, t) in tabs.iter().enumerate() {
         let r = Rect::new(p.x + pad + i as f32 * (tw + 4.0), p.y + pad, tw, fs * 2.4);
         ui.button(font, r, t, Cmd::Tab(i as u8), true, if ui.tab == i as u8 { 0x2f7d36 } else { 0x4a4f44 }, fs);
     }
-    ui.button(font, Rect::new(p.x + p.w - pad - fs * 6.5, p.y + pad, fs * 6.5, fs * 2.4), "Закрыть", Cmd::Close, true, 0x8a3b2e, fs);
+    ui.button(font, Rect::new(p.x + p.w - pad - fs * 6.5, p.y + pad, fs * 6.5, fs * 2.4), texts.close, Cmd::Close, true, 0x8a3b2e, fs);
     let body = Rect::new(p.x + pad, p.y + pad * 2.0 + fs * 2.4, p.w - pad * 2.0, p.h - pad * 3.0 - fs * 2.4);
     let rh = fs * 3.0;
     match ui.tab {
