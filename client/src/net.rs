@@ -38,7 +38,6 @@ impl Net {
     pub fn start(url: String, name: String) -> Net {
         let _ = rustls::crypto::ring::default_provider().install_default();
         let (out_tx, out_rx) = channel::<ClientMsg>();
-        let (out_tx, out_rx) = channel::<ClientMsg>();
         let (in_tx, in_rx) = channel::<NetEvent>();
 
         thread::spawn(move || {
