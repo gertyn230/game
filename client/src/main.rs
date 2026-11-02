@@ -69,11 +69,39 @@ fn cost_text(r: &Recipe) -> String {
     r.cost.iter().map(|(it, n)| format!("{} ×{}", IT_NAMES[*it as usize], n)).collect::<Vec<_>>().join(", ")
 }
 
+async fn show_loading_screen(font: &Font, message: &str) {
+    for _ in 0..30 {
+        clear_background(hx(0x1d1f1b));
+        let (sw, sh) = (screen_width(), screen_height());
+        let fs = (sw.min(sh) * 0.04).max(16.0);
+
+        // Заголовок
+        text_c(font, "🏡 Pixel Village", sw / 2.0, sh * 0.35, fs * 2.0, hx(0xece8dc));
+
+        // Версія
+        let version_text = format!("v{}", CLIENT_VERSION);
+        text_c(font, &version_text, sw / 2.0, sh * 0.42, fs * 0.9, ha(0xffffff, 0.6));
+
+        // Повідомлення
+        text_c(font, message, sw / 2.0, sh * 0.55, fs * 1.1, ha(0xffffff, 0.8));
+
+        // Анімований індикатор завантаження
+        let dots = ".".repeat(((get_time() * 2.0) as usize % 4) as usize);
+        text_c(font, &dots, sw / 2.0, sh * 0.60, fs * 1.5, ha(0xffffff, 0.5));
+
+        next_frame().await;
+    }
+}
+
 #[macroquad::main(window_conf)]
 async fn main() {
     simulate_mouse_with_touch(false);
     rand::srand(macroquad::miniquad::date::now() as u64);
     let font = load_ttf_font_from_bytes(include_bytes!("../assets/DejaVuSans.ttf")).expect("шрифт");
+
+    // Завантажувальний екран з перевіркою оновлень
+    show_loading_screen(&font, "Завантаження гри...").await;
+
     let saved = save::load();
     let env_name = std::env::var("PV_NAME").ok();
     let mut name = env_name
