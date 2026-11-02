@@ -1,4 +1,5 @@
 mod art;
+mod audio;
 mod data;
 mod game;
 mod i18n;
@@ -14,6 +15,7 @@ use macroquad::prelude::*;
 use shared::{ClientMsg, Offer, PlayerState, ServerMsg};
 
 use art::*;
+use audio::*;
 use data::*;
 use game::*;
 use i18n::*;
@@ -109,6 +111,14 @@ async fn main() {
 
     // Завантажувальний екран з перевіркою оновлень
     show_loading_screen(&font, texts.loading).await;
+
+    // Ініціалізуємо аудіо систему
+    let mut audio = AudioManager::new();
+    audio.load_all().await;
+    audio.update_settings(settings.music_enabled, settings.sounds_enabled, settings.music_volume, settings.sound_volume);
+    if settings.music_enabled {
+        audio.play_music();
+    }
 
     let saved = save::load();
     let env_name = std::env::var("PV_NAME").ok();
@@ -328,9 +338,18 @@ async fn main() {
         }
         for c in cmds {
             match c {
-                Cmd::Eat => g.eat(now),
-                Cmd::Drink => g.drink(now),
-                Cmd::Dig => g.dig(now),
+                Cmd::Eat => {
+                    g.eat(now);
+                    audio.play("eat");
+                }
+                Cmd::Drink => {
+                    g.drink(now);
+                    audio.play("drink");
+                }
+                Cmd::Dig => {
+                    g.dig(now);
+                    audio.play("hit");
+                }
                 Cmd::Tame => g.tame(now),
                 Cmd::Boat => g.boat_toggle(now),
                 Cmd::Bridge => g.bridge(now),
@@ -345,28 +364,36 @@ async fn main() {
                 }
                 Cmd::ToggleMusic => {
                     settings.music_enabled = !settings.music_enabled;
+                    audio.update_settings(settings.music_enabled, settings.sounds_enabled, settings.music_volume, settings.sound_volume);
                     save_settings(&settings);
                 }
                 Cmd::ToggleSound => {
                     settings.sounds_enabled = !settings.sounds_enabled;
+                    audio.update_settings(settings.music_enabled, settings.sounds_enabled, settings.music_volume, settings.sound_volume);
                     save_settings(&settings);
                 }
                 Cmd::MusicVolume(v) => {
                     settings.music_volume = (settings.music_volume + v).clamp(0.0, 1.0);
+                    audio.update_settings(settings.music_enabled, settings.sounds_enabled, settings.music_volume, settings.sound_volume);
                     save_settings(&settings);
                 }
                 Cmd::SoundVolume(v) => {
                     settings.sound_volume = (settings.sound_volume + v).clamp(0.0, 1.0);
+                    audio.update_settings(settings.music_enabled, settings.sounds_enabled, settings.music_volume, settings.sound_volume);
                     save_settings(&settings);
                 }
                 Cmd::Tab(t) => {
                     ui.tab = t;
                     ui.scroll = 0.0;
                 }
-                Cmd::Craft(i) => g.craft(i, now),
+                Cmd::Craft(i) => {
+                    g.craft(i, now);
+                    audio.play("craft");
+                }
                 Cmd::Quick(j) => {
                     if let Some(&i) = g.quick_list(now).get(j) {
                         g.craft(i, now);
+                        audio.play("craft");
                     }
                 }
                 Cmd::MktItem(d) => ui.mk_item = ((ui.mk_item as i32 + d).rem_euclid(NI as i32)) as usize,
