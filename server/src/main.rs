@@ -105,6 +105,7 @@ async fn main() {
         .route("/", get(index))
         .route("/admin", get(admin))
         .route("/api/players", get(api_players))
+        .route("/api/version", get(api_version))
         .route("/ws", get(ws_handler))
         .with_state(app);
 
@@ -181,6 +182,21 @@ async fn admin(State(app): State<App>, Query(q): Query<HashMap<String, String>>)
     .into_response()
 }
 
+async fn api_version() -> Json<serde_json::Value> {
+    // Версія гри - змінюйте при кожному оновленні
+    Json(serde_json::json!({
+        "version": "1.1.0",
+        "date": "2026-11-02",
+        "changes": [
+            "Енергія тримається довше",
+            "Їжа відновлює енергію",
+            "Речі після смерті можна забрати назад",
+            "Швидше добування ресурсів"
+        ],
+        "download": "https://github.com/gertyn230/game/releases/latest"
+    }))
+}
+
 async fn api_players(State(app): State<App>) -> Json<serde_json::Value> {
     let w = app.world.lock().await;
     let names: Vec<&str> = w.players.values().map(|c| c.state.name.as_str()).collect();
@@ -243,7 +259,7 @@ async fn client_loop(socket: WebSocket, app: App) {
                 (e < RESPAWN_SECS).then_some((*i, RESPAWN_SECS - e))
             })
             .collect();
-        (id, vec![enc(&ServerMsg::Welcome { id }), enc(&ServerMsg::World { dead }), enc(&ServerMsg::Market { offers: w.offers.clone() })])
+        (id, vec![enc(&ServerMsg::Welcome { id, version: "1.1.0".to_string() }), enc(&ServerMsg::World { dead }), enc(&ServerMsg::Market { offers: w.offers.clone() })])
     };
 
     let mut ok = true;

@@ -24,6 +24,7 @@ const SERVER_URL: &str = match option_env!("PV_SERVER") {
     None => "ws://127.0.0.1:8080/ws",
 };
 const PLAYER_COLORS: [u32; 5] = [0xd94f4f, 0x4a6fa5, 0xc9a227, 0x8e5bb5, 0x2a9d8f];
+const CLIENT_VERSION: &str = "1.1.0";
 
 fn window_conf() -> Conf {
     Conf { window_title: "Pixel Village".to_owned(), window_width: 960, window_height: 640, high_dpi: true, ..Default::default() }
@@ -96,6 +97,7 @@ async fn main() {
 
     let mut my_id: Option<u32> = None;
     let mut connected = false;
+    let mut version_mismatch: Option<String> = None;
     let mut others: HashMap<u32, Other> = HashMap::new();
     let mut online = 0usize;
     let mut market: Vec<Offer> = vec![];
@@ -146,7 +148,12 @@ async fn main() {
                     online = 0;
                 }
                 NetEvent::Msg(m) => match m {
-                    ServerMsg::Welcome { id } => my_id = Some(id),
+                    ServerMsg::Welcome { id, version } => {
+                        my_id = Some(id);
+                        if version != CLIENT_VERSION {
+                            version_mismatch = Some(version);
+                        }
+                    }
                     ServerMsg::Snapshot { players } => {
                         online = players.len();
                         let mut seen = Vec::new();
@@ -650,6 +657,15 @@ async fn main() {
             let w = text_w(&font, &g.msg, fs * 1.1) + fs * 2.0;
             draw_rectangle(cx - w / 2.0, pad + fs * 5.2, w, fs * 1.9, ha(0x000000, 0.7));
             label(&font, &g.msg, cx, pad + fs * 6.5, fs * 1.1);
+        }
+        // Попередження про оновлення
+        if let Some(ref server_ver) = version_mismatch {
+            let msg = format!("⚠️ Доступна нова версія {}! Завантажте з GitHub", server_ver);
+            let w = text_w(&font, &msg, fs * 0.95) + fs * 2.0;
+            let y_pos = pad + fs * 8.5;
+            draw_rectangle(cx - w / 2.0, y_pos, w, fs * 1.7, ha(0xff6b00, 0.85));
+            draw_rectangle_lines(cx - w / 2.0, y_pos, w, fs * 1.7, 2.0, hx(0xffd700));
+            text_c(&font, &msg, cx, y_pos + fs * 1.0, fs * 0.95, WHITE);
         }
         // шкала вываживания
         if g.fish.ph == 3 {

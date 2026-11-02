@@ -49,7 +49,7 @@ pub enum ClientMsg {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "t")]
 pub enum ServerMsg {
-    Welcome { id: u32 },
+    Welcome { id: u32, version: String },
     Snapshot { players: Vec<PlayerState> },
     Dead { idx: u32, left: u32 },
     World { dead: Vec<(u32, u32)> },
