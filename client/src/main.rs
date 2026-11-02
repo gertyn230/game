@@ -2,6 +2,7 @@ mod art;
 mod audio;
 mod data;
 mod game;
+mod game_state;
 mod i18n;
 mod menu;
 mod net;
@@ -19,6 +20,7 @@ use art::*;
 use audio::*;
 use data::*;
 use game::*;
+use game_state::*;
 use i18n::*;
 use net::{Net, NetEvent};
 use settings::*;
@@ -76,30 +78,6 @@ fn cost_text(r: &Recipe) -> String {
     r.cost.iter().map(|(it, n)| format!("{} ×{}", IT_NAMES[*it as usize], n)).collect::<Vec<_>>().join(", ")
 }
 
-async fn show_loading_screen(font: &Font, message: &str) {
-    for _ in 0..30 {
-        clear_background(hx(0x1d1f1b));
-        let (sw, sh) = (screen_width(), screen_height());
-        let fs = (sw.min(sh) * 0.04).max(16.0);
-
-        // Заголовок
-        text_c(font, "🏡 Pixel Village", sw / 2.0, sh * 0.35, fs * 2.0, hx(0xece8dc));
-
-        // Версія
-        let version_text = format!("v{}", CLIENT_VERSION);
-        text_c(font, &version_text, sw / 2.0, sh * 0.42, fs * 0.9, ha(0xffffff, 0.6));
-
-        // Повідомлення
-        text_c(font, message, sw / 2.0, sh * 0.55, fs * 1.1, ha(0xffffff, 0.8));
-
-        // Анімований індикатор завантаження
-        let dots = ".".repeat(((get_time() * 2.0) as usize % 4) as usize);
-        text_c(font, &dots, sw / 2.0, sh * 0.60, fs * 1.5, ha(0xffffff, 0.5));
-
-        next_frame().await;
-    }
-}
-
 #[macroquad::main(window_conf)]
 async fn main() {
     simulate_mouse_with_touch(false);
@@ -108,31 +86,61 @@ async fn main() {
 
     // Завантажуємо налаштування
     let mut settings = load_settings();
-    let texts = get_texts(&settings.language);
+    let saved = save::load();
 
-    // Завантажувальний екран з перевіркою оновлень
-    show_loading_screen(&font, texts.loading).await;
+    // Ініціалізуємо систему меню
+    let mut game_state = GameStateManager::new(saved.is_some());
+
+    // Показуємо екран завантаження
+    for i in 0..20 {
+        let progress = (i as f32 / 20.0) * 0.3;
+        let texts = get_texts(&settings.language);
+        game_state.update_loading(progress, texts.loading_assets);
+        game_state.update(&font, &mut settings);
+        next_frame().await;
+    }
 
     // Ініціалізуємо аудіо систему
     let mut audio = AudioManager::new();
     audio.load_all().await;
     audio.update_settings(settings.music_enabled, settings.sounds_enabled, settings.music_volume, settings.sound_volume);
+
+    for i in 20..40 {
+        let progress = 0.3 + ((i - 20) as f32 / 20.0) * 0.4;
+        let texts = get_texts(&settings.language);
+        game_state.update_loading(progress, texts.loading_world);
+        game_state.update(&font, &mut settings);
+        next_frame().await;
+    }
+
     if settings.music_enabled {
         audio.play_music();
     }
 
-    let saved = save::load();
     let env_name = std::env::var("PV_NAME").ok();
     let mut name = env_name
         .clone()
         .or_else(|| saved.as_ref().map(|s| s.name.clone()).filter(|n| !n.is_empty()))
         .unwrap_or_else(|| format!("Гравець{}", rand::gen_range(100, 999)));
+
+    // Завершуємо завантаження
+    for i in 40..50 {
+        let progress = 0.7 + ((i - 40) as f32 / 10.0) * 0.3;
+        let texts = get_texts(&settings.language);
+        game_state.update_loading(progress, texts.connecting);
+        game_state.update(&font, &mut settings);
+        next_frame().await;
+    }
+
     let net = Net::start(SERVER_URL.to_string(), name.clone());
 
     let mut g = Game::new();
     if let Some(s) = &saved {
         g.apply_save(s, get_time());
     }
+
+    game_state.finish_loading();
+
     // Первый запуск: спрашиваем имя экранной клавиатурой.
     let mut name_edit: Option<String> = if env_name.is_none() && saved.as_ref().map_or(true, |s| s.name.is_empty()) { Some(name.clone()) } else { None };
     let mut kb_lang = 0usize;
@@ -174,6 +182,18 @@ async fn main() {
         let ring_r = base * 0.09;
         let mut out: Vec<ClientMsg> = vec![];
         let mut cmds: Vec<Cmd> = vec![];
+
+        // Перевірка стану меню
+        if !game_state.in_game {
+            game_state.update(&font, &mut settings);
+            if game_state.should_quit {
+                save::store(&snapshot(&g, now, &name, &posted));
+                break;
+            }
+            next_frame().await;
+            continue;
+        }
+
         if is_quit_requested() {
             save::store(&snapshot(&g, now, &name, &posted));
             std::process::exit(0);
