@@ -1,46 +1,33 @@
-# Telegram notification script for git push
-# Usage: Run this after git push
+﻿# Telegram notification script
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$PSDefaultParameterValues['*:Encoding'] = 'utf8'
 
 $token = "9113723998:AAEHW2xz6WXxDFj9HzbIodGy01-4Xq4SAvg"
 $chatId = "@pixel_village"
 
-# Update PATH
 $env:PATH = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-# Get last commit info
 $commitHash = git log -1 --pretty=%h
 $commitMessage = git log -1 --pretty=%B | Select-Object -First 1
 $commitAuthor = git log -1 --pretty=%an
 $commitUrl = "https://github.com/gertyn230/game/commit/$commitHash"
 
-# Create message
-$message = @"
-**New Update / Нове оновлення**
+$messageText = "🔄 New Update / Нове оновлення`n`n" +
+"EN:`n" +
+"📝 $commitMessage`n" +
+"👤 Author: $commitAuthor`n" +
+"🔗 $commitUrl`n`n" +
+"UA:`n" +
+"📝 $commitMessage`n" +
+"👤 Автор: $commitAuthor`n" +
+"🔗 $commitUrl`n`n" +
+"📦 $commitHash"
 
-**EN:**
-Commit: $commitMessage
-Author: $commitAuthor
-View changes: $commitUrl
-
-**UA:**
-Коміт: $commitMessage
-Автор: $commitAuthor
-Переглянути зміни: $commitUrl
-
-Commit hash: $commitHash
-"@
-
-# Send to Telegram
-$body = @{
+$payload = @{
     chat_id = $chatId
-    text = $message
-    parse_mode = "Markdown"
-    disable_web_page_preview = $false
-} | ConvertTo-Json -Compress
+    text = $messageText
+} | ConvertTo-Json -Depth 10
 
-try {
-    $response = Invoke-RestMethod -Uri "https://api.telegram.org/bot$token/sendMessage" -Method Post -ContentType "application/json; charset=utf-8" -Body $body
-    Write-Host "Message sent to Telegram successfully!" -ForegroundColor Green
-} catch {
-    Write-Host "Failed to send message: $_" -ForegroundColor Red
-}
+$utf8Bytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
+Invoke-RestMethod -Uri "https://api.telegram.org/bot$token/sendMessage" -Method Post -ContentType "application/json; charset=utf-8" -Body $utf8Bytes
+Write-Host "Message sent!" -ForegroundColor Green
