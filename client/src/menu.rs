@@ -18,16 +18,41 @@ pub struct Menu {
     pub loading_message: String,
     pub selected_button: usize,
     pub has_save: bool,
+    particles: Vec<Particle>,
+}
+
+struct Particle {
+    x: f32,
+    y: f32,
+    vx: f32,
+    vy: f32,
+    size: f32,
+    alpha: f32,
+    life: f32,
 }
 
 impl Menu {
     pub fn new() -> Self {
+        let mut particles = Vec::new();
+        for _ in 0..50 {
+            particles.push(Particle {
+                x: (get_time() * 1000.0) as f32 % 1920.0,
+                y: (get_time() * 2000.0) as f32 % 1080.0,
+                vx: (get_time() * 10.0).sin() as f32 * 20.0,
+                vy: -20.0 - (get_time() * 5.0).cos() as f32 * 10.0,
+                size: 2.0 + (get_time() * 3.0).sin() as f32 * 2.0,
+                alpha: 0.3 + (get_time() * 2.0).cos() as f32 * 0.2,
+                life: 1.0,
+            });
+        }
+
         Menu {
             state: MenuState::Loading,
             loading_progress: 0.0,
             loading_message: String::from("Initializing..."),
             selected_button: 0,
             has_save: false,
+            particles,
         }
     }
 
@@ -36,11 +61,38 @@ impl Menu {
         self.loading_message = message.to_string();
     }
 
+    pub fn update_particles(&mut self, dt: f32, sw: f32, sh: f32) {
+        // Оновлення частинок
+        for p in &mut self.particles {
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.life -= dt * 0.2;
+
+            // Респавн частинок
+            if p.life <= 0.0 || p.y < -10.0 || p.x < -10.0 || p.x > sw + 10.0 {
+                p.x = rand::gen_range(0.0, sw);
+                p.y = sh + 10.0;
+                p.vx = rand::gen_range(-20.0, 20.0);
+                p.vy = rand::gen_range(-60.0, -20.0);
+                p.size = rand::gen_range(2.0, 6.0);
+                p.alpha = rand::gen_range(0.2, 0.6);
+                p.life = 1.0;
+            }
+        }
+    }
+
+    fn draw_particles(&self) {
+        for p in &self.particles {
+            let alpha = (p.alpha * p.life * 255.0) as u8;
+            draw_circle(p.x, p.y, p.size, Color::from_rgba(236, 232, 220, alpha));
+        }
+    }
+
     pub fn finish_loading(&mut self) {
         self.state = MenuState::MainMenu;
     }
 
-    pub fn draw_loading(&self, font: &Font, _texts: &Texts) {
+    pub fn draw_loading(&mut self, font: &Font, _texts: &Texts) {
         let (sw, sh) = (screen_width(), screen_height());
         let fs = (sw.min(sh) * 0.04).max(16.0);
 

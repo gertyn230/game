@@ -36,7 +36,14 @@ const PLAYER_COLORS: [u32; 5] = [0xd94f4f, 0x4a6fa5, 0xc9a227, 0x8e5bb5, 0x2a9d8
 const CLIENT_VERSION: &str = "1.1.0";
 
 fn window_conf() -> Conf {
-    Conf { window_title: "Pixel Village".to_owned(), window_width: 960, window_height: 640, high_dpi: true, ..Default::default() }
+    Conf {
+        window_title: "Pixel Village".to_owned(),
+        window_width: 1920,
+        window_height: 1080,
+        fullscreen: true,
+        high_dpi: true,
+        ..Default::default()
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]
