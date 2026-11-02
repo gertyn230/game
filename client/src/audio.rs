@@ -66,8 +66,8 @@ impl AudioManager {
             return;
         }
         if let Some(sound) = self.sounds.get(name) {
-            play_sound_once(*sound);
-            macroquad::audio::set_sound_volume(*sound, self.sound_volume);
+            play_sound_once(sound);
+            macroquad::audio::set_sound_volume(sound, self.sound_volume);
         }
     }
 
@@ -78,7 +78,7 @@ impl AudioManager {
         }
         if let Some(music) = self.music {
             play_sound(
-                music,
+                &music,
                 PlaySoundParams {
                     looped: true,
                     volume: self.music_volume,
@@ -90,7 +90,7 @@ impl AudioManager {
     /// Зупинити музику
     pub fn stop_music(&self) {
         if let Some(music) = self.music {
-            macroquad::audio::stop_sound(music);
+            macroquad::audio::stop_sound(&music);
         }
     }
 
@@ -114,7 +114,7 @@ impl AudioManager {
         // Якщо просто змінили гучність - оновити
         else if music_enabled {
             if let Some(music) = self.music {
-                macroquad::audio::set_sound_volume(music, music_vol);
+                macroquad::audio::set_sound_volume(&music, music_vol);
             }
         }
     }
