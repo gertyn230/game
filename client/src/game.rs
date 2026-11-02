@@ -117,6 +117,8 @@ pub struct Game {
     pub msg_until: f64,
     pub last_hit: f64,
     pub fx: Option<Fx>,
+    /// Речі, що випали після смерті (x, y, інвентар, інструменти)
+    pub death_drop: Option<(f32, f32, [u32; NI], [i32; NT])>,
     /// Для тестов: зафиксировать время суток.
     pub night_override: Option<f32>,
 }
@@ -157,6 +159,7 @@ impl Game {
             msg_until: 0.0,
             last_hit: 0.0,
             fx: None,
+            death_drop: None,
             night_override: std::env::var("PV_NIGHT").ok().and_then(|v| v.parse().ok()),
         }
     }
@@ -307,27 +310,30 @@ impl Game {
 
     // ---------- действия ----------
     pub fn eat(&mut self, now: f64) {
-        let h = |g: &mut Game, v: f32| g.hunger = (g.hunger + v).min(100.0);
+        let h = |g: &mut Game, v: f32, e: f32| {
+            g.hunger = (g.hunger + v).min(100.0);
+            g.energy = (g.energy + e).min(100.0);
+        };
         if self.inv[It::Roast as usize] > 0 {
             self.inv[It::Roast as usize] -= 1;
-            h(self, 70.0);
+            h(self, 70.0, 25.0);
         } else if self.inv[It::RFish as usize] > 0 {
             self.inv[It::RFish as usize] -= 1;
-            h(self, 65.0);
+            h(self, 65.0, 20.0);
         } else if self.inv[It::Meal as usize] > 0 {
             self.inv[It::Meal as usize] -= 1;
-            h(self, 60.0);
+            h(self, 60.0, 15.0);
         } else if self.inv[It::Food as usize] > 0 {
             self.inv[It::Food as usize] -= 1;
-            h(self, 20.0);
+            h(self, 20.0, 8.0);
         } else if self.inv[It::Meat as usize] > 0 {
             self.inv[It::Meat as usize] -= 1;
-            h(self, 15.0);
+            h(self, 15.0, 5.0);
             self.hp -= 8.0;
             self.say("Сырое мясо вредно — пожарь у костра", now);
         } else if self.inv[It::Fish as usize] > 0 {
             self.inv[It::Fish as usize] -= 1;
-            h(self, 12.0);
+            h(self, 12.0, 5.0);
             self.hp -= 4.0;
             self.say("Сырая рыба — лучше пожарь", now);
         }
@@ -494,8 +500,24 @@ impl Game {
 
     /// Основное действие (кнопка «Добыть»).
     fn act(&mut self, now: f64, out: &mut Vec<ClientMsg>) {
-        if self.fish.ph != 0 || now - self.last_hit < 0.3 || self.energy < 5.0 {
+        if self.fish.ph != 0 || now - self.last_hit < 0.2 || self.energy < 5.0 {
             return;
+        }
+        // Підбір речей після смерті
+        if let Some((dx, dy, dinv, dtools)) = self.death_drop {
+            if (dx - self.x).abs() < 1.5 && (dy - self.y).abs() < 1.5 {
+                for i in 0..NI {
+                    self.inv[i] += dinv[i];
+                }
+                for i in 0..NT {
+                    if dtools[i] > 0 {
+                        self.tools[i] = dtools[i];
+                    }
+                }
+                self.death_drop = None;
+                self.say("Забрав свої речі!", now);
+                return;
+            }
         }
         // 1) звери и туши
         let mut m_best = None;
@@ -812,6 +834,8 @@ impl Game {
 
     // ---------- смерть ----------
     fn die(&mut self, now: f64) {
+        // Зберігаємо речі на місці смерті
+        self.death_drop = Some((self.x, self.y, self.inv, self.tools));
         self.inv = [0; NI];
         self.tools = [0; NT];
         self.hunger = 60.0;
@@ -822,16 +846,17 @@ impl Game {
         self.y = 20.5;
         self.in_boat = false;
         self.fish.ph = 0;
-        self.say("Ты погиб и потерял вещи", now);
+        self.say("Ти помер. Поверніся на місце смерті, щоб забрати речі!", now);
     }
 
-    // ---------- главный тик ----------
+    // ---------- главний тік ----------
     pub fn tick(&mut self, dt: f32, now: f64, inp: &Input, out: &mut Vec<ClientMsg>) {
-        // выживание
+        // виживання
         self.hunger = (self.hunger - 0.35 * dt).max(0.0);
         self.thirst = (self.thirst - 0.28 * dt).max(0.0);
         let rain = self.rain();
-        let de = if self.moving { -(if rain { 1.0 } else { 0.5 }) } else { 1.5 };
+        // Енергія: менша витрата при русі, більше відновлення
+        let de = if self.moving { -(if rain { 0.6 } else { 0.25 }) } else { 2.5 };
         self.energy = (self.energy + de * dt).clamp(0.0, 100.0);
         if self.hunger <= 0.0 || self.thirst <= 0.0 {
             self.hp -= dt;

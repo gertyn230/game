@@ -461,6 +461,15 @@ async fn main() {
             let (sx, sy) = wp(f.0, f.1);
             draw_fire(sx, sy, u, now);
         }
+        // Малюємо "могилу" з речами після смерті
+        if let Some((dx, dy, _, _)) = g.death_drop {
+            let (sx, sy) = wp(dx, dy);
+            // Мерехтливий рюкзак з речами
+            let pulse = ((now * 2.0).sin() * 0.3 + 0.7) as f32;
+            draw_rectangle(sx - 6.0 * u, sy - 6.0 * u, 12.0 * u, 12.0 * u, Color::new(0.6, 0.4, 0.2, pulse));
+            draw_rectangle_lines(sx - 6.0 * u, sy - 6.0 * u, 12.0 * u, 12.0 * u, 1.5, Color::new(1.0, 0.8, 0.3, pulse));
+            labels.push(("💀 Твої речі".into(), sx, sy - 10.0 * u));
+        }
         let me_row = py.floor() as i32;
         let mut labels: Vec<(String, f32, f32)> = vec![];
         let swing = g.fx.as_ref().and_then(|f| {
