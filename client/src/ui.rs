@@ -29,6 +29,12 @@ pub enum Cmd {
     Space,
     Back,
     Lang,
+    // Нові команди для налаштувань
+    ToggleMusic,
+    ToggleSound,
+    MusicVolume(f32),
+    SoundVolume(f32),
+    ChangeLanguage,
 }
 
 pub struct Btn {

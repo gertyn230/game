@@ -1,8 +1,10 @@
 mod art;
 mod data;
 mod game;
+mod i18n;
 mod net;
 mod save;
+mod settings;
 mod ui;
 mod world;
 
@@ -14,7 +16,9 @@ use shared::{ClientMsg, Offer, PlayerState, ServerMsg};
 use art::*;
 use data::*;
 use game::*;
+use i18n::*;
 use net::{Net, NetEvent};
+use settings::*;
 use ui::*;
 use world::*;
 
@@ -99,8 +103,12 @@ async fn main() {
     rand::srand(macroquad::miniquad::date::now() as u64);
     let font = load_ttf_font_from_bytes(include_bytes!("../assets/DejaVuSans.ttf")).expect("шрифт");
 
+    // Завантажуємо налаштування
+    let mut settings = load_settings();
+    let texts = get_texts(&settings.language);
+
     // Завантажувальний екран з перевіркою оновлень
-    show_loading_screen(&font, "Завантаження гри...").await;
+    show_loading_screen(&font, texts.loading).await;
 
     let saved = save::load();
     let env_name = std::env::var("PV_NAME").ok();
@@ -144,6 +152,7 @@ async fn main() {
     loop {
         let dt = get_frame_time().min(0.05);
         let now = get_time();
+        let texts = get_texts(&settings.language);
         let (sw, sh) = (screen_width(), screen_height());
         let base = sw.min(sh);
         let ts = (base / 11.0).floor().max(24.0);
@@ -330,6 +339,26 @@ async fn main() {
                     ui.scroll = 0.0;
                 }
                 Cmd::Close => ui.menu = false,
+                Cmd::ChangeLanguage => {
+                    settings.language = settings.language.next();
+                    save_settings(&settings);
+                }
+                Cmd::ToggleMusic => {
+                    settings.music_enabled = !settings.music_enabled;
+                    save_settings(&settings);
+                }
+                Cmd::ToggleSound => {
+                    settings.sounds_enabled = !settings.sounds_enabled;
+                    save_settings(&settings);
+                }
+                Cmd::MusicVolume(v) => {
+                    settings.music_volume = (settings.music_volume + v).clamp(0.0, 1.0);
+                    save_settings(&settings);
+                }
+                Cmd::SoundVolume(v) => {
+                    settings.sound_volume = (settings.sound_volume + v).clamp(0.0, 1.0);
+                    save_settings(&settings);
+                }
                 Cmd::Tab(t) => {
                     ui.tab = t;
                     ui.scroll = 0.0;
@@ -736,7 +765,7 @@ async fn main() {
                 ui.button(&font, r, l, *c, true, if *c == Cmd::Menu { 0x4a6fa5 } else { 0x6b5a3a }, fs);
             }
         } else {
-            draw_menu(&mut ui, &font, &g, now, sw, sh, fs, &market, &posted, my_id, &board_score, &board_fish);
+            draw_menu(&mut ui, &font, &g, now, sw, sh, fs, &market, &posted, my_id, &board_score, &board_fish, &settings);
         }
         // джойстик
         if joy_id.is_some() && !ui.menu {
@@ -764,6 +793,7 @@ fn draw_menu(
     my_id: Option<u32>,
     board_score: &[(String, u32)],
     board_fish: &[(String, f32, u32)],
+    settings: &Settings,
 ) {
     let pad = fs * 0.6;
     let p = Rect::new(sw * 0.03, sh * 0.03, sw * 0.94, sh * 0.94);
@@ -771,7 +801,7 @@ fn draw_menu(
     draw_rectangle(p.x, p.y, p.w, p.h, ha(0x1d1f1b, 0.95));
     draw_rectangle_lines(p.x, p.y, p.w, p.h, 3.0, hx(0x6b5a3a));
     // вкладки
-    let tabs = ["Крафт", "Рынок", "Рейтинг", "Действия"];
+    let tabs = ["Крафт", "Рынок", "Рейтинг", "Налаштування"];
     let tw = (p.w - pad * 3.0 - fs * 6.5 - 16.0) / 4.0;
     for (i, t) in tabs.iter().enumerate() {
         let r = Rect::new(p.x + pad + i as f32 * (tw + 4.0), p.y + pad, tw, fs * 2.4);
@@ -877,8 +907,30 @@ fn draw_menu(
             }
         }
         _ => {
+            // Вкладка "Налаштування"
             let bh = fs * 2.8;
             let bw = body.w.min(fs * 22.0);
+            let y_start = body.y + fs;
+
+            // Мова
+            text(font, "Мова / Language / Язык:", body.x + pad, y_start, fs * 1.1, WHITE);
+            let lang_names = ["🇺🇦 Українська", "🇬🇧 English", "🇷🇺 Русский"];
+            let current_lang = match settings.language {
+                Language::Ukrainian => 0,
+                Language::English => 1,
+                Language::Russian => 2,
+            };
+            ui.button(
+                font,
+                Rect::new(body.x, y_start + fs * 1.5, bw, bh),
+                lang_names[current_lang],
+                Cmd::ChangeLanguage,
+                true,
+                0x4a6fa5,
+                fs,
+            );
+
+            // Інші дії
             let items: [(&str, Cmd); 4] = [
                 ("Построить мост (2 доски, лицом к воде)", Cmd::Bridge),
                 ("Лодка: сесть / выйти", Cmd::Boat),
@@ -886,7 +938,15 @@ fn draw_menu(
                 ("Сменить имя", Cmd::NameOpen),
             ];
             for (i, (l, c)) in items.iter().enumerate() {
-                ui.button(font, Rect::new(body.x, body.y + fs + i as f32 * (bh + 8.0), bw, bh), l, *c, true, 0x4a6fa5, fs);
+                ui.button(
+                    font,
+                    Rect::new(body.x, y_start + fs * 5.0 + i as f32 * (bh + 8.0), bw, bh),
+                    l,
+                    *c,
+                    true,
+                    0x4a6fa5,
+                    fs,
+                );
             }
             text(font, "Игра продолжается, пока меню открыто!", body.x, body.y + fs * 18.5, fs * 0.9, ha(0xffffff, 0.6));
         }
