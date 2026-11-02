@@ -5,8 +5,14 @@ pub struct Texts {
     // Основне меню
     pub game_title: &'static str,
     pub loading: &'static str,
+    pub loading_assets: &'static str,
+    pub loading_world: &'static str,
     pub connecting: &'static str,
     pub online: &'static str,
+    pub play: &'static str,
+    pub continue_game: &'static str,
+    pub new_game: &'static str,
+    pub quit: &'static str,
 
     // Дії
     pub action: &'static str,
@@ -40,6 +46,9 @@ pub struct Texts {
     pub volume: &'static str,
     pub keybindings: &'static str,
     pub controls: &'static str,
+    pub music_volume: &'static str,
+    pub sound_volume: &'static str,
+    pub apply: &'static str,
 
     // Повідомлення
     pub you_died: &'static str,
@@ -58,8 +67,14 @@ pub struct Texts {
 const UA: Texts = Texts {
     game_title: "Pixel Village",
     loading: "Завантаження...",
+    loading_assets: "Завантаження ресурсів...",
+    loading_world: "Генерація світу...",
     connecting: "Підключення до сервера...",
     online: "Онлайн",
+    play: "Грати",
+    continue_game: "Продовжити",
+    new_game: "Нова гра",
+    quit: "Вийти",
 
     action: "Добути",
     eat: "Їсти",
@@ -89,6 +104,9 @@ const UA: Texts = Texts {
     volume: "Гучність",
     keybindings: "Клавіші",
     controls: "Керування",
+    music_volume: "Гучність музики",
+    sound_volume: "Гучність звуків",
+    apply: "Застосувати",
 
     you_died: "Ви померли",
     items_dropped: "Речі залишилися на місці смерті",
@@ -105,8 +123,14 @@ const UA: Texts = Texts {
 const EN: Texts = Texts {
     game_title: "Pixel Village",
     loading: "Loading...",
+    loading_assets: "Loading assets...",
+    loading_world: "Generating world...",
     connecting: "Connecting to server...",
     online: "Online",
+    play: "Play",
+    continue_game: "Continue",
+    new_game: "New Game",
+    quit: "Quit",
 
     action: "Gather",
     eat: "Eat",
@@ -136,6 +160,9 @@ const EN: Texts = Texts {
     volume: "Volume",
     keybindings: "Keybindings",
     controls: "Controls",
+    music_volume: "Music Volume",
+    sound_volume: "Sound Volume",
+    apply: "Apply",
 
     you_died: "You died",
     items_dropped: "Items remained at death location",
@@ -152,8 +179,14 @@ const EN: Texts = Texts {
 const RU: Texts = Texts {
     game_title: "Pixel Village",
     loading: "Загрузка...",
+    loading_assets: "Загрузка ресурсов...",
+    loading_world: "Генерация мира...",
     connecting: "Подключение к серверу...",
     online: "Онлайн",
+    play: "Играть",
+    continue_game: "Продолжить",
+    new_game: "Новая игра",
+    quit: "Выйти",
 
     action: "Добыть",
     eat: "Есть",
@@ -183,6 +216,9 @@ const RU: Texts = Texts {
     volume: "Громкость",
     keybindings: "Клавиши",
     controls: "Управление",
+    music_volume: "Громкость музыки",
+    sound_volume: "Громкость звуков",
+    apply: "Применить",
 
     you_died: "Вы погибли",
     items_dropped: "Вещи остались на месте смерти",

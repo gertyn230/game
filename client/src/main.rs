@@ -3,6 +3,7 @@ mod audio;
 mod data;
 mod game;
 mod i18n;
+mod menu;
 mod net;
 mod save;
 mod settings;
