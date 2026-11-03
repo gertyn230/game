@@ -7,21 +7,12 @@ $chatId = "@pixel_village"
 
 $env:PATH = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-$commitHash = git log -1 --pretty=%h
 $commitMessage = git log -1 --pretty=%B | Select-Object -First 1
 $commitAuthor = git log -1 --pretty=%an
-$commitUrl = "https://github.com/gertyn230/game/commit/$commitHash"
 
 $messageText = "🔄 New Update / Нове оновлення`n`n" +
-"EN:`n" +
 "📝 $commitMessage`n" +
-"👤 Author: $commitAuthor`n" +
-"🔗 $commitUrl`n`n" +
-"UA:`n" +
-"📝 $commitMessage`n" +
-"👤 Автор: $commitAuthor`n" +
-"🔗 $commitUrl`n`n" +
-"📦 $commitHash"
+"👤 Author / Автор: $commitAuthor"
 
 $payload = @{
     chat_id = $chatId
