@@ -98,7 +98,7 @@ impl Menu {
 
     /// Завантажує фонове зображення для меню
     pub async fn load_background(&mut self) {
-        if let Ok(texture) = load_texture("assets/menu_background.jpg").await {
+        if let Ok(texture) = load_texture("assets/menu_background.png").await {
             self.background = Some(texture);
         }
     }

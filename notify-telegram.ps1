@@ -10,8 +10,13 @@ $env:PATH = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";"
 $commitMessage = git log -1 --pretty=%B | Select-Object -First 1
 $commitAuthor = git log -1 --pretty=%an
 
+# Витягуємо тільки основний текст без емодзі та технічних деталей
+$cleanMessage = $commitMessage -replace '^[🎨🔧✨📝🐛🚀]+\s*', ''
+$cleanMessage = ($cleanMessage -split "`n")[0]
+
 $messageText = "🔄 New Update / Нове оновлення`n`n" +
-"📝 $commitMessage`n" +
+"EN: $cleanMessage`n" +
+"UA: $cleanMessage`n`n" +
 "👤 Author / Автор: $commitAuthor"
 
 $payload = @{
