@@ -10,14 +10,21 @@ $env:PATH = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";"
 $commitMessage = git log -1 --pretty=%B | Select-Object -First 1
 $commitAuthor = git log -1 --pretty=%an
 
-# Витягуємо тільки основний текст без емодзі та технічних деталей
-$cleanMessage = $commitMessage -replace '^[🎨🔧✨📝🐛🚀]+\s*', ''
-$cleanMessage = ($cleanMessage -split "`n")[0]
+# Розпарсюємо формат "EN text | UA текст"
+if ($commitMessage -match '(.+?)\s*\|\s*(.+)') {
+    $enMessage = $matches[1].Trim()
+    $uaMessage = $matches[2].Trim()
 
-$messageText = "🔄 New Update / Нове оновлення`n`n" +
-"EN: $cleanMessage`n" +
-"UA: $cleanMessage`n`n" +
-"👤 Author / Автор: $commitAuthor"
+    $messageText = "🔄 New Update / Нове оновлення`n`n" +
+    "EN: $enMessage`n" +
+    "UA: $uaMessage`n`n" +
+    "👤 Author / Автор: $commitAuthor"
+} else {
+    # Якщо формат не знайдено, показуємо як є
+    $messageText = "🔄 New Update / Нове оновлення`n`n" +
+    "📝 $commitMessage`n`n" +
+    "👤 Author / Автор: $commitAuthor"
+}
 
 $payload = @{
     chat_id = $chatId
