@@ -429,39 +429,8 @@ impl Menu {
             self.draw_pixel_background(sw, sh);
         }
 
-        // Напівпрозора панель за UI
-        draw_rectangle(0.0, 0.0, sw, sh * 0.3, Color::from_rgba(0, 0, 0, 100));
+        // Напівпрозора панель за кнопками
         draw_rectangle(0.0, sh * 0.35, sw, sh * 0.65, Color::from_rgba(0, 0, 0, 120));
-
-        // Назва гри з піксельним ефектом
-        let title = "🏡 Pixel Village";
-        let title_y = sh * 0.2;
-
-        // Тінь
-        draw_text_ex(
-            title,
-            sw / 2.0 - measure_text(title, Some(font), (fs * 3.5) as u16, 1.0).width / 2.0 + 4.0,
-            title_y + 4.0,
-            TextParams {
-                font: Some(font),
-                font_size: (fs * 3.5) as u16,
-                color: Color::from_rgba(0, 0, 0, 150),
-                ..Default::default()
-            },
-        );
-
-        // Основний текст
-        draw_text_ex(
-            title,
-            sw / 2.0 - measure_text(title, Some(font), (fs * 3.5) as u16, 1.0).width / 2.0,
-            title_y,
-            TextParams {
-                font: Some(font),
-                font_size: (fs * 3.5) as u16,
-                color: Color::from_rgba(255, 220, 100, 255),
-                ..Default::default()
-            },
-        );
 
         // Кнопки меню
         let button_width = 300.0;
