@@ -98,9 +98,16 @@ impl Menu {
 
     /// Завантажує фонове зображення для меню
     pub async fn load_background(&mut self) {
-        if let Ok(texture) = load_texture("assets/menu_background.png").await {
-            self.background = Some(texture);
+        // Спробувати завантажити заставку кілька разів
+        for _ in 0..3 {
+            if let Ok(texture) = load_texture("assets/menu_background.png").await {
+                self.background = Some(texture);
+                println!("✅ Background loaded successfully!");
+                return;
+            }
+            println!("⚠️ Failed to load background, retrying...");
         }
+        println!("❌ Failed to load background after 3 attempts, using fallback");
     }
 
     pub fn update_loading(&mut self, progress: f32, message: &str) {
@@ -457,7 +464,8 @@ impl Menu {
             let x = (sw - button_width) / 2.0;
 
             let hovered = is_button_hovered(x, y, button_width, button_height);
-            let clicked = hovered && is_mouse_button_pressed(MouseButton::Left);
+            let clicked = hovered && (is_mouse_button_pressed(MouseButton::Left) ||
+                touches().iter().any(|t| t.phase == TouchPhase::Started));
 
             // Піксельна тінь
             draw_rectangle(x + 6.0, y + 6.0, button_width, button_height, Color::from_rgba(20, 20, 30, 180));
