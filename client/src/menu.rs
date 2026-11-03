@@ -429,14 +429,11 @@ impl Menu {
             self.draw_pixel_background(sw, sh);
         }
 
-        // Напівпрозора панель за кнопками
-        draw_rectangle(0.0, sh * 0.35, sw, sh * 0.65, Color::from_rgba(0, 0, 0, 120));
-
-        // Кнопки меню
-        let button_width = 300.0;
-        let button_height = 60.0;
-        let button_spacing = 20.0;
-        let start_y = sh * 0.45;
+        // Кнопки меню (без чорної панелі!)
+        let button_width = 400.0; // Збільшено для довгих слів
+        let button_height = 70.0;
+        let button_spacing = 25.0;
+        let start_y = sh * 0.55;
 
         let buttons = if self.has_save {
             vec![
@@ -462,30 +459,70 @@ impl Menu {
             let hovered = is_button_hovered(x, y, button_width, button_height);
             let clicked = hovered && is_mouse_button_pressed(MouseButton::Left);
 
-            // Тінь кнопки
-            draw_rectangle(x + 4.0, y + 4.0, button_width, button_height, Color::from_rgba(0, 0, 0, 80));
+            // Піксельна тінь
+            draw_rectangle(x + 6.0, y + 6.0, button_width, button_height, Color::from_rgba(20, 20, 30, 180));
 
-            // Кнопка
+            // Дерев'яна кнопка з градієнтом
             let btn_color = if hovered {
-                Color::from_rgba(42, 157, 143, 255)
+                Color::from_rgba(210, 180, 140, 255) // Світле дерево при наведенні
             } else {
-                Color::from_rgba(67, 71, 62, 255)
+                Color::from_rgba(139, 90, 43, 255) // Темне дерево
             };
             draw_rectangle(x, y, button_width, button_height, btn_color);
 
-            // Обводка
-            draw_rectangle_lines(x, y, button_width, button_height, 2.0, Color::from_rgba(236, 232, 220, 150));
+            // Внутрішня рамка (світліша)
+            draw_rectangle_lines(x + 3.0, y + 3.0, button_width - 6.0, button_height - 6.0, 2.0,
+                Color::from_rgba(210, 180, 140, 120));
 
-            // Текст кнопки
-            let text_measure = measure_text(label, Some(font), (fs * 1.3) as u16, 1.0);
+            // Зовнішня рамка (темніша)
+            draw_rectangle_lines(x, y, button_width, button_height, 3.0,
+                Color::from_rgba(80, 50, 20, 255));
+
+            // Декоративні кутові пікселі
+            let corner_size = 4.0;
+            let corner_color = Color::from_rgba(255, 220, 150, 255);
+            // Лівий верхній
+            draw_rectangle(x + 8.0, y + 8.0, corner_size, corner_size, corner_color);
+            // Правий верхній
+            draw_rectangle(x + button_width - 12.0, y + 8.0, corner_size, corner_size, corner_color);
+            // Лівий нижній
+            draw_rectangle(x + 8.0, y + button_height - 12.0, corner_size, corner_size, corner_color);
+            // Правий нижній
+            draw_rectangle(x + button_width - 12.0, y + button_height - 12.0, corner_size, corner_size, corner_color);
+
+            // Текст кнопки з тінню
+            let text_color = if hovered {
+                Color::from_rgba(50, 30, 10, 255) // Темний текст на світлій кнопці
+            } else {
+                Color::from_rgba(255, 240, 200, 255) // Світлий текст на темній кнопці
+            };
+
+            let text_measure = measure_text(label, Some(font), (fs * 1.4) as u16, 1.0);
+            let text_x = x + (button_width - text_measure.width) / 2.0;
+            let text_y = y + (button_height + text_measure.height) / 2.0;
+
+            // Тінь тексту
             draw_text_ex(
                 label,
-                x + (button_width - text_measure.width) / 2.0,
-                y + (button_height + text_measure.height) / 2.0,
+                text_x + 2.0,
+                text_y + 2.0,
                 TextParams {
                     font: Some(font),
-                    font_size: (fs * 1.3) as u16,
-                    color: Color::from_rgba(236, 232, 220, 255),
+                    font_size: (fs * 1.4) as u16,
+                    color: Color::from_rgba(0, 0, 0, 100),
+                    ..Default::default()
+                },
+            );
+
+            // Основний текст
+            draw_text_ex(
+                label,
+                text_x,
+                text_y,
+                TextParams {
+                    font: Some(font),
+                    font_size: (fs * 1.4) as u16,
+                    color: text_color,
                     ..Default::default()
                 },
             );
