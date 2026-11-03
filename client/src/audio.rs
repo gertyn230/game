@@ -25,17 +25,32 @@ impl AudioManager {
 
     /// Завантажити всі звуки (викликати при старті)
     pub async fn load_all(&mut self) {
-        // Звуки дій
-        self.load_sound_if_exists("hit", "assets/sounds/hit.ogg").await;
-        self.load_sound_if_exists("craft", "assets/sounds/craft.ogg").await;
-        self.load_sound_if_exists("eat", "assets/sounds/eat.ogg").await;
-        self.load_sound_if_exists("drink", "assets/sounds/drink.ogg").await;
-        self.load_sound_if_exists("pickup", "assets/sounds/pickup.ogg").await;
-        self.load_sound_if_exists("step", "assets/sounds/step.ogg").await;
-        self.load_sound_if_exists("death", "assets/sounds/death.ogg").await;
+        // UI звуки
+        self.load_sound_if_exists("button_click", "assets/sounds/ui/button_click.ogg").await;
+        self.load_sound_if_exists("button_hover", "assets/sounds/ui/button_hover.ogg").await;
+        self.load_sound_if_exists("menu_open", "assets/sounds/ui/menu_open.ogg").await;
+        self.load_sound_if_exists("menu_close", "assets/sounds/ui/menu_close.ogg").await;
 
-        // Фонова музика
-        self.load_music_if_exists("assets/music/background.ogg").await;
+        // Звуки гравця
+        self.load_sound_if_exists("footstep_grass", "assets/sounds/player/footstep_grass.ogg").await;
+        self.load_sound_if_exists("footstep_dirt", "assets/sounds/player/footstep_dirt.ogg").await;
+        self.load_sound_if_exists("pickup_item", "assets/sounds/player/pickup_item.ogg").await;
+        self.load_sound_if_exists("eat", "assets/sounds/player/eat.ogg").await;
+        self.load_sound_if_exists("drink", "assets/sounds/player/drink.ogg").await;
+
+        // Звуки дій
+        self.load_sound_if_exists("dig_dirt", "assets/sounds/actions/dig_dirt.ogg").await;
+        self.load_sound_if_exists("chop_tree", "assets/sounds/actions/chop_tree.ogg").await;
+        self.load_sound_if_exists("mine_stone", "assets/sounds/actions/mine_stone.ogg").await;
+        self.load_sound_if_exists("craft_item", "assets/sounds/actions/craft_item.ogg").await;
+
+        // Звуки оточення
+        self.load_sound_if_exists("wind", "assets/sounds/ambient/wind.ogg").await;
+        self.load_sound_if_exists("birds", "assets/sounds/ambient/birds.ogg").await;
+        self.load_sound_if_exists("night_crickets", "assets/sounds/ambient/night_crickets.ogg").await;
+
+        // Фонова музика для меню
+        self.load_music_if_exists("assets/music/menu_music.ogg").await;
     }
 
     async fn load_sound_if_exists(&mut self, name: &str, path: &str) {

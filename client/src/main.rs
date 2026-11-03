@@ -98,6 +98,9 @@ async fn main() {
     // Ініціалізуємо систему меню
     let mut game_state = GameStateManager::new(saved.is_some());
 
+    // Завантажуємо фонове зображення меню
+    game_state.menu.load_background().await;
+
     // Показуємо екран завантаження
     for i in 0..20 {
         let progress = (i as f32 / 20.0) * 0.3;

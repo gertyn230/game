@@ -21,6 +21,7 @@ pub struct Menu {
     particles: Vec<Particle>,
     clouds: Vec<Cloud>,
     stars: Vec<Star>,
+    background: Option<Texture2D>,
 }
 
 struct Particle {
@@ -91,6 +92,14 @@ impl Menu {
             particles,
             clouds,
             stars,
+            background: None,
+        }
+    }
+
+    /// Завантажує фонове зображення для меню
+    pub async fn load_background(&mut self) {
+        if let Ok(texture) = load_texture("assets/menu_background.jpg").await {
+            self.background = Some(texture);
         }
     }
 
@@ -403,8 +412,22 @@ impl Menu {
         let (sw, sh) = (screen_width(), screen_height());
         let fs = (sw.min(sh) * 0.04).max(16.0);
 
-        // Малюємо піксельний фон з горами та деревами
-        self.draw_pixel_background(sw, sh);
+        // Малюємо фон (або згенеровану заставку, або піксельний фон)
+        if let Some(bg) = &self.background {
+            draw_texture_ex(
+                bg,
+                0.0,
+                0.0,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(sw, sh)),
+                    ..Default::default()
+                },
+            );
+        } else {
+            // Якщо заставка не завантажилась, малюємо піксельний фон
+            self.draw_pixel_background(sw, sh);
+        }
 
         // Напівпрозора панель за UI
         draw_rectangle(0.0, 0.0, sw, sh * 0.3, Color::from_rgba(0, 0, 0, 100));
