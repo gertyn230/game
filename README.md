@@ -1,9 +1,45 @@
-# Pixel Village (Rust)
+# 🎮 Pixel Village
 
-Мультиплеерная 2D-игра на Rust: клиент на macroquad (Windows / Android), сервер на axum (WebSocket).
-Это перенос всей веб-версии игры на Rust.
+Multiplayer survival pixel art game with beautiful AI-generated backgrounds and wooden UI.
 
-## Что есть в игре
+Багатокористувацька гра на виживання з піксельною графікою, красивими AI-згенерованими фонами та дерев'яним інтерфейсом.
+
+## ✨ What's New / Що нового
+
+- 🖼️ **AI-Generated Menu Background** - Beautiful pixel art landscape / Красивий піксельарт ландшафт
+- 🪵 **Wooden Pixel Buttons** - Stylish UI with hover effects / Стильний UI з ефектами наведення
+- 🌍 **3 Languages** - Ukrainian, English, Russian / Українська, Англійська, Російська
+- 📝 **Complete Translations** - All items, tools, recipes (172 translations) / Всі предмети, інструменти, рецепти
+- 🖥️ **Fullscreen Mode** - Automatic on PC / Автоматичний на ПК
+
+## 🚀 Quick Start / Швидкий старт
+
+### Windows PC:
+
+1. Clone / Клонуй:
+```bash
+git clone https://github.com/gertyn230/game.git
+cd game
+```
+
+2. Build / Компілюй:
+```bash
+cargo build --release
+```
+
+3. Run / Запусти:
+```bash
+./target/release/client.exe
+```
+
+### Android:
+
+```bash
+cargo quad-apk build --release
+# APK in target/android-artifacts/
+```
+
+## 🎮 Gameplay / Геймплей
 - **Мир 40×40:** река, озеро, броды, пляжи, три биома (луга, лес, каменистое плато), руды (уголь, медь, железо).
 - **Персонаж** с детальной анимацией, поворотом, рюкзаком, инструментом в руке, лодкой и меховой одеждой.
 - **Выживание:** сытость, жажда, энергия, здоровье; день и ночь; дождь; смерть с потерей вещей.
