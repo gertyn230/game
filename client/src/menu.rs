@@ -98,16 +98,24 @@ impl Menu {
 
     /// Завантажує фонове зображення для меню
     pub async fn load_background(&mut self) {
-        // Спробувати завантажити заставку кілька разів
-        for _ in 0..3 {
-            if let Ok(texture) = load_texture("assets/menu_background.png").await {
+        // Вбудована заставка - працює на всіх платформах без папки assets!
+        const BACKGROUND_PNG: &[u8] = include_bytes!("../../assets/menu_background.png");
+
+        match image::load_from_memory(BACKGROUND_PNG) {
+            Ok(img) => {
+                let rgba = img.to_rgba8();
+                let width = rgba.width() as u16;
+                let height = rgba.height() as u16;
+                let bytes = rgba.into_raw();
+
+                let texture = Texture2D::from_rgba8(width, height, &bytes);
                 self.background = Some(texture);
-                println!("✅ Background loaded successfully!");
-                return;
+                println!("✅ Background loaded from embedded data!");
             }
-            println!("⚠️ Failed to load background, retrying...");
+            Err(e) => {
+                println!("❌ Failed to load embedded background: {:?}", e);
+            }
         }
-        println!("❌ Failed to load background after 3 attempts, using fallback");
     }
 
     pub fn update_loading(&mut self, progress: f32, message: &str) {
