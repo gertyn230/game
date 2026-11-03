@@ -7,6 +7,7 @@ use shared::ClientMsg;
 use crate::data::*;
 use crate::save::Save;
 use crate::world::*;
+use crate::i18n::Texts;
 
 pub const RABBITS: usize = 10;
 
@@ -309,7 +310,7 @@ impl Game {
     }
 
     // ---------- действия ----------
-    pub fn eat(&mut self, now: f64) {
+    pub fn eat(&mut self, now: f64, texts: &Texts) {
         let h = |g: &mut Game, v: f32, e: f32| {
             g.hunger = (g.hunger + v).min(100.0);
             g.energy = (g.energy + e).min(100.0);
@@ -330,16 +331,16 @@ impl Game {
             self.inv[It::Meat as usize] -= 1;
             h(self, 15.0, 5.0);
             self.hp -= 8.0;
-            self.say("Сырое мясо вредно — пожарь у костра", now);
+            self.say(texts.raw_meat_bad, now);
         } else if self.inv[It::Fish as usize] > 0 {
             self.inv[It::Fish as usize] -= 1;
             h(self, 12.0, 5.0);
             self.hp -= 4.0;
-            self.say("Сырая рыба — лучше пожарь", now);
+            self.say(texts.raw_fish_bad, now);
         }
     }
 
-    pub fn drink(&mut self, now: f64) {
+    pub fn drink(&mut self, now: f64, texts: &Texts) {
         if self.fish.ph != 0 {
             return;
         }
@@ -347,34 +348,34 @@ impl Game {
             self.thirst = (self.thirst + 15.0).min(100.0);
             self.last_hit = now;
             self.energy -= 0.3;
-            self.say("Ты пьёшь воду", now);
+            self.say(texts.drinking_water, now);
         } else {
-            self.say("Воды рядом нет", now);
+            self.say(texts.no_water_nearby, now);
         }
     }
 
-    pub fn dig(&mut self, now: f64) {
+    pub fn dig(&mut self, now: f64, texts: &Texts) {
         if self.fish.ph != 0 || now - self.last_hit < 0.5 {
             return;
         }
         if !self.tool(Tl::Shovel) {
-            self.say("Нужна лопата: палки, камешки, нить", now);
+            self.say(texts.need_shovel, now);
             return;
         }
         let (tx, ty) = (self.x.floor() as i32, self.y.floor() as i32);
         let t = self.map.terr_at(tx, ty);
         if t == WATER || t == FORD {
-            self.say("Тут нельзя копать", now);
+            self.say(texts.cant_dig_here, now);
             return;
         }
         let bm = biome(tx, ty);
         if bm == 2 {
-            self.say("Плато слишком твёрдое", now);
+            self.say(texts.plateau_too_hard, now);
             return;
         }
         let e = self.dugs(tx, ty, now);
         if e >= 3 {
-            self.say("Здесь уже перекопано", now);
+            self.say(texts.already_dug, now);
             return;
         }
         self.last_hit = now;
@@ -384,9 +385,9 @@ impl Game {
         let ch = (if bm == 1 { 0.7 } else if t == SAND { 0.25 } else { 0.55 }) + if self.rain() { 0.2 } else { 0.0 };
         if rnd() < ch {
             self.inv[It::Worm as usize] += 1;
-            self.say("Нашёл червя", now);
+            self.say(texts.found_worm, now);
         } else {
-            self.say("Пусто, попробуй в другом месте", now);
+            self.say(texts.nothing_found, now);
         }
     }
     fn dugs(&mut self, tx: i32, ty: i32, now: f64) -> u8 {
@@ -409,27 +410,27 @@ impl Game {
         }
     }
 
-    pub fn bridge(&mut self, now: f64) {
+    pub fn bridge(&mut self, now: f64, texts: &Texts) {
         if self.in_boat {
-            self.say("Из лодки мост не построить", now);
+            self.say(texts.cant_build_from_boat, now);
             return;
         }
         let d = [(0, 1), (0, -1), (-1, 0), (1, 0)][self.face as usize];
         let c = (self.x.floor() as i32 + d.0, self.y.floor() as i32 + d.1);
         if self.map.terr_at(c.0, c.1) != WATER || self.bridges.contains(&c) {
-            self.say("Встань лицом к воде", now);
+            self.say(texts.face_water, now);
         } else if self.inv[It::Plank as usize] < 2 {
-            self.say("Нужно 2 доски", now);
+            self.say(texts.need_planks, now);
         } else {
             self.inv[It::Plank as usize] -= 2;
             self.bridges.insert(c);
-            self.say("Мост построен", now);
+            self.say(texts.bridge_built, now);
         }
     }
 
-    pub fn boat_toggle(&mut self, now: f64) {
+    pub fn boat_toggle(&mut self, now: f64, texts: &Texts) {
         if !self.tool(Tl::Boat) {
-            self.say("Нужна лодка: 10 досок и 4 нити", now);
+            self.say(texts.need_boat, now);
             return;
         }
         let (x0, y0) = (self.x.floor() as i32, self.y.floor() as i32);
@@ -450,17 +451,17 @@ impl Game {
             }
         }
         match hit {
-            None => self.say(if self.in_boat { "Нужен свободный берег" } else { "Подойди к воде" }, now),
+            None => self.say(if self.in_boat { texts.need_free_shore } else { texts.approach_water }, now),
             Some((x, y)) => {
                 self.in_boat = !self.in_boat;
                 self.x = x as f32 + 0.5;
                 self.y = y as f32 + 0.5;
-                self.say(if self.in_boat { "Ты в лодке" } else { "Ты на берегу" }, now);
+                self.say(if self.in_boat { texts.in_boat } else { texts.on_shore }, now);
             }
         }
     }
 
-    pub fn tame(&mut self, now: f64) {
+    pub fn tame(&mut self, now: f64, texts: &Texts) {
         let mut best = None;
         let mut bd = 12.25;
         for (i, m) in self.mobs.iter().enumerate() {
@@ -474,13 +475,13 @@ impl Game {
             }
         }
         let Some(i) = best else {
-            self.say("Рядом нет волка", now);
+            self.say(texts.no_wolf_nearby, now);
             return;
         };
         if self.has_pet {
-            self.say("У тебя уже есть питомец", now);
+            self.say(texts.already_have_pet, now);
         } else if self.inv[It::Meat as usize] < 1 {
-            self.say("Нужно сырое мясо", now);
+            self.say(texts.need_raw_meat, now);
         } else {
             self.inv[It::Meat as usize] -= 1;
             let m = &mut self.mobs[i];
@@ -490,16 +491,16 @@ impl Game {
                 m.kind = MobKind::Pet;
                 m.hp = 9.0;
                 self.has_pet = true;
-                self.say("Волк стал твоим другом!", now);
+                self.say(texts.wolf_is_friend, now);
             } else {
                 let t = m.trust;
-                self.say(&format!("Волк доверяет: {t}/3"), now);
+                self.say(&format!("{}: {t}/3", texts.wolf_trust), now);
             }
         }
     }
 
     /// Основное действие (кнопка «Добыть»).
-    fn act(&mut self, now: f64, out: &mut Vec<ClientMsg>) {
+    fn act(&mut self, now: f64, out: &mut Vec<ClientMsg>, texts: &Texts) {
         if self.fish.ph != 0 || now - self.last_hit < 0.2 || self.energy < 5.0 {
             return;
         }
@@ -515,7 +516,7 @@ impl Game {
                     }
                 }
                 self.death_drop = None;
-                self.say("Забрав свої речі!", now);
+                self.say(texts.picked_up_items, now);
                 return;
             }
         }
@@ -539,7 +540,7 @@ impl Game {
                     return;
                 }
                 if !self.tool(Tl::Knife) {
-                    self.say("Нужен нож: палка, камешек, нить", now);
+                    self.say(texts.need_knife, now);
                     self.last_hit = now - 0.0;
                     return;
                 }
@@ -553,11 +554,11 @@ impl Game {
                 self.inv[It::Meat as usize] += if wolf { 3 } else { 2 };
                 self.inv[It::Hide as usize] += if wolf { 2 } else { 1 };
                 self.got += 3;
-                self.say("Туша разделана: мясо и шкура", now);
+                self.say(texts.corpse_butchered, now);
                 return;
             }
             if kind == MobKind::Rabbit && !self.tool(Tl::Spear) {
-                self.say("Кролика поймает только копьё", now);
+                self.say(texts.need_spear, now);
                 self.last_hit = now;
                 return;
             }
@@ -576,7 +577,7 @@ impl Game {
             if self.mobs[i].hp <= 0.0 {
                 self.mobs[i].dead = now;
                 self.got += 1;
-                self.say("Разделай тушу: нужен каменный нож", now);
+                self.say(texts.butcher_corpse, now);
             }
             return;
         }
@@ -597,12 +598,12 @@ impl Game {
             // 3) вода: рыбалка или питьё
             if self.tool(Tl::Rod) && self.inv[It::Worm as usize] > 0 && self.fish.armed {
                 if let Some((wx, wy)) = self.water_tile(4) {
-                    self.cast(wx, wy, now);
+                    self.cast(wx, wy, now, texts);
                     return;
                 }
             }
             if self.near_water() {
-                self.drink(now);
+                self.drink(now, texts);
             }
             return;
         };
@@ -681,7 +682,7 @@ impl Game {
     }
 
     // ---------- рыбалка ----------
-    fn cast(&mut self, wx: f32, wy: f32, now: f64) {
+    fn cast(&mut self, wx: f32, wy: f32, now: f64, texts: &Texts) {
         self.inv[It::Worm as usize] -= 1;
         self.use_tool(Tl::Rod, now);
         self.fish.ph = 1;
@@ -691,9 +692,9 @@ impl Game {
         self.fish.bite = now + 2.5 + rnd() as f64 * 5.5;
         self.face_to(wx, wy);
         self.last_hit = now;
-        self.say("Закинул удочку, жди поклёвку", now);
+        self.say(texts.cast_rod, now);
     }
-    fn fishing_tick(&mut self, dt: f32, now: f64, hold: bool) {
+    fn fishing_tick(&mut self, dt: f32, now: f64, hold: bool, texts: &Texts) {
         if !hold {
             self.fish.armed = true;
         }
@@ -702,7 +703,7 @@ impl Game {
         }
         if self.moving {
             self.fish.ph = 0;
-            self.say("Ты отошёл — удочка смотана", now);
+            self.say(texts.moved_rod_retracted, now);
             return;
         }
         match self.fish.ph {
@@ -710,11 +711,11 @@ impl Game {
                 if hold && self.fish.armed {
                     self.fish.armed = false;
                     self.fish.ph = 0;
-                    self.say("Ты смотал удочку", now);
+                    self.say(texts.retracted_rod, now);
                 } else if now > self.fish.bite {
                     self.fish.ph = 2;
                     self.fish.t = now + 1.3;
-                    self.say("Клюёт! Жми «Добыть»!", now);
+                    self.say(texts.fish_biting, now);
                 }
             }
             2 => {
@@ -725,10 +726,10 @@ impl Game {
                     self.fish.tn = 40.0;
                     let r = rnd() - if self.night() > 0.3 { 0.1 } else { 0.0 };
                     self.fish.kind = if r < 0.45 { 0 } else if r < 0.75 { 1 } else if r < 0.93 { 2 } else { 3 };
-                    self.say("Тяни! Держи полоску в зелёной зоне", now);
+                    self.say(texts.pull_keep_green, now);
                 } else if now > self.fish.t {
                     self.fish.ph = 0;
-                    self.say("Рыба сорвалась", now);
+                    self.say(texts.fish_escaped, now);
                 }
             }
             _ => {
@@ -739,7 +740,7 @@ impl Game {
                 self.fish.tn = self.fish.tn.max(0.0);
                 if self.fish.tn >= 100.0 {
                     self.fish.ph = 0;
-                    self.say("Леска порвалась!", now);
+                    self.say(texts.line_broke, now);
                 } else {
                     let good = self.fish.tn > 30.0 && self.fish.tn < 75.0;
                     self.fish.p += (if good { 16.0 - pw * 3.0 } else { -9.0 }) * dt;
@@ -755,7 +756,7 @@ impl Game {
                         self.say(&format!("Поймана: {} {} кг", f.0, wt), now);
                     } else if self.fish.p <= 0.0 {
                         self.fish.ph = 0;
-                        self.say("Рыба ушла", now);
+                        self.say(texts.fish_got_away, now);
                     }
                 }
             }
@@ -833,7 +834,7 @@ impl Game {
     }
 
     // ---------- смерть ----------
-    fn die(&mut self, now: f64) {
+    fn die(&mut self, now: f64, texts: &Texts) {
         // Зберігаємо речі на місці смерті
         self.death_drop = Some((self.x, self.y, self.inv, self.tools));
         self.inv = [0; NI];
@@ -846,11 +847,11 @@ impl Game {
         self.y = 20.5;
         self.in_boat = false;
         self.fish.ph = 0;
-        self.say("Ти помер. Поверніся на місце смерті, щоб забрати речі!", now);
+        self.say(texts.you_died_message, now);
     }
 
     // ---------- главний тік ----------
-    pub fn tick(&mut self, dt: f32, now: f64, inp: &Input, out: &mut Vec<ClientMsg>) {
+    pub fn tick(&mut self, dt: f32, now: f64, inp: &Input, out: &mut Vec<ClientMsg>, texts: &Texts) {
         // виживання
         self.hunger = (self.hunger - 0.35 * dt).max(0.0);
         self.thirst = (self.thirst - 0.28 * dt).max(0.0);
@@ -864,7 +865,7 @@ impl Game {
             self.hp = (self.hp + 0.3 * dt).min(100.0);
         }
         if self.hp <= 0.0 {
-            self.die(now);
+            self.die(now, texts);
         }
         // движение
         let dir = inp.dir;
@@ -885,15 +886,15 @@ impl Game {
                 self.y = ny;
             }
         }
-        self.fishing_tick(dt, now, inp.hold);
+        self.fishing_tick(dt, now, inp.hold, texts);
         if inp.hold {
-            self.act(now, out);
+            self.act(now, out, texts);
         }
         self.fires.retain(|f| f.2 > now);
-        self.mobs_tick(dt, now);
+        self.mobs_tick(dt, now, texts);
     }
 
-    fn mobs_tick(&mut self, dt: f32, now: f64) {
+    fn mobs_tick(&mut self, dt: f32, now: f64, texts: &Texts) {
         let nt = self.night();
         let wolves = self.mobs.iter().filter(|m| m.kind == MobKind::Wolf && m.dead == 0.0).count();
         if nt > 0.3 && wolves < 3 && rnd() < dt * 0.15 {
@@ -1038,7 +1039,7 @@ impl Game {
         }
         if bites > 0.0 {
             self.hp -= bites;
-            self.say("Волк кусает!", now);
+            self.say(texts.wolf_bites, now);
         }
         let mut k = 0;
         self.mobs.retain(|_| {
@@ -1074,8 +1075,8 @@ mod tests {
         for _ in 0..times {
             *t += 0.4;
             g.energy = 100.0;
-            g.tick(0.016, *t, &Input { dir: Vec2::ZERO, hold: true }, out);
-            g.tick(0.016, *t + 0.1, &Input { dir: Vec2::ZERO, hold: false }, out);
+            g.tick(0.016, *t, &Input { dir: Vec2::ZERO, hold: true }, out, &crate::i18n::get_texts(&crate::settings::Language::UA));
+            g.tick(0.016, *t + 0.1, &Input { dir: Vec2::ZERO, hold: false }, out, &crate::i18n::get_texts(&crate::settings::Language::UA));
         }
     }
     fn near_water_land(g: &Game) -> (f32, f32) {
@@ -1223,7 +1224,7 @@ mod tests {
         g.craft(idx("Жаркое из мяса"), now);
         assert_eq!(g.inv[It::Roast as usize], 1);
         g.hunger = 20.0;
-        g.eat(now);
+        g.eat(now, &crate::i18n::get_texts(&crate::settings::Language::UA));
         assert_eq!(g.hunger, 90.0);
     }
 
@@ -1233,12 +1234,12 @@ mod tests {
         g.mobs.clear();
         let mut out = vec![];
         let h0 = g.hunger;
-        g.tick(1.0, 1.0, &Input { dir: Vec2::ZERO, hold: false }, &mut out);
+        g.tick(1.0, 1.0, &Input { dir: Vec2::ZERO, hold: false }, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
         assert!(g.hunger < h0 && g.thirst < 100.0);
         g.inv[It::Wood as usize] = 5;
         g.hp = 0.5;
         g.hunger = 0.0;
-        g.tick(1.0, 2.0, &Input { dir: Vec2::ZERO, hold: false }, &mut out);
+        g.tick(1.0, 2.0, &Input { dir: Vec2::ZERO, hold: false }, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
         assert_eq!(g.inv[It::Wood as usize], 0, "после смерти вещи теряются");
         assert_eq!(g.hp, 60.0);
     }
@@ -1251,7 +1252,7 @@ mod tests {
         g.x = x;
         g.y = y;
         g.thirst = 10.0;
-        g.drink(1.0);
+        g.drink(1.0, &crate::i18n::get_texts(&crate::settings::Language::UA));
         assert!(g.thirst > 20.0);
         assert!(g.blocked(x + 1.0, y, true, 1.0), "в воду пешком нельзя");
         g.bridges.insert(((x + 1.0).floor() as i32, y.floor() as i32));
@@ -1265,14 +1266,14 @@ mod tests {
         let (x, y) = near_water_land(&g);
         g.x = x;
         g.y = y;
-        g.boat_toggle(1.0);
+        g.boat_toggle(1.0, &crate::i18n::get_texts(&crate::settings::Language::UA));
         assert!(!g.in_boat, "без лодки не поплывёшь");
         g.tools[Tl::Boat as usize] = 1;
-        g.boat_toggle(1.0);
+        g.boat_toggle(1.0, &crate::i18n::get_texts(&crate::settings::Language::UA));
         assert!(g.in_boat);
         assert_eq!(g.map.terr_at(g.x.floor() as i32, g.y.floor() as i32), WATER);
         assert!(g.blocked(x - 1.0, y, true, 1.0), "в лодке на сушу нельзя");
-        g.boat_toggle(2.0);
+        g.boat_toggle(2.0, &crate::i18n::get_texts(&crate::settings::Language::UA));
         assert!(!g.in_boat);
     }
 
@@ -1286,15 +1287,15 @@ mod tests {
             .unwrap();
         g.x = spot.0 as f32 + 0.5;
         g.y = spot.1 as f32 + 0.5;
-        g.dig(1.0);
+        g.dig(1.0, &crate::i18n::get_texts(&crate::settings::Language::UA));
         assert!(g.msg.contains("лопата"));
         g.tools[Tl::Shovel as usize] = 30;
         let mut t = 2.0;
         for _ in 0..3 {
-            g.dig(t);
+            g.dig(t, &crate::i18n::get_texts(&crate::settings::Language::UA));
             t += 1.0;
         }
-        g.dig(t);
+        g.dig(t, &crate::i18n::get_texts(&crate::settings::Language::UA));
         assert!(g.msg.contains("перекопано"), "одну точку можно копать 3 раза");
         assert_eq!(g.tools[Tl::Shovel as usize], 27);
     }
@@ -1317,23 +1318,23 @@ mod tests {
             let mut t = 10.0 + attempt as f64;
             let idle = Input { dir: Vec2::ZERO, hold: false };
             let press = Input { dir: Vec2::ZERO, hold: true };
-            g.tick(0.016, t, &idle, &mut out);
-            g.tick(0.016, t + 0.4, &press, &mut out);
+            g.tick(0.016, t, &idle, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
+            g.tick(0.016, t + 0.4, &press, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
             assert_eq!(g.fish.ph, 1, "удочка заброшена");
             assert_eq!(g.inv[It::Worm as usize], 0, "червь потрачен");
             t += 0.4;
             // ждём поклёвку
-            g.tick(0.016, t + 0.5, &idle, &mut out);
+            g.tick(0.016, t + 0.5, &idle, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
             t += 9.0;
-            g.tick(0.016, t, &idle, &mut out);
+            g.tick(0.016, t, &idle, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
             assert_eq!(g.fish.ph, 2, "рыба клюнула");
-            g.tick(0.016, t + 0.2, &press, &mut out);
+            g.tick(0.016, t + 0.2, &press, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
             assert_eq!(g.fish.ph, 3, "вываживание началось");
             let mut tt = t + 0.2;
             for _ in 0..4000 {
                 tt += 0.02;
                 let hold = g.fish.tn < 55.0;
-                g.tick(0.02, tt, &Input { dir: Vec2::ZERO, hold }, &mut out);
+                g.tick(0.02, tt, &Input { dir: Vec2::ZERO, hold }, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
                 if g.fish.ph == 0 {
                     break;
                 }
@@ -1354,7 +1355,7 @@ mod tests {
         g.mobs.push(Mob::new(MobKind::Wolf, g.x + 1.0, g.y));
         g.inv[It::Meat as usize] = 3;
         for i in 0..3 {
-            g.tame(10.0 + i as f64);
+            g.tame(10.0 + i as f64, &crate::i18n::get_texts(&crate::settings::Language::UA));
         }
         assert!(g.has_pet && g.mobs[0].kind == MobKind::Pet);
         // питомец нападает на волка (ночь зафиксирована так, чтобы волки не исчезали и не появлялись новые)
@@ -1365,7 +1366,7 @@ mod tests {
         for _ in 0..400 {
             t += 0.05;
             g.hp = 100.0;
-            g.tick(0.05, t, &Input { dir: Vec2::ZERO, hold: false }, &mut out);
+            g.tick(0.05, t, &Input { dir: Vec2::ZERO, hold: false }, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
         }
         let wolf = g.mobs.iter().find(|m| m.kind == MobKind::Wolf);
         assert!(wolf.map_or(true, |w| w.dead > 0.0), "питомец должен победить волка");

@@ -373,20 +373,20 @@ async fn main() {
         for c in cmds {
             match c {
                 Cmd::Eat => {
-                    g.eat(now);
+                    g.eat(now, &texts);
                     audio.play("eat");
                 }
                 Cmd::Drink => {
-                    g.drink(now);
+                    g.drink(now, &texts);
                     audio.play("drink");
                 }
                 Cmd::Dig => {
-                    g.dig(now);
+                    g.dig(now, &texts);
                     audio.play("hit");
                 }
-                Cmd::Tame => g.tame(now),
-                Cmd::Boat => g.boat_toggle(now),
-                Cmd::Bridge => g.bridge(now),
+                Cmd::Tame => g.tame(now, &texts),
+                Cmd::Boat => g.boat_toggle(now, &texts),
+                Cmd::Bridge => g.bridge(now, &texts),
                 Cmd::Menu => {
                     ui.menu = true;
                     ui.scroll = 0.0;
@@ -525,7 +525,7 @@ async fn main() {
         }
 
         // ---------- логика ----------
-        g.tick(dt, now, &Input { dir, hold }, &mut out);
+        g.tick(dt, now, &Input { dir, hold }, &mut out, &texts);
         let (px, py) = (g.x, g.y);
 
         // ---------- сеть: отправка ----------
