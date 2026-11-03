@@ -62,6 +62,15 @@ pub struct Texts {
     pub no: &'static str,
     pub ok: &'static str,
     pub cancel: &'static str,
+
+    // Предмети (Items)
+    pub item_names: [&'static str; 19],
+
+    // Інструменти (Tools)
+    pub tool_names: [&'static str; 14],
+
+    // Рецепти
+    pub recipe_names: [&'static str; 23],
 }
 
 const UA: Texts = Texts {
@@ -118,6 +127,26 @@ const UA: Texts = Texts {
     no: "Ні",
     ok: "Гаразд",
     cancel: "Скасувати",
+
+    item_names: [
+        "Дерево", "Камінь", "Їжа", "Палиця", "Камінчик", "Нитка", "Дошки", "Пайок",
+        "М'ясо", "Смажене", "Шкіра", "Черв'як", "Риба", "Смажена риба", "Вугілля",
+        "Мідна руда", "Залізна руда", "Мідь", "Залізо",
+    ],
+
+    tool_names: [
+        "Кам'яна сокира", "Кам'яна кирка", "Мідна сокира", "Мідна кирка",
+        "Залізна сокира", "Залізна кирка", "Списа", "Ніж", "Лопата", "Вудка",
+        "Кошик", "Човен", "Хутряний одяг", "Кольчуга",
+    ],
+
+    recipe_names: [
+        "Вогнище", "Списа", "Смажене м'ясо", "Смажена риба", "Пайок",
+        "Кам'яний ніж", "Кам'яна сокира", "Кам'яна кирка", "Лопата", "Вудка",
+        "Кошик", "Дошки", "Піч", "Виплавити мідь", "Виплавити залізо",
+        "Мідна сокира", "Мідна кирка", "Залізна сокира", "Залізна кирка",
+        "Хутряний одяг", "Кольчуга", "Човен", "Будинок",
+    ],
 };
 
 const EN: Texts = Texts {
@@ -174,6 +203,26 @@ const EN: Texts = Texts {
     no: "No",
     ok: "OK",
     cancel: "Cancel",
+
+    item_names: [
+        "Wood", "Stone", "Food", "Stick", "Pebble", "Fiber", "Plank", "Ration",
+        "Meat", "Roast", "Hide", "Worm", "Fish", "Roasted Fish", "Coal",
+        "Copper Ore", "Iron Ore", "Copper", "Iron",
+    ],
+
+    tool_names: [
+        "Stone Axe", "Stone Pickaxe", "Copper Axe", "Copper Pickaxe",
+        "Iron Axe", "Iron Pickaxe", "Spear", "Knife", "Shovel", "Fishing Rod",
+        "Basket", "Boat", "Fur Coat", "Chainmail",
+    ],
+
+    recipe_names: [
+        "Campfire", "Spear", "Roasted Meat", "Roasted Fish", "Ration",
+        "Stone Knife", "Stone Axe", "Stone Pickaxe", "Shovel", "Fishing Rod",
+        "Basket", "Planks", "Furnace", "Smelt Copper", "Smelt Iron",
+        "Copper Axe", "Copper Pickaxe", "Iron Axe", "Iron Pickaxe",
+        "Fur Coat", "Chainmail", "Boat", "House",
+    ],
 };
 
 const RU: Texts = Texts {
@@ -230,6 +279,26 @@ const RU: Texts = Texts {
     no: "Нет",
     ok: "OK",
     cancel: "Отмена",
+
+    item_names: [
+        "Дерево", "Камень", "Еда", "Палка", "Камешек", "Нить", "Доски", "Паёк",
+        "Мясо", "Жаркое", "Шкура", "Червь", "Рыба", "Жареная рыба", "Уголь",
+        "Медная руда", "Железная руда", "Медь", "Железо",
+    ],
+
+    tool_names: [
+        "Каменный топор", "Каменная кирка", "Медный топор", "Медная кирка",
+        "Железный топор", "Железная кирка", "Копьё", "Нож", "Лопата", "Удочка",
+        "Корзина", "Лодка", "Меховая одежда", "Кольчуга",
+    ],
+
+    recipe_names: [
+        "Костёр", "Копьё", "Жаркое из мяса", "Жареная рыба", "Паёк",
+        "Каменный нож", "Каменный топор", "Каменная кирка", "Лопата", "Удочка",
+        "Корзина", "Доски", "Печь", "Выплавить медь", "Выплавить железо",
+        "Медный топор", "Медная кирка", "Железный топор", "Железная кирка",
+        "Меховая одежда", "Кольчуга", "Лодка", "Дом",
+    ],
 };
 
 pub fn get_texts(lang: &Language) -> &'static Texts {

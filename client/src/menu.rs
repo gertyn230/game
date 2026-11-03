@@ -86,7 +86,7 @@ impl Menu {
         Menu {
             state: MenuState::Loading,
             loading_progress: 0.0,
-            loading_message: String::from("Initializing..."),
+            loading_message: String::from(""),
             selected_button: 0,
             has_save: false,
             particles,
