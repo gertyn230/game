@@ -693,6 +693,20 @@ pub enum MenuAction {
 }
 
 fn is_button_hovered(x: f32, y: f32, width: f32, height: f32) -> bool {
+    // Перевірка миші (ПК)
     let (mx, my) = mouse_position();
-    mx >= x && mx <= x + width && my >= y && my <= y + height
+    if mx >= x && mx <= x + width && my >= y && my <= y + height {
+        return true;
+    }
+
+    // Перевірка тачів (Android)
+    for touch in touches() {
+        let tx = touch.position.x;
+        let ty = touch.position.y;
+        if tx >= x && tx <= x + width && ty >= y && ty <= y + height {
+            return true;
+        }
+    }
+
+    false
 }
