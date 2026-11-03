@@ -23,10 +23,15 @@ jobs:
           # Server address, e.g. wss://pixel-village.example.com/ws
           PV_SERVER: ${{ vars.PV_SERVER }}
         run: cargo build --release -p client
+      - name: Package Windows release with assets
+        run: |
+          mkdir release-package
+          copy target\release\client.exe release-package\
+          xcopy /E /I client\assets release-package\assets
       - uses: actions/upload-artifact@v4
         with:
           name: PixelVillage-windows
-          path: target/release/client.exe
+          path: release-package\
 
   android:
     runs-on: ubuntu-latest
