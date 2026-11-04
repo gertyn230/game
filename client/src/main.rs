@@ -11,6 +11,13 @@ mod settings;
 mod ui;
 mod world;
 
+// Ігрові модулі (розширення для game)
+mod game_survival;
+mod game_actions;
+mod game_fishing;
+mod game_mobs;
+mod game_crafting;
+
 use std::collections::HashMap;
 
 use macroquad::prelude::*;

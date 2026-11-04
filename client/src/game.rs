@@ -223,7 +223,7 @@ impl Game {
         matches!(self.map.node_at(tx, ty), Some(n) if n.kind.blocks() && n.dead_until <= now)
     }
 
-    fn face_to(&mut self, tx: f32, ty: f32) {
+    pub fn face_to(&mut self, tx: f32, ty: f32) {
         let (dx, dy) = (tx - self.x, ty - self.y);
         self.face = if dx.abs() > dy.abs() { if dx > 0.0 { 3 } else { 2 } } else if dy > 0.0 { 0 } else { 1 };
     }
@@ -234,7 +234,7 @@ impl Game {
     pub fn near_furnace(&self) -> bool {
         self.furn.iter().any(|f| (f.0 - self.x).powi(2) + (f.1 - self.y).powi(2) < 9.0)
     }
-    fn near_water(&self) -> bool {
+    pub fn near_water(&self) -> bool {
         let (x0, y0) = (self.x.floor() as i32, self.y.floor() as i32);
         (-1..=1).any(|a| (-1..=1).any(|b| self.map.terr_at(x0 + a, y0 + b) == WATER))
     }
@@ -259,138 +259,12 @@ impl Game {
     }
 
     // ---------- крафт ----------
-    pub fn can_craft(&self, r: &Recipe, now: f64) -> bool {
-        r.cost.iter().all(|(it, n)| self.inv[*it as usize] >= *n)
-            && !matches!(r.out, Out::Tool(t) if self.tool(t))
-            && !(r.fire && !self.near_fire(now))
-            && !(r.furnace && !self.near_furnace())
-    }
-    pub fn craft(&mut self, i: usize, now: f64) {
-        let Some(r) = RECIPES.get(i) else { return };
-        if !self.can_craft(r, now) {
-            return;
-        }
-        for (it, n) in r.cost {
-            self.inv[*it as usize] -= n;
-        }
-        match r.out {
-            Out::Item(it, n) => self.inv[it as usize] += n,
-            Out::Tool(t) => {
-                self.tools[t as usize] = TL_DUR[t as usize];
-                self.made += 1;
-            }
-            Out::Fire => self.fires.push((self.x, self.y, now + 240.0)),
-            Out::Furnace => self.furn.push((self.x, self.y)),
-            Out::House => self.houses += 1,
-        }
-        self.say(&format!("Готово: {}", r.name), now);
-    }
     /// Рецепты, доступные сейчас, по важности для текущей ситуации.
-    pub fn quick_list(&self, now: f64) -> Vec<usize> {
-        let nt = self.night() > 0.2;
-        let wolf = self.mobs.iter().any(|m| m.kind == MobKind::Wolf && m.dead == 0.0 && ((m.x - self.x).powi(2) + (m.y - self.y).powi(2)).sqrt() < 12.0);
-        let mut v: Vec<(i32, usize)> = RECIPES
-            .iter()
-            .enumerate()
-            .filter(|(_, r)| self.can_craft(r, now))
-            .map(|(i, r)| {
-                let mut p = i as i32;
-                match r.out {
-                    Out::Fire if nt || wolf => p -= 100,
-                    Out::Item(It::Roast | It::RFish | It::Meal, _) if self.hunger < 55.0 => p -= 60,
-                    Out::Tool(Tl::Spear) if wolf => p -= 80,
-                    Out::Tool(Tl::Coat | Tl::Mail) if self.hp < 60.0 => p -= 40,
-                    _ => {}
-                }
-                (p, i)
-            })
-            .collect();
-        v.sort();
-        v.into_iter().map(|x| x.1).collect()
-    }
 
     // ---------- действия ----------
-    pub fn eat(&mut self, now: f64, texts: &Texts) {
-        let h = |g: &mut Game, v: f32, e: f32| {
-            g.hunger = (g.hunger + v).min(100.0);
-            g.energy = (g.energy + e).min(100.0);
-        };
-        if self.inv[It::Roast as usize] > 0 {
-            self.inv[It::Roast as usize] -= 1;
-            h(self, 70.0, 25.0);
-        } else if self.inv[It::RFish as usize] > 0 {
-            self.inv[It::RFish as usize] -= 1;
-            h(self, 65.0, 20.0);
-        } else if self.inv[It::Meal as usize] > 0 {
-            self.inv[It::Meal as usize] -= 1;
-            h(self, 60.0, 15.0);
-        } else if self.inv[It::Food as usize] > 0 {
-            self.inv[It::Food as usize] -= 1;
-            h(self, 20.0, 8.0);
-        } else if self.inv[It::Meat as usize] > 0 {
-            self.inv[It::Meat as usize] -= 1;
-            h(self, 15.0, 5.0);
-            self.hp -= 8.0;
-            self.say(texts.raw_meat_bad, now);
-        } else if self.inv[It::Fish as usize] > 0 {
-            self.inv[It::Fish as usize] -= 1;
-            h(self, 12.0, 5.0);
-            self.hp -= 4.0;
-            self.say(texts.raw_fish_bad, now);
-        }
-    }
 
-    pub fn drink(&mut self, now: f64, texts: &Texts) {
-        if self.fish.ph != 0 {
-            return;
-        }
-        if self.near_water() {
-            self.thirst = (self.thirst + 15.0).min(100.0);
-            self.last_hit = now;
-            self.energy -= 0.3;
-            self.say(texts.drinking_water, now);
-        } else {
-            self.say(texts.no_water_nearby, now);
-        }
-    }
 
-    pub fn dig(&mut self, now: f64, texts: &Texts) {
-        if self.fish.ph != 0 || now - self.last_hit < 0.5 {
-            return;
-        }
-        if !self.tool(Tl::Shovel) {
-            self.say(texts.need_shovel, now);
-            return;
-        }
-        let (tx, ty) = (self.x.floor() as i32, self.y.floor() as i32);
-        let t = self.map.terr_at(tx, ty);
-        if t == WATER || t == FORD {
-            self.say(texts.cant_dig_here, now);
-            return;
-        }
-        let bm = biome(tx, ty);
-        if bm == 2 {
-            self.say(texts.plateau_too_hard, now);
-            return;
-        }
-        let e = self.dugs(tx, ty, now);
-        if e >= 3 {
-            self.say(texts.already_dug, now);
-            return;
-        }
-        self.last_hit = now;
-        self.energy -= 2.0;
-        self.use_tool(Tl::Shovel, now);
-        self.fx = Some(Fx { x: self.x, y: self.y + 0.4, t: now, tool: 4, col: 0x6b4a2b });
-        let ch = (if bm == 1 { 0.7 } else if t == SAND { 0.25 } else { 0.55 }) + if self.rain() { 0.2 } else { 0.0 };
-        if rnd() < ch {
-            self.inv[It::Worm as usize] += 1;
-            self.say(texts.found_worm, now);
-        } else {
-            self.say(texts.nothing_found, now);
-        }
-    }
-    fn dugs(&mut self, tx: i32, ty: i32, now: f64) -> u8 {
+    pub fn dugs(&mut self, tx: i32, ty: i32, now: f64) -> u8 {
         let e = self.dug.entry((tx, ty)).or_insert((0, now));
         if now - e.1 > 300.0 {
             *e = (0, now);
@@ -401,7 +275,7 @@ impl Game {
         }
         n
     }
-    fn use_tool(&mut self, t: Tl, now: f64) {
+    pub fn use_tool(&mut self, t: Tl, now: f64) {
         let d = &mut self.tools[t as usize];
         *d -= 1;
         if *d <= 0 {
@@ -410,94 +284,8 @@ impl Game {
         }
     }
 
-    pub fn bridge(&mut self, now: f64, texts: &Texts) {
-        if self.in_boat {
-            self.say(texts.cant_build_from_boat, now);
-            return;
-        }
-        let d = [(0, 1), (0, -1), (-1, 0), (1, 0)][self.face as usize];
-        let c = (self.x.floor() as i32 + d.0, self.y.floor() as i32 + d.1);
-        if self.map.terr_at(c.0, c.1) != WATER || self.bridges.contains(&c) {
-            self.say(texts.face_water, now);
-        } else if self.inv[It::Plank as usize] < 2 {
-            self.say(texts.need_planks, now);
-        } else {
-            self.inv[It::Plank as usize] -= 2;
-            self.bridges.insert(c);
-            self.say(texts.bridge_built, now);
-        }
-    }
 
-    pub fn boat_toggle(&mut self, now: f64, texts: &Texts) {
-        if !self.tool(Tl::Boat) {
-            self.say(texts.need_boat, now);
-            return;
-        }
-        let (x0, y0) = (self.x.floor() as i32, self.y.floor() as i32);
-        let mut hit = None;
-        'o: for a in -1..=1 {
-            for b in -1..=1 {
-                let (x, y) = (x0 + a, y0 + b);
-                let t = self.map.terr_at(x, y);
-                let ok = if self.in_boat {
-                    (t == GRASS || t == SAND) && self.map.node_at(x, y).is_none()
-                } else {
-                    t == WATER && !self.bridges.contains(&(x, y))
-                };
-                if ok {
-                    hit = Some((x, y));
-                    break 'o;
-                }
-            }
-        }
-        match hit {
-            None => self.say(if self.in_boat { texts.need_free_shore } else { texts.approach_water }, now),
-            Some((x, y)) => {
-                self.in_boat = !self.in_boat;
-                self.x = x as f32 + 0.5;
-                self.y = y as f32 + 0.5;
-                self.say(if self.in_boat { texts.in_boat } else { texts.on_shore }, now);
-            }
-        }
-    }
 
-    pub fn tame(&mut self, now: f64, texts: &Texts) {
-        let mut best = None;
-        let mut bd = 12.25;
-        for (i, m) in self.mobs.iter().enumerate() {
-            if m.kind != MobKind::Wolf || m.dead > 0.0 {
-                continue;
-            }
-            let d = (m.x - self.x).powi(2) + (m.y - self.y).powi(2);
-            if d < bd {
-                bd = d;
-                best = Some(i);
-            }
-        }
-        let Some(i) = best else {
-            self.say(texts.no_wolf_nearby, now);
-            return;
-        };
-        if self.has_pet {
-            self.say(texts.already_have_pet, now);
-        } else if self.inv[It::Meat as usize] < 1 {
-            self.say(texts.need_raw_meat, now);
-        } else {
-            self.inv[It::Meat as usize] -= 1;
-            let m = &mut self.mobs[i];
-            m.calm = now + 5.0;
-            m.trust += 1;
-            if m.trust >= 3 {
-                m.kind = MobKind::Pet;
-                m.hp = 9.0;
-                self.has_pet = true;
-                self.say(texts.wolf_is_friend, now);
-            } else {
-                let t = m.trust;
-                self.say(&format!("{}: {t}/3", texts.wolf_trust), now);
-            }
-        }
-    }
 
     /// Основное действие (кнопка «Добыть»).
     fn act(&mut self, now: f64, out: &mut Vec<ClientMsg>, texts: &Texts) {
@@ -682,86 +470,6 @@ impl Game {
     }
 
     // ---------- рыбалка ----------
-    fn cast(&mut self, wx: f32, wy: f32, now: f64, texts: &Texts) {
-        self.inv[It::Worm as usize] -= 1;
-        self.use_tool(Tl::Rod, now);
-        self.fish.ph = 1;
-        self.fish.armed = false;
-        self.fish.wx = wx;
-        self.fish.wy = wy;
-        self.fish.bite = now + 2.5 + rnd() as f64 * 5.5;
-        self.face_to(wx, wy);
-        self.last_hit = now;
-        self.say(texts.cast_rod, now);
-    }
-    fn fishing_tick(&mut self, dt: f32, now: f64, hold: bool, texts: &Texts) {
-        if !hold {
-            self.fish.armed = true;
-        }
-        if self.fish.ph == 0 {
-            return;
-        }
-        if self.moving {
-            self.fish.ph = 0;
-            self.say(texts.moved_rod_retracted, now);
-            return;
-        }
-        match self.fish.ph {
-            1 => {
-                if hold && self.fish.armed {
-                    self.fish.armed = false;
-                    self.fish.ph = 0;
-                    self.say(texts.retracted_rod, now);
-                } else if now > self.fish.bite {
-                    self.fish.ph = 2;
-                    self.fish.t = now + 1.3;
-                    self.say(texts.fish_biting, now);
-                }
-            }
-            2 => {
-                if hold && self.fish.armed {
-                    self.fish.armed = false;
-                    self.fish.ph = 3;
-                    self.fish.p = 30.0;
-                    self.fish.tn = 40.0;
-                    let r = rnd() - if self.night() > 0.3 { 0.1 } else { 0.0 };
-                    self.fish.kind = if r < 0.45 { 0 } else if r < 0.75 { 1 } else if r < 0.93 { 2 } else { 3 };
-                    self.say(texts.pull_keep_green, now);
-                } else if now > self.fish.t {
-                    self.fish.ph = 0;
-                    self.say(texts.fish_escaped, now);
-                }
-            }
-            _ => {
-                let f = FISHES[self.fish.kind];
-                let pw = f.2;
-                let pull = (now as f32 / 0.23 + pw).sin() * pw * 7.0;
-                self.fish.tn += (if hold { 26.0 + pw * 8.0 } else { -32.0 } + pull) * dt;
-                self.fish.tn = self.fish.tn.max(0.0);
-                if self.fish.tn >= 100.0 {
-                    self.fish.ph = 0;
-                    self.say(texts.line_broke, now);
-                } else {
-                    let good = self.fish.tn > 30.0 && self.fish.tn < 75.0;
-                    self.fish.p += (if good { 16.0 - pw * 3.0 } else { -9.0 }) * dt;
-                    if self.fish.p >= 100.0 {
-                        self.fish.ph = 0;
-                        let wt = ((f.3 + rnd() * (f.4 - f.3)) * 100.0).round() / 100.0;
-                        self.inv[It::Fish as usize] += f.1;
-                        self.got += f.1 * 3;
-                        self.caught += 1;
-                        if wt > self.biggest {
-                            self.biggest = wt;
-                        }
-                        self.say(&format!("Поймана: {} {} кг", f.0, wt), now);
-                    } else if self.fish.p <= 0.0 {
-                        self.fish.ph = 0;
-                        self.say(texts.fish_got_away, now);
-                    }
-                }
-            }
-        }
-    }
 
     // ---------- сохранение ----------
     /// `posted` — предметы, выставленные на рынок: при сохранении возвращаются в инвентарь.
@@ -894,159 +602,6 @@ impl Game {
         self.mobs_tick(dt, now, texts);
     }
 
-    fn mobs_tick(&mut self, dt: f32, now: f64, texts: &Texts) {
-        let nt = self.night();
-        let wolves = self.mobs.iter().filter(|m| m.kind == MobKind::Wolf && m.dead == 0.0).count();
-        if nt > 0.3 && wolves < 3 && rnd() < dt * 0.15 {
-            let a = rnd() * 6.283;
-            let (x, y) = (self.x + a.cos() * 8.0, self.y + a.sin() * 8.0);
-            if !self.blocked(x, y, false, now) {
-                self.mobs.push(Mob::new(MobKind::Wolf, x, y));
-            }
-        }
-        let fire_near = |g: &Game, x: f32, y: f32, r: f32| g.fires.iter().any(|f| (f.0 - x).powi(2) + (f.1 - y).powi(2) < r * r);
-        let mut remove = vec![false; self.mobs.len()];
-        let mut pet_hits: Vec<usize> = vec![];
-        let (px, py) = (self.x, self.y);
-        let mut bites = 0.0f32;
-        for i in 0..self.mobs.len() {
-            let mut m = self.mobs[i].clone();
-            if m.kind == MobKind::Wolf {
-                if m.dead > 0.0 {
-                    if now - m.dead > 60.0 {
-                        remove[i] = true;
-                    }
-                    continue;
-                }
-                if nt < 0.1 {
-                    remove[i] = true;
-                    continue;
-                }
-            } else if m.dead > 0.0 {
-                if now - m.dead > 90.0 {
-                    m.dead = 0.0;
-                    m.cut = false;
-                    m.hp = 2.0;
-                    m.x = 5.0 + rnd() * 30.0;
-                    m.y = 5.0 + rnd() * 30.0;
-                    m.px = m.x;
-                    m.py = m.y;
-                    self.mobs[i] = m;
-                }
-                continue;
-            }
-            let (mut sx, mut sy) = (0.0f32, 0.0f32);
-            let (dx, dy) = (px - m.x, py - m.y);
-            let d = (dx * dx + dy * dy).sqrt().max(0.001);
-            match m.kind {
-                MobKind::Pet => {
-                    if d > 14.0 {
-                        m.x = px;
-                        m.y = py;
-                        self.mobs[i] = m;
-                        continue;
-                    }
-                    let mut tg = None;
-                    let mut td = 25.0;
-                    for (j, w) in self.mobs.iter().enumerate() {
-                        if w.kind != MobKind::Wolf || w.dead > 0.0 {
-                            continue;
-                        }
-                        let e = (w.x - m.x).powi(2) + (w.y - m.y).powi(2);
-                        if e < td {
-                            td = e;
-                            tg = Some(j);
-                        }
-                    }
-                    if let Some(j) = tg {
-                        let (ex, ey) = (self.mobs[j].x - m.x, self.mobs[j].y - m.y);
-                        let ed = (ex * ex + ey * ey).sqrt().max(0.001);
-                        sx = ex / ed * 3.0;
-                        sy = ey / ed * 3.0;
-                        if ed < 1.0 && now - m.hit > 0.9 {
-                            m.hit = now;
-                            pet_hits.push(j);
-                        }
-                    } else if d > 2.0 {
-                        sx = dx / d * 3.0;
-                        sy = dy / d * 3.0;
-                    }
-                }
-                MobKind::Wolf => {
-                    let nf = fire_near(self, m.x, m.y, 3.5);
-                    if m.calm > now {
-                    } else if nf {
-                        sx = -dx / d * 2.0;
-                        sy = -dy / d * 2.0;
-                    } else if d < 14.0 {
-                        sx = dx / d * 2.4;
-                        sy = dy / d * 2.4;
-                    }
-                    if d < 0.9 && !nf && m.calm <= now && now - m.hit > 1.0 {
-                        m.hit = now;
-                        bites += if self.tool(Tl::Mail) { 2.0 } else if self.tool(Tl::Coat) { 3.0 } else { 6.0 };
-                    }
-                }
-                MobKind::Rabbit => {
-                    if self.blocked(m.x, m.y, false, now) {
-                        m.x = 5.0 + rnd() * 30.0;
-                        m.y = 20.0 + rnd() * 15.0;
-                        self.mobs[i] = m;
-                        continue;
-                    }
-                    if d < 3.0 {
-                        sx = -dx / d * 3.0;
-                        sy = -dy / d * 3.0;
-                    } else {
-                        m.t -= dt;
-                        if m.t <= 0.0 {
-                            m.t = 1.0 + rnd() * 2.0;
-                            let a = rnd() * 6.283;
-                            let s = if rnd() < 0.4 { 0.0 } else { 0.8 };
-                            m.vx = a.cos() * s;
-                            m.vy = a.sin() * s;
-                        }
-                        sx = m.vx;
-                        sy = m.vy;
-                    }
-                }
-            }
-            let (nx, ny) = (m.x + sx * dt, m.y + sy * dt);
-            if !self.blocked(nx, m.y, false, now) {
-                m.x = nx;
-            }
-            if !self.blocked(m.x, ny, false, now) {
-                m.y = ny;
-            }
-            // сохраняем только то, что мы меняли (метки видимости/вспышки остаются)
-            let keep_flash = self.mobs[i].flash;
-            let keep_hp = self.mobs[i].hp;
-            m.flash = keep_flash;
-            m.hp = keep_hp;
-            m.fl = if (m.x - m.px) < -0.002 { true } else if (m.x - m.px) > 0.002 { false } else { m.fl };
-            m.mv = (m.x - m.px).abs() + (m.y - m.py).abs() > 0.002;
-            m.px = m.x;
-            m.py = m.y;
-            self.mobs[i] = m;
-        }
-        for j in pet_hits {
-            let w = &mut self.mobs[j];
-            w.hp -= 2.0;
-            w.flash = now;
-            if w.hp <= 0.0 {
-                w.dead = now;
-            }
-        }
-        if bites > 0.0 {
-            self.hp -= bites;
-            self.say(texts.wolf_bites, now);
-        }
-        let mut k = 0;
-        self.mobs.retain(|_| {
-            k += 1;
-            !remove[k - 1]
-        });
-    }
 }
 
 #[cfg(test)]
