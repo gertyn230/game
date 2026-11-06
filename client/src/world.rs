@@ -1,5 +1,5 @@
 //! Карта мира: вода, река, пляжи, биомы и ресурсы.
-pub const W: usize = 40;
+pub const W: usize = 80;
 pub const RESPAWN_SECS: f64 = 480.0;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -59,7 +59,7 @@ impl Rng {
 }
 
 fn river_center(y: f32) -> f32 {
-    9.0 + 5.0 * (y * 0.21).sin() + 2.0 * (y * 0.57).sin()
+    18.0 + 10.0 * (y * 0.15).sin() + 4.0 * (y * 0.4).sin()
 }
 
 fn raw_water(x: i32, y: i32) -> bool {
@@ -67,19 +67,26 @@ fn raw_water(x: i32, y: i32) -> bool {
         return false;
     }
     let (xf, yf) = (x as f32, y as f32);
-    (xf + 0.5 - river_center(yf)).abs() < 1.6 || (xf - 31.0).powi(2) + (yf - 10.0).powi(2) < 12.0
+    // Річка ширша, озеро більше
+    (xf + 0.5 - river_center(yf)).abs() < 2.0 || (xf - 62.0).powi(2) + (yf - 20.0).powi(2) < 25.0
 }
 
-/// 0 луга, 1 лес, 2 каменистое плато
+/// 0 луга, 1 лес, 2 каменистое плато, 3 болото, 4 пустеля
 pub fn biome(x: i32, y: i32) -> u8 {
     let (xf, yf) = (x as f32, y as f32);
     let n = (xf * 0.21 + 1.0).sin() + (yf * 0.19).cos() + ((xf + yf) * 0.11).sin();
-    if n > 1.3 {
-        2
-    } else if n < -1.3 {
-        1
+    let n2 = (xf * 0.15).cos() + (yf * 0.17).sin() + ((xf - yf) * 0.13).cos();
+
+    if n > 1.5 {
+        4  // Пустеля (рідкісна)
+    } else if n > 1.0 {
+        2  // Каменисте плато
+    } else if n < -1.5 && n2 < 0.0 {
+        3  // Болото (поруч з водою)
+    } else if n < -1.0 {
+        1  // Ліс
     } else {
-        0
+        0  // Луга
     }
 }
 
@@ -119,38 +126,59 @@ impl Map {
         for y in 0..W as i32 {
             for x in 0..W as i32 {
                 let t = terr[y as usize * W + x as usize];
-                if t == WATER || t == FORD || ((x - 20).abs() < 2 && (y - 20).abs() < 2) {
+                if t == WATER || t == FORD || ((x - 40).abs() < 2 && (y - 40).abs() < 2) {
                     continue;
                 }
                 let r = rng.next();
                 let kind = match biome(x, y) {
                     1 => match r {
+                        // Ліс - багато дерев, ягід, грибів
                         r if r < 0.20 => Some(Kind::Tree),
                         r if r < 0.24 => Some(Kind::Bush),
                         r if r < 0.28 => Some(Kind::Stick),
                         r if r < 0.31 => Some(Kind::Fiber),
-                        r if r < 0.35 => Some(Kind::BerryBush),  // Ягоди в лісі
-                        r if r < 0.37 => Some(Kind::Mushroom),   // Гриби в лісі
-                        r if r < 0.39 => Some(Kind::Herb),       // Трави в лісі
+                        r if r < 0.35 => Some(Kind::BerryBush),
+                        r if r < 0.37 => Some(Kind::Mushroom),
+                        r if r < 0.39 => Some(Kind::Herb),
                         _ => None,
                     },
                     2 => match r {
+                        // Каменисте плато - камені, руди
                         r if r < 0.18 => Some(Kind::Rock),
                         r if r < 0.22 => Some(Kind::Pebble),
                         r if r < 0.24 => Some(Kind::Stick),
-                        r if r < 0.26 => Some(Kind::Herb),       // Трави на плато
+                        r if r < 0.26 => Some(Kind::Herb),
+                        _ => None,
+                    },
+                    3 => match r {
+                        // Болото - багато трав, грибів, мало дерев
+                        r if r < 0.10 => Some(Kind::Tree),
+                        r if r < 0.15 => Some(Kind::Stick),
+                        r if r < 0.20 => Some(Kind::Fiber),
+                        r if r < 0.30 => Some(Kind::Mushroom),  // Багато грибів!
+                        r if r < 0.38 => Some(Kind::Herb),      // Багато трав
+                        r if r < 0.40 => Some(Kind::BerryBush),
+                        _ => None,
+                    },
+                    4 => match r {
+                        // Пустеля - камені, мало рослин
+                        r if r < 0.12 => Some(Kind::Rock),
+                        r if r < 0.16 => Some(Kind::Pebble),
+                        r if r < 0.18 => Some(Kind::Stick),
+                        r if r < 0.20 => Some(Kind::Herb),  // Рідкісні трави
                         _ => None,
                     },
                     _ => match r {
+                        // Луга - збалансовано
                         r if r < 0.08 => Some(Kind::Tree),
                         r if r < 0.12 => Some(Kind::Rock),
                         r if r < 0.16 => Some(Kind::Bush),
                         r if r < 0.20 => Some(Kind::Stick),
                         r if r < 0.24 => Some(Kind::Pebble),
                         r if r < 0.28 => Some(Kind::Fiber),
-                        r if r < 0.31 => Some(Kind::BerryBush),  // Ягоди на лугах
-                        r if r < 0.33 => Some(Kind::Mushroom),   // Гриби на лугах
-                        r if r < 0.35 => Some(Kind::Herb),       // Трави на лугах
+                        r if r < 0.31 => Some(Kind::BerryBush),
+                        r if r < 0.33 => Some(Kind::Mushroom),
+                        r if r < 0.35 => Some(Kind::Herb),
                         _ => None,
                     },
                 };
@@ -165,14 +193,15 @@ impl Map {
         for y in 0..W as i32 {
             for x in 0..W as i32 {
                 let i = y as usize * W + x as usize;
-                if idx[i] >= 0 || terr[i] != GRASS || ((x - 20).abs() < 3 && (y - 20).abs() < 3) {
+                if idx[i] >= 0 || terr[i] != GRASS || ((x - 40).abs() < 3 && (y - 40).abs() < 3) {
                     continue;
                 }
                 let (r, u) = (rng.next(), rng.next());
                 let q = match biome(x, y) {
-                    2 => 0.14,
-                    0 => 0.02,
-                    _ => 0.0,
+                    2 => 0.16,  // Каменисте плато - багато руд
+                    4 => 0.12,  // Пустеля - теж багато руд
+                    0 => 0.03,  // Луга - мало руд
+                    _ => 0.01,  // Ліс та болото - дуже мало
                 };
                 if r < q {
                     let kind = if u < 0.4 {

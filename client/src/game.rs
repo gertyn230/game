@@ -12,11 +12,11 @@ use crate::i18n::Texts;
 pub const RABBITS: usize = 10;
 
 pub const ANIMALS: [(MobKind, usize, f32, f32, f32, f32); 5] = [
-    (MobKind::Rabbit, 10, 5.0, 30.0, 20.0, 15.0),  // 10 кроликів
-    (MobKind::Wolf, 3, 8.0, 24.0, 8.0, 24.0),       // 3 вовки
-    (MobKind::Deer, 5, 12.0, 20.0, 12.0, 20.0),     // 5 оленів
-    (MobKind::Bear, 2, 5.0, 10.0, 5.0, 10.0),       // 2 ведмеді (рідкісні)
-    (MobKind::Fox, 4, 15.0, 20.0, 15.0, 20.0),      // 4 лисиці
+    (MobKind::Rabbit, 15, 10.0, 60.0, 10.0, 60.0),  // 15 кроликів на більшій карті
+    (MobKind::Wolf, 5, 15.0, 50.0, 15.0, 50.0),     // 5 вовків
+    (MobKind::Deer, 8, 20.0, 40.0, 20.0, 40.0),     // 8 оленів
+    (MobKind::Bear, 3, 10.0, 20.0, 10.0, 20.0),     // 3 ведмеді
+    (MobKind::Fox, 6, 25.0, 40.0, 25.0, 40.0),      // 6 лисиць
 ];
 
 pub fn epoch() -> f64 {
@@ -152,8 +152,8 @@ impl Game {
             inv: [0; NI],
             tools: [0; NT],
             gold: 20,
-            x: 20.5,
-            y: 20.5,
+            x: 40.5,
+            y: 40.5,
             face: 0,
             moving: false,
             hunger: 100.0,
@@ -579,8 +579,8 @@ impl Game {
             self.mobs.push(Mob::new(MobKind::Pet, self.x + 1.0, self.y));
         }
         if self.blocked(self.x, self.y, true, now) {
-            self.x = 20.5;
-            self.y = 20.5;
+            self.x = 40.5;
+            self.y = 40.5;
             self.in_boat = false;
         }
     }
