@@ -13,14 +13,19 @@ pub enum Kind {
     Coal,
     CuOre,
     FeOre,
+    BerryBush,  // Ягідний кущ
+    Mushroom,   // Гриби
+    Herb,       // Лікарські трави
+    AgOre,      // Срібна руда
+    AuOre,      // Золота руда
 }
 
 impl Kind {
     pub fn blocks(self) -> bool {
-        matches!(self, Kind::Tree | Kind::Rock | Kind::Coal | Kind::CuOre | Kind::FeOre)
+        matches!(self, Kind::Tree | Kind::Rock | Kind::Coal | Kind::CuOre | Kind::FeOre | Kind::AgOre | Kind::AuOre)
     }
     pub fn is_ore(self) -> bool {
-        matches!(self, Kind::Coal | Kind::CuOre | Kind::FeOre)
+        matches!(self, Kind::Coal | Kind::CuOre | Kind::FeOre | Kind::AgOre | Kind::AuOre)
     }
 }
 
@@ -124,12 +129,16 @@ impl Map {
                         r if r < 0.24 => Some(Kind::Bush),
                         r if r < 0.28 => Some(Kind::Stick),
                         r if r < 0.31 => Some(Kind::Fiber),
+                        r if r < 0.35 => Some(Kind::BerryBush),  // Ягоди в лісі
+                        r if r < 0.37 => Some(Kind::Mushroom),   // Гриби в лісі
+                        r if r < 0.39 => Some(Kind::Herb),       // Трави в лісі
                         _ => None,
                     },
                     2 => match r {
                         r if r < 0.18 => Some(Kind::Rock),
                         r if r < 0.22 => Some(Kind::Pebble),
                         r if r < 0.24 => Some(Kind::Stick),
+                        r if r < 0.26 => Some(Kind::Herb),       // Трави на плато
                         _ => None,
                     },
                     _ => match r {
@@ -139,6 +148,9 @@ impl Map {
                         r if r < 0.20 => Some(Kind::Stick),
                         r if r < 0.24 => Some(Kind::Pebble),
                         r if r < 0.28 => Some(Kind::Fiber),
+                        r if r < 0.31 => Some(Kind::BerryBush),  // Ягоди на лугах
+                        r if r < 0.33 => Some(Kind::Mushroom),   // Гриби на лугах
+                        r if r < 0.35 => Some(Kind::Herb),       // Трави на лугах
                         _ => None,
                     },
                 };
@@ -163,7 +175,17 @@ impl Map {
                     _ => 0.0,
                 };
                 if r < q {
-                    let kind = if u < 0.5 { Kind::Coal } else if u < 0.8 { Kind::CuOre } else { Kind::FeOre };
+                    let kind = if u < 0.4 {
+                        Kind::Coal
+                    } else if u < 0.65 {
+                        Kind::CuOre
+                    } else if u < 0.85 {
+                        Kind::FeOre
+                    } else if u < 0.95 {
+                        Kind::AgOre  // Срібло рідкісніше
+                    } else {
+                        Kind::AuOre  // Золото найрідкісніше
+                    };
                     idx[i] = nodes.len() as i32;
                     nodes.push(Node { x, y, kind, hp: 4, dead_until: 0.0 });
                 }
@@ -187,7 +209,8 @@ impl Map {
     pub fn max_hp(kind: Kind) -> u8 {
         match kind {
             Kind::Tree | Kind::Rock => 3,
-            Kind::Coal | Kind::CuOre | Kind::FeOre => 4,
+            Kind::Coal | Kind::CuOre | Kind::FeOre | Kind::AgOre | Kind::AuOre => 4,
+            Kind::BerryBush => 2,  // Ягідний кущ трохи міцніший
             _ => 1,
         }
     }

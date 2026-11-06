@@ -4,15 +4,24 @@
 #[repr(usize)]
 pub enum It {
     Wood, Stone, Food, Stick, Pebble, Fiber, Plank, Meal, Meat, Roast, Hide, Worm, Fish, RFish, Coal, CuOre, FeOre, Cu, Fe,
+    Berry,    // Ягоди - їстівні
+    Mushroom, // Гриби - їстівні
+    Herb,     // Лікарські трави - відновлюють здоров'я
+    AgOre,    // Срібна руда
+    AuOre,    // Золота руда
+    Ag,       // Срібло
+    Au,       // Золото
 }
-pub const NI: usize = 19;
+pub const NI: usize = 26;
 pub const IT_NAMES: [&str; NI] = [
     "Дерево", "Камень", "Еда", "Палка", "Камешек", "Нить", "Доски", "Паёк", "Мясо", "Жаркое", "Шкура", "Червь", "Рыба",
     "Жареная рыба", "Уголь", "Медная руда", "Железная руда", "Медь", "Железо",
+    "Ягоды", "Грибы", "Трава", "Серебряная руда", "Золотая руда", "Серебро", "Золото",
 ];
 pub const IT_COLOR: [u32; NI] = [
     0x8b5a2b, 0x8d8d96, 0xd94f4f, 0xb07a45, 0x9a9aa4, 0x9ad06a, 0xc9a06a, 0xe0b070, 0xb03a3a, 0xc26a2a, 0x7a5a3a, 0xd98a8a,
     0x6aa0d0, 0xe0a050, 0x222228, 0xd9823a, 0xb5613a, 0xe08a3a, 0xc8ccd4,
+    0xff3366, 0xcc6633, 0x66cc66, 0xd0d0d8, 0xffcc33, 0xe0e0e8, 0xffdd00,
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -50,6 +59,9 @@ pub const RECIPES: &[Recipe] = &[
     Recipe { name: "Жаркое из мяса", cost: &[(Meat, 1)], out: Out::Item(Roast, 1), fire: true, furnace: false },
     Recipe { name: "Жареная рыба", cost: &[(Fish, 1)], out: Out::Item(RFish, 1), fire: true, furnace: false },
     Recipe { name: "Паёк", cost: &[(Food, 2)], out: Out::Item(Meal, 1), fire: false, furnace: false },
+    Recipe { name: "Ягодный пирог", cost: &[(Berry, 3), (Food, 1)], out: Out::Item(Meal, 2), fire: true, furnace: false },
+    Recipe { name: "Грибной суп", cost: &[(Mushroom, 2), (Food, 1)], out: Out::Item(Meal, 2), fire: true, furnace: false },
+    Recipe { name: "Целебный отвар", cost: &[(Herb, 2)], out: Out::Item(Herb, 1), fire: true, furnace: false },
     Recipe { name: "Каменный нож", cost: &[(Stick, 1), (Pebble, 1), (Fiber, 1)], out: Out::Tool(Tl::Knife), fire: false, furnace: false },
     Recipe { name: "Каменный топор", cost: &[(Stick, 1), (Pebble, 2), (Fiber, 1)], out: Out::Tool(Tl::Axe), fire: false, furnace: false },
     Recipe { name: "Каменная кирка", cost: &[(Stick, 1), (Pebble, 3), (Fiber, 1)], out: Out::Tool(Tl::Pick), fire: false, furnace: false },
@@ -60,6 +72,8 @@ pub const RECIPES: &[Recipe] = &[
     Recipe { name: "Печь", cost: &[(Stone, 10)], out: Out::Furnace, fire: false, furnace: false },
     Recipe { name: "Выплавить медь", cost: &[(CuOre, 2), (Coal, 1)], out: Out::Item(Cu, 1), fire: false, furnace: true },
     Recipe { name: "Выплавить железо", cost: &[(FeOre, 2), (Coal, 1)], out: Out::Item(Fe, 1), fire: false, furnace: true },
+    Recipe { name: "Выплавить серебро", cost: &[(AgOre, 2), (Coal, 1)], out: Out::Item(Ag, 1), fire: false, furnace: true },
+    Recipe { name: "Выплавить золото", cost: &[(AuOre, 3), (Coal, 2)], out: Out::Item(Au, 1), fire: false, furnace: true },
     Recipe { name: "Медный топор", cost: &[(Stick, 1), (Cu, 3), (Fiber, 1)], out: Out::Tool(Tl::Axe2), fire: false, furnace: false },
     Recipe { name: "Медная кирка", cost: &[(Stick, 1), (Cu, 4), (Fiber, 1)], out: Out::Tool(Tl::Pick2), fire: false, furnace: false },
     Recipe { name: "Железный топор", cost: &[(Stick, 1), (Fe, 3), (Fiber, 1)], out: Out::Tool(Tl::Axe3), fire: false, furnace: false },

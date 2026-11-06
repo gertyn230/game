@@ -77,6 +77,28 @@ impl Game {
                         m.y += (rnd() - 0.5) * 0.4 * dt;
                     }
                 }
+                MobKind::Deer => {
+                    // Олені тікають від гравця, але повільніше ніж кролики
+                    if d < 5.0 {
+                        let ang = dy.atan2(dx) + std::f32::consts::PI;
+                        m.x += ang.cos() * 1.5 * dt;
+                        m.y += ang.sin() * 1.5 * dt;
+                    } else {
+                        m.x += (rnd() - 0.5) * 0.3 * dt;
+                        m.y += (rnd() - 0.5) * 0.3 * dt;
+                    }
+                }
+                MobKind::Fox => {
+                    // Лисиці швидкі і хитрі, тікають далеко
+                    if d < 6.0 {
+                        let ang = dy.atan2(dx) + std::f32::consts::PI;
+                        m.x += ang.cos() * 2.2 * dt;
+                        m.y += ang.sin() * 2.2 * dt;
+                    } else {
+                        m.x += (rnd() - 0.5) * 0.5 * dt;
+                        m.y += (rnd() - 0.5) * 0.5 * dt;
+                    }
+                }
                 MobKind::Wolf => {
                     // Вовки атакують вночі якщо нема вогнища поруч
                     if night_level > 0.2 && now > m.calm {
@@ -88,6 +110,22 @@ impl Game {
                             m.x += ang.cos() * 1.2 * dt;
                             m.y += ang.sin() * 1.2 * dt;
                         }
+                    }
+                }
+                MobKind::Bear => {
+                    // Ведмеді атакують завжди, якщо гравець близько
+                    if now > m.calm && d < 6.0 {
+                        let near_fire = fires_positions.iter().any(|f| {
+                            (f.0 - m.x).powi(2) + (f.1 - m.y).powi(2) < 36.0
+                        });
+                        if !near_fire {
+                            let ang = dy.atan2(dx);
+                            m.x += ang.cos() * 1.0 * dt;
+                            m.y += ang.sin() * 1.0 * dt;
+                        }
+                    } else {
+                        m.x += (rnd() - 0.5) * 0.2 * dt;
+                        m.y += (rnd() - 0.5) * 0.2 * dt;
                     }
                 }
                 MobKind::Pet => {
@@ -104,14 +142,18 @@ impl Game {
             m.y = m.y.max(1.0).min(39.0);
         }
 
-        // Атака вовків
+        // Атака вовків і ведмедів
         let mut bites = 0.0;
         for m in &self.mobs {
-            if m.kind == MobKind::Wolf && m.dead == 0.0 && now > m.calm {
+            if m.dead == 0.0 && now > m.calm {
                 let dx = self.x - m.x;
                 let dy = self.y - m.y;
-                if dx * dx + dy * dy < 1.0 {
+                let dist = dx * dx + dy * dy;
+
+                if m.kind == MobKind::Wolf && dist < 1.0 {
                     bites += 0.8 * dt;
+                } else if m.kind == MobKind::Bear && dist < 1.5 {
+                    bites += 2.0 * dt; // Ведмідь б'є сильніше
                 }
             }
         }

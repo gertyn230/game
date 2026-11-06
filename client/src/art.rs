@@ -102,7 +102,7 @@ pub fn draw_node(n: &Node, sx: f32, sy: f32, u: f32, now: f64) {
                 rc(sx, sy, u, 5.0, 2.0, 3.0, 2.0, hx(0x62b865));
             }
         }
-        Kind::Rock | Kind::Coal | Kind::CuOre | Kind::FeOre => {
+        Kind::Rock | Kind::Coal | Kind::CuOre | Kind::FeOre | Kind::AgOre | Kind::AuOre => {
             rc(sx, sy, u, 2.0, 13.0, 12.0, 2.0, sh);
             if dead {
                 rc(sx, sy, u, 5.0, 12.0, 6.0, 2.0, hx(0x77777f));
@@ -115,7 +115,10 @@ pub fn draw_node(n: &Node, sx: f32, sy: f32, u: f32, now: f64) {
                     let (c1, c2) = match n.kind {
                         Kind::Coal => (0x1d1d22, 0x1d1d22),
                         Kind::CuOre => (0xd9823a, 0x4fb09a),
-                        _ => (0xc4623a, 0x8a4a2a),
+                        Kind::FeOre => (0xc4623a, 0x8a4a2a),
+                        Kind::AgOre => (0xe0e0e8, 0xa0a0a8),
+                        Kind::AuOre => (0xffdd00, 0xffaa00),
+                        _ => (0x9a9aa4, 0x7a7a7c),
                     };
                     rc(sx, sy, u, 4.0, 6.0, 2.0, 2.0, hx(c1));
                     rc(sx, sy, u, 9.0, 5.0, 3.0, 2.0, hx(c1));
@@ -153,6 +156,42 @@ pub fn draw_node(n: &Node, sx: f32, sy: f32, u: f32, now: f64) {
             rc(sx, sy, u, 7.0, 6.0, 1.0, 7.0, hx(0xb8e68a));
             rc(sx, sy, u, 9.0, 8.0, 1.0, 5.0, hx(0x9ad06a));
             rc(sx, sy, u, 6.0, 6.0, 1.0, 1.0, hx(0xe8d98a));
+        }
+        Kind::BerryBush => {
+            rc(sx, sy, u, 2.0, 13.0, 12.0, 2.0, sh);
+            if dead {
+                rc(sx, sy, u, 5.0, 11.0, 6.0, 3.0, hx(0x3f8f3a));
+            } else {
+                rc(sx, sy, u, 2.0, 8.0, 12.0, 6.0, hx(0x3f9a43));
+                rc(sx, sy, u, 3.0, 5.0, 10.0, 6.0, hx(0x62b865));
+                // Ягоди червоні
+                for (ox, oy) in [(4.0, 7.0), (8.0, 9.0), (10.0, 6.0), (6.0, 10.0)] {
+                    rc(sx, sy, u, ox, oy, 2.0, 2.0, hx(0xff3366));
+                }
+            }
+        }
+        Kind::Mushroom => {
+            if !dead {
+                // Гриб з капелюшком
+                rc(sx, sy, u, 6.0, 9.0, 2.0, 4.0, hx(0xeeeecc)); // ніжка
+                rc(sx, sy, u, 4.0, 7.0, 6.0, 3.0, hx(0xcc6633)); // капелюшок
+                rc(sx, sy, u, 5.0, 7.0, 4.0, 1.0, hx(0xaa4411)); // темніша частина
+                rc(sx, sy, u, 5.0, 8.0, 1.0, 1.0, hx(0xffffff)); // плямка
+                rc(sx, sy, u, 8.0, 8.0, 1.0, 1.0, hx(0xffffff)); // плямка
+            }
+        }
+        Kind::Herb => {
+            if !dead {
+                // Лікарські трави - зелені рослини
+                rc(sx, sy, u, 4.0, 8.0, 1.0, 5.0, hx(0x66cc66));
+                rc(sx, sy, u, 6.0, 7.0, 1.0, 6.0, hx(0x66cc66));
+                rc(sx, sy, u, 8.0, 9.0, 1.0, 4.0, hx(0x66cc66));
+                rc(sx, sy, u, 10.0, 8.0, 1.0, 5.0, hx(0x66cc66));
+                // Квітки на верху
+                rc(sx, sy, u, 4.0, 6.0, 1.0, 1.0, hx(0xffff99));
+                rc(sx, sy, u, 6.0, 5.0, 1.0, 1.0, hx(0xffff99));
+                rc(sx, sy, u, 10.0, 6.0, 1.0, 1.0, hx(0xffff99));
+            }
         }
     }
 }
@@ -200,43 +239,95 @@ pub fn draw_mob(m: &Mob, sx: f32, sy: f32, u: f32, now: f64) {
         draw_rectangle(x, sy + dy * u, w * u, h * u, col);
     };
     let ph = ((now / 0.12) as i64 % 2) as f32;
-    if m.kind == MobKind::Rabbit {
-        let hop = if m.mv { ((now * 12.5).sin().abs() * 3.0).round() as f32 } else { 0.0 };
-        let ear = ((now / 0.5) as i64 % 2) as f32;
-        draw_rectangle(sx - 4.0 * u, sy + 3.0 * u, 8.0 * u, 2.0 * u, ha(0, 0.25 - hop * 0.04));
-        q(0xb8a583, -3.0, 1.0 - hop, 3.0, 2.0);
-        q(0xcbb99a, -4.0, -3.0 - hop, 8.0, 5.0);
-        q(0xefe3cc, -2.0, -hop, 5.0, 2.0);
-        q(0xd9c7a6, 2.0, -5.0 - hop, 4.0, 4.0);
-        q(0xd9c7a6, 3.0, -9.0 - hop + ear, 1.0, 4.0);
-        q(0xe8a0a0, 4.0, -9.0 - hop, 1.0, 4.0);
-        q(0x222222, 5.0, -4.0 - hop, 1.0, 1.0);
-        q(0xe8a0a0, 6.0, -3.0 - hop, 1.0, 1.0);
-        q(0xffffff, -5.0, -3.0 - hop, 2.0, 2.0);
-        q(0xb8a583, 2.0, 1.0 - hop, 2.0, 2.0);
-    } else {
-        let pet = m.kind == MobKind::Pet;
-        let (fur, f2, dk) = if pet { (0x9a7b55, 0xb89a72, 0x6b5238) } else { (0x5c616e, 0x7b8190, 0x3e424c) };
-        let (lf, rf) = if m.mv { (ph, 1.0 - ph) } else { (0.0, 0.0) };
-        let wag = if pet { ((now / 0.13) as i64 % 2) as f32 } else { 0.0 };
-        let bob = if m.mv { 0.0 } else { ((now / 0.8) as i64 % 2) as f32 };
-        draw_rectangle(sx - 6.0 * u, sy + 4.0 * u, 12.0 * u, 2.0 * u, ha(0, 0.28));
-        q(dk, -5.0, 2.0, 2.0, 2.0 + lf);
-        q(dk, -2.0, 2.0, 2.0, 2.0 + rf);
-        q(dk, 1.0, 2.0, 2.0, 2.0 + rf);
-        q(dk, 3.0, 2.0, 2.0, 2.0 + lf);
-        q(fur, -9.0, -6.0 - wag, 3.0, 2.0);
-        q(fur, -6.0, -4.0, 11.0, 6.0);
-        q(f2, -5.0, -5.0, 8.0, 2.0);
-        q(dk, -5.0, 1.0, 9.0, 1.0);
-        q(fur, 4.0, -6.0 + bob, 5.0, 5.0);
-        q(f2, 8.0, -3.0 + bob, 3.0, 2.0);
-        q(0x111111, 10.0, -3.0 + bob, 1.0, 1.0);
-        q(fur, 5.0, -8.0 + bob, 2.0, 2.0);
-        q(dk, 7.0, -8.0 + bob, 1.0, 2.0);
-        q(if pet { 0x222222 } else { 0xff4040 }, 7.0, -5.0 + bob, 1.0, 1.0);
-        if pet {
-            q(0xdd3333, 3.0, -2.0, 2.0, 2.0);
+    match m.kind {
+        MobKind::Rabbit => {
+            let hop = if m.mv { ((now * 12.5).sin().abs() * 3.0).round() as f32 } else { 0.0 };
+            let ear = ((now / 0.5) as i64 % 2) as f32;
+            draw_rectangle(sx - 4.0 * u, sy + 3.0 * u, 8.0 * u, 2.0 * u, ha(0, 0.25 - hop * 0.04));
+            q(0xb8a583, -3.0, 1.0 - hop, 3.0, 2.0);
+            q(0xcbb99a, -4.0, -3.0 - hop, 8.0, 5.0);
+            q(0xefe3cc, -2.0, -hop, 5.0, 2.0);
+            q(0xd9c7a6, 2.0, -5.0 - hop, 4.0, 4.0);
+            q(0xd9c7a6, 3.0, -9.0 - hop + ear, 1.0, 4.0);
+            q(0xe8a0a0, 4.0, -9.0 - hop, 1.0, 4.0);
+            q(0x222222, 5.0, -4.0 - hop, 1.0, 1.0);
+            q(0xe8a0a0, 6.0, -3.0 - hop, 1.0, 1.0);
+            q(0xffffff, -5.0, -3.0 - hop, 2.0, 2.0);
+            q(0xb8a583, 2.0, 1.0 - hop, 2.0, 2.0);
+        }
+        MobKind::Deer => {
+            // Олень - більший за кролика, коричневий
+            let (lf, rf) = if m.mv { (ph, 1.0 - ph) } else { (0.0, 0.0) };
+            draw_rectangle(sx - 7.0 * u, sy + 4.0 * u, 14.0 * u, 3.0 * u, ha(0, 0.25));
+            q(0x8b6f47, -6.0, 2.0, 2.0, 2.0 + lf);
+            q(0x8b6f47, -3.0, 2.0, 2.0, 2.0 + rf);
+            q(0x8b6f47, 2.0, 2.0, 2.0, 2.0 + rf);
+            q(0x8b6f47, 5.0, 2.0, 2.0, 2.0 + lf);
+            q(0xa0835d, -7.0, -5.0, 13.0, 7.0); // тіло
+            q(0xc4a678, -6.0, -4.0, 10.0, 3.0); // живіт
+            q(0xa0835d, 5.0, -7.0, 6.0, 6.0); // голова
+            q(0x8b6f47, 9.0, -9.0, 2.0, 5.0); // вуха
+            q(0x222222, 11.0, -6.0, 1.0, 1.0); // око
+            q(0x654321, 6.0, -12.0, 1.0, 3.0); // ріг лівий
+            q(0x654321, 8.0, -12.0, 1.0, 3.0); // ріг правий
+        }
+        MobKind::Fox => {
+            // Лисиця - руда, пухнастий хвіст
+            let (lf, rf) = if m.mv { (ph * 0.8, (1.0 - ph) * 0.8) } else { (0.0, 0.0) };
+            let tail_wag = ((now / 0.2) as i64 % 2) as f32;
+            draw_rectangle(sx - 5.0 * u, sy + 3.0 * u, 10.0 * u, 2.0 * u, ha(0, 0.23));
+            q(0xd85f1f, -4.0, 2.0, 2.0, 2.0 + lf);
+            q(0xd85f1f, -1.0, 2.0, 2.0, 2.0 + rf);
+            q(0xd85f1f, 1.0, 2.0, 2.0, 2.0 + rf);
+            q(0xd85f1f, 4.0, 2.0, 2.0, 2.0 + lf);
+            q(0xff8c42, -8.0, -5.0 - tail_wag, 4.0, 3.0); // пухнастий хвіст
+            q(0xffffff, -9.0, -4.0 - tail_wag, 2.0, 2.0); // білий кінчик хвоста
+            q(0xd85f1f, -5.0, -3.0, 9.0, 5.0); // тіло
+            q(0xffffff, -4.0, -2.0, 7.0, 2.0); // білий живіт
+            q(0xd85f1f, 3.0, -5.0, 4.0, 4.0); // голова
+            q(0xd85f1f, 5.0, -8.0, 2.0, 3.0); // вухо
+            q(0x222222, 7.0, -4.0, 1.0, 1.0); // око
+        }
+        MobKind::Bear => {
+            // Ведмідь - великий, коричневий, загрозливий
+            let (lf, rf) = if m.mv { (ph * 0.5, (1.0 - ph) * 0.5) } else { (0.0, 0.0) };
+            draw_rectangle(sx - 9.0 * u, sy + 6.0 * u, 18.0 * u, 3.0 * u, ha(0, 0.3));
+            q(0x4a3425, -8.0, 3.0, 3.0, 3.0 + lf);
+            q(0x4a3425, -3.0, 3.0, 3.0, 3.0 + rf);
+            q(0x4a3425, 2.0, 3.0, 3.0, 3.0 + rf);
+            q(0x4a3425, 6.0, 3.0, 3.0, 3.0 + lf);
+            q(0x6b4f3a, -9.0, -6.0, 17.0, 9.0); // велике тіло
+            q(0x8b6f47, -8.0, -5.0, 14.0, 5.0); // світліший живіт
+            q(0x6b4f3a, 7.0, -8.0, 8.0, 7.0); // велика голова
+            q(0x4a3425, 9.0, -10.0, 2.0, 2.0); // вухо ліве
+            q(0x4a3425, 12.0, -10.0, 2.0, 2.0); // вухо праве
+            q(0xff4040, 13.0, -6.0, 2.0, 1.0); // червоні очі
+            q(0x222222, 14.0, -4.0, 2.0, 1.0); // ніс
+        }
+        MobKind::Wolf | MobKind::Pet => {
+            let pet = m.kind == MobKind::Pet;
+            let (fur, f2, dk) = if pet { (0x9a7b55, 0xb89a72, 0x6b5238) } else { (0x5c616e, 0x7b8190, 0x3e424c) };
+            let (lf, rf) = if m.mv { (ph, 1.0 - ph) } else { (0.0, 0.0) };
+            let wag = if pet { ((now / 0.13) as i64 % 2) as f32 } else { 0.0 };
+            let bob = if m.mv { 0.0 } else { ((now / 0.8) as i64 % 2) as f32 };
+            draw_rectangle(sx - 6.0 * u, sy + 4.0 * u, 12.0 * u, 2.0 * u, ha(0, 0.28));
+            q(dk, -5.0, 2.0, 2.0, 2.0 + lf);
+            q(dk, -2.0, 2.0, 2.0, 2.0 + rf);
+            q(dk, 1.0, 2.0, 2.0, 2.0 + rf);
+            q(dk, 3.0, 2.0, 2.0, 2.0 + lf);
+            q(fur, -9.0, -6.0 - wag, 3.0, 2.0);
+            q(fur, -6.0, -4.0, 11.0, 6.0);
+            q(f2, -5.0, -5.0, 8.0, 2.0);
+            q(dk, -5.0, 1.0, 9.0, 1.0);
+            q(fur, 4.0, -6.0 + bob, 5.0, 5.0);
+            q(f2, 8.0, -3.0 + bob, 3.0, 2.0);
+            q(0x111111, 10.0, -3.0 + bob, 1.0, 1.0);
+            q(fur, 5.0, -8.0 + bob, 2.0, 2.0);
+            q(dk, 7.0, -8.0 + bob, 1.0, 2.0);
+            q(if pet { 0x222222 } else { 0xff4040 }, 7.0, -5.0 + bob, 1.0, 1.0);
+            if pet {
+                q(0xdd3333, 3.0, -2.0, 2.0, 2.0);
+            }
         }
     }
 }

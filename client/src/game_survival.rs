@@ -20,6 +20,14 @@ impl Game {
         } else if self.inv[It::Meal as usize] > 0 {
             self.inv[It::Meal as usize] -= 1;
             h(self, 60.0, 15.0);
+        } else if self.inv[It::Berry as usize] > 0 {
+            self.inv[It::Berry as usize] -= 1;
+            h(self, 25.0, 10.0);
+            self.say("Ягоди смачні!", now);
+        } else if self.inv[It::Mushroom as usize] > 0 {
+            self.inv[It::Mushroom as usize] -= 1;
+            h(self, 30.0, 12.0);
+            self.say("Гриби ситні!", now);
         } else if self.inv[It::Food as usize] > 0 {
             self.inv[It::Food as usize] -= 1;
             h(self, 20.0, 8.0);
@@ -33,6 +41,11 @@ impl Game {
             h(self, 12.0, 5.0);
             self.hp -= 4.0;
             self.say(texts.raw_fish_bad, now);
+        } else if self.inv[It::Herb as usize] > 0 {
+            // Трави лікують але не годують
+            self.inv[It::Herb as usize] -= 1;
+            self.hp = (self.hp + 20.0).min(100.0);
+            self.say("Трави зцілюють рани!", now);
         }
     }
 

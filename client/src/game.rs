@@ -11,6 +11,14 @@ use crate::i18n::Texts;
 
 pub const RABBITS: usize = 10;
 
+pub const ANIMALS: [(MobKind, usize, f32, f32, f32, f32); 5] = [
+    (MobKind::Rabbit, 10, 5.0, 30.0, 20.0, 15.0),  // 10 кроликів
+    (MobKind::Wolf, 3, 8.0, 24.0, 8.0, 24.0),       // 3 вовки
+    (MobKind::Deer, 5, 12.0, 20.0, 12.0, 20.0),     // 5 оленів
+    (MobKind::Bear, 2, 5.0, 10.0, 5.0, 10.0),       // 2 ведмеді (рідкісні)
+    (MobKind::Fox, 4, 15.0, 20.0, 15.0, 20.0),      // 4 лисиці
+];
+
 pub fn epoch() -> f64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0)
 }
@@ -23,6 +31,9 @@ pub enum MobKind {
     Rabbit,
     Wolf,
     Pet,
+    Deer,      // Олень - мирний, дає більше м'яса
+    Bear,      // Ведмідь - агресивний хижак
+    Fox,       // Лисиця - дропає хутро
 }
 
 #[derive(Clone)]
@@ -52,6 +63,9 @@ impl Mob {
             MobKind::Rabbit => 2.0,
             MobKind::Wolf => 5.0,
             MobKind::Pet => 9.0,
+            MobKind::Deer => 4.0,
+            MobKind::Bear => 12.0,
+            MobKind::Fox => 3.0,
         };
         Mob { kind, x, y, hp, dead: 0.0, cut: false, calm: 0.0, trust: 0, hit: 0.0, vx: 0.0, vy: 0.0, t: 0.0, fl: false, mv: false, flash: 0.0, px: x, py: y }
     }
@@ -127,8 +141,11 @@ pub struct Game {
 impl Game {
     pub fn new() -> Game {
         let mut mobs = Vec::new();
-        for _ in 0..RABBITS {
-            mobs.push(Mob::new(MobKind::Rabbit, 5.0 + rnd() * 30.0, 20.0 + rnd() * 15.0));
+        // Створюємо всіх тварин
+        for (kind, count, x_min, x_range, y_min, y_range) in ANIMALS {
+            for _ in 0..count {
+                mobs.push(Mob::new(kind, x_min + rnd() * x_range, y_min + rnd() * y_range));
+            }
         }
         Game {
             map: Map::new(),
@@ -335,17 +352,34 @@ impl Game {
                 self.last_hit = now;
                 self.energy -= 1.0;
                 self.use_tool(Tl::Knife, now);
-                let wolf = kind == MobKind::Wolf;
                 let m = &mut self.mobs[i];
                 m.cut = true;
-                m.dead = now - if wolf { 55.0 } else { 80.0 };
-                self.inv[It::Meat as usize] += if wolf { 3 } else { 2 };
-                self.inv[It::Hide as usize] += if wolf { 2 } else { 1 };
+
+                // Різні тварини дають різні ресурси
+                let (meat, hide, decay_time) = match kind {
+                    MobKind::Wolf => (3, 2, 55.0),
+                    MobKind::Bear => (6, 3, 40.0),    // Ведмідь дає багато м'яса
+                    MobKind::Deer => (5, 2, 60.0),    // Олень дає багато м'яса
+                    MobKind::Fox => (1, 3, 70.0),     // Лисиця дає багато хутра
+                    MobKind::Rabbit => (2, 1, 80.0),
+                    MobKind::Pet => (0, 0, 80.0),     // Питомця не можна різати
+                };
+
+                m.dead = now - decay_time;
+                self.inv[It::Meat as usize] += meat;
+                self.inv[It::Hide as usize] += hide;
                 self.got += 3;
                 self.say(texts.corpse_butchered, now);
                 return;
             }
+            // Всі тварини крім кроликів можуть бути атаковані без списа
             if kind == MobKind::Rabbit && !self.tool(Tl::Spear) {
+                self.say(texts.need_spear, now);
+                self.last_hit = now;
+                return;
+            }
+            // Для ведмедя та оленя потрібне спис для ефективного полювання
+            if (kind == MobKind::Bear || kind == MobKind::Deer) && !self.tool(Tl::Spear) {
                 self.say(texts.need_spear, now);
                 self.last_hit = now;
                 return;
@@ -424,6 +458,11 @@ impl Game {
             Kind::Coal => 0x222222,
             Kind::CuOre => 0xc9803a,
             Kind::FeOre => 0xb5613a,
+            Kind::BerryBush => 0xff3366,
+            Kind::Mushroom => 0xcc6633,
+            Kind::Herb => 0x66cc66,
+            Kind::AgOre => 0xd0d0d8,
+            Kind::AuOre => 0xffcc33,
         };
         let ft = match (mine, kind) {
             (true, Kind::Tree) => 1,
@@ -463,6 +502,11 @@ impl Game {
             Kind::Coal => It::Coal,
             Kind::CuOre => It::CuOre,
             Kind::FeOre => It::FeOre,
+            Kind::BerryBush => It::Berry,
+            Kind::Mushroom => It::Mushroom,
+            Kind::Herb => It::Herb,
+            Kind::AgOre => It::AgOre,
+            Kind::AuOre => It::AuOre,
         };
         self.inv[item as usize] += g;
         self.got += g;
@@ -685,7 +729,7 @@ mod tests {
         assert!(g.map.terr.iter().any(|&t| t == WATER));
         assert!(g.map.terr.iter().any(|&t| t == FORD));
         assert!(g.map.terr.iter().any(|&t| t == SAND));
-        assert_eq!(g.mobs.len(), RABBITS);
+        assert_eq!(g.mobs.len(), ANIMALS.iter().map(|a| a.1).sum::<usize>());
     }
 
     #[test]
