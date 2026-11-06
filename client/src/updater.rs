@@ -165,13 +165,10 @@ fn open_url(url: &str) -> Result<(), String> {
 
 #[cfg(target_os = "android")]
 fn open_url(url: &str) -> Result<(), String> {
-    // На Android використовуємо Intent для відкриття браузера
-    use macroquad::prelude::*;
-    // macroquad має вбудовану функцію для Android
-    if let Err(e) = miniquad::window::open_url(url) {
-        return Err(format!("Помилка: {:?}", e));
-    }
-    Ok(())
+    // На Android використовуємо JNI для відкриття браузера
+    // Для Android потрібна нативна інтеграція через quad-snd або інше рішення
+    // Поки що просто повертаємо помилку з URL
+    Err(format!("Відкрийте вручну: {}", url))
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "android")))]
