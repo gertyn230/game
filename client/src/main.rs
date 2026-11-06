@@ -41,7 +41,7 @@ const SERVER_URL: &str = match option_env!("PV_SERVER") {
     None => "ws://127.0.0.1:8080/ws",
 };
 const PLAYER_COLORS: [u32; 5] = [0xd94f4f, 0x4a6fa5, 0xc9a227, 0x8e5bb5, 0x2a9d8f];
-const CLIENT_VERSION: &str = "1.2.0";
+const CLIENT_VERSION: &str = "1.3.0";
 
 fn window_conf() -> Conf {
     Conf {
@@ -103,8 +103,8 @@ async fn main() {
     let mut settings = load_settings();
     let saved = save::load();
 
-    // Ініціалізуємо систему меню
-    let mut game_state = GameStateManager::new(saved.is_some());
+    // Ініціалізуємо систему меню з версією
+    let mut game_state = GameStateManager::new(saved.is_some(), CLIENT_VERSION);
 
     // Завантажуємо фонове зображення меню ПЕРЕД показом
     game_state.menu.load_background().await;
@@ -161,6 +161,9 @@ async fn main() {
     }
 
     game_state.finish_loading();
+
+    // Перевірка оновлень в фоні
+    game_state.check_updates().await;
 
     // Первый запуск: спрашиваем имя экранной клавиатурой.
     let mut name_edit: Option<String> = if env_name.is_none() && saved.as_ref().map_or(true, |s| s.name.is_empty()) { Some(name.clone()) } else { None };
@@ -873,6 +876,9 @@ async fn main() {
             draw_circle(origin.x + v.x, origin.y + v.y, ring_r * 0.42, ha(0xffffff, 0.35));
         }
         ui.finish();
+
+        // Показати popup з оновленням (якщо є)
+        game_state.draw_update_popup(&font);
 
         next_frame().await;
     }

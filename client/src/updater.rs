@@ -1,145 +1,111 @@
 //! Система автоматичного оновлення гри
 
-use std::fs;
-use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize, Debug)]
+struct GitHubRelease {
+    tag_name: String,
+    name: String,
+    body: String,
+    assets: Vec<GitHubAsset>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+struct GitHubAsset {
+    name: String,
+    browser_download_url: String,
+    size: u64,
+}
+
+pub struct UpdateInfo {
+    pub version: String,
+    pub download_url: String,
+    pub changelog: String,
+    pub size_mb: f32,
+    pub is_apk: bool,
+}
 
 pub struct Updater {
     pub current_version: String,
-    pub latest_version: Option<String>,
-    pub update_available: bool,
-    pub download_url: Option<String>,
-    pub changelog: Vec<String>,
+    pub update_info: Option<UpdateInfo>,
+    pub checking: bool,
+    pub error: Option<String>,
 }
 
 impl Updater {
     pub fn new(current_version: &str) -> Self {
         Self {
             current_version: current_version.to_string(),
-            latest_version: None,
-            update_available: false,
-            download_url: None,
-            changelog: vec![],
+            update_info: None,
+            checking: false,
+            error: None,
         }
     }
 
     /// Перевірити наявність оновлень через GitHub API
     pub async fn check_for_updates(&mut self) -> Result<bool, String> {
-        // Запит до GitHub API для перевірки останнього релізу
+        self.checking = true;
+        self.error = None;
+
         let url = "https://api.github.com/repos/gertyn230/game/releases/latest";
 
         match self.fetch_latest_release(url).await {
-            Ok((version, download_url, changelog)) => {
-                self.latest_version = Some(version.clone());
-                self.download_url = Some(download_url);
-                self.changelog = changelog;
-                self.update_available = self.is_newer_version(&version);
-                Ok(self.update_available)
+            Ok(info) => {
+                if self.is_newer_version(&info.version) {
+                    self.update_info = Some(info);
+                    self.checking = false;
+                    Ok(true)
+                } else {
+                    self.checking = false;
+                    Ok(false)
+                }
             }
-            Err(e) => Err(format!("Помилка перевірки оновлень: {}", e)),
+            Err(e) => {
+                self.error = Some(e.clone());
+                self.checking = false;
+                Err(e)
+            }
         }
-    }
-
-    /// Завантажити та встановити оновлення
-    pub async fn download_and_install(&self) -> Result<(), String> {
-        if !self.update_available {
-            return Err("Немає доступних оновлень".to_string());
-        }
-
-        let download_url = self.download_url.as_ref()
-            .ok_or("Відсутнє посилання для завантаження")?;
-
-        // Визначити шлях для завантаження
-        let temp_path = self.get_temp_download_path()?;
-
-        // Завантажити файл
-        self.download_file(download_url, &temp_path).await?;
-
-        // Встановити оновлення
-        self.install_update(&temp_path)?;
-
-        Ok(())
     }
 
     /// Отримати інформацію про останній реліз з GitHub
-    async fn fetch_latest_release(&self, url: &str) -> Result<(String, String, Vec<String>), String> {
-        // Для Windows використовуємо reqwest або інший HTTP клієнт
-        // Тут заглушка - потрібно додати залежність reqwest в Cargo.toml
+    async fn fetch_latest_release(&self, url: &str) -> Result<UpdateInfo, String> {
+        // Визначити платформу
+        let is_android = cfg!(target_os = "android");
+        let file_extension = if is_android { ".apk" } else { ".exe" };
 
-        // Поки що повертаємо дані з локального API сервера
-        let local_url = "http://127.0.0.1:8080/api/version";
+        // HTTP запит до GitHub API
+        let response = macroquad::prelude::load_string(url)
+            .await
+            .map_err(|e| format!("Помилка завантаження: {:?}", e))?;
 
-        match self.fetch_json(local_url).await {
-            Ok(data) => {
-                let version = data.get("version")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("1.2.0")
-                    .to_string();
+        let release: GitHubRelease = serde_json::from_str(&response)
+            .map_err(|e| format!("Помилка парсингу JSON: {}", e))?;
 
-                let download = data.get("download")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("https://github.com/gertyn230/game/releases/latest")
-                    .to_string();
+        let version = release.tag_name.trim_start_matches('v').to_string();
 
-                let changes = data.get("changes")
-                    .and_then(|v| v.as_array())
-                    .map(|arr| arr.iter()
-                        .filter_map(|v| v.as_str())
-                        .map(|s| s.to_string())
-                        .collect())
-                    .unwrap_or_default();
+        // Знайти відповідний файл для платформи
+        let asset = release
+            .assets
+            .iter()
+            .find(|a| a.name.ends_with(file_extension))
+            .ok_or_else(|| format!("Немає файлу {} в релізі", file_extension))?;
 
-                Ok((version, download, changes))
-            }
-            Err(e) => Err(e),
-        }
-    }
+        let size_mb = asset.size as f32 / 1024.0 / 1024.0;
 
-    /// Завантажити JSON з URL
-    async fn fetch_json(&self, url: &str) -> Result<serde_json::Value, String> {
-        // Тут має бути реальний HTTP запит
-        // Поки що заглушка
-        Err("HTTP клієнт не реалізований".to_string())
-    }
-
-    /// Завантажити файл з URL
-    async fn download_file(&self, url: &str, path: &PathBuf) -> Result<(), String> {
-        // Тут має бути завантаження файлу
-        Err("Завантаження не реалізоване".to_string())
-    }
-
-    /// Встановити оновлення
-    fn install_update(&self, update_path: &PathBuf) -> Result<(), String> {
-        // Логіка встановлення оновлення
-        // 1. Зберегти поточний exe як backup
-        // 2. Замінити поточний exe на новий
-        // 3. Перезапустити гру
-
-        let current_exe = std::env::current_exe()
-            .map_err(|e| format!("Не вдалося знайти поточний exe: {}", e))?;
-
-        let backup_path = current_exe.with_extension("exe.backup");
-
-        // Створити резервну копію
-        fs::copy(&current_exe, &backup_path)
-            .map_err(|e| format!("Помилка створення backup: {}", e))?;
-
-        // Замінити exe (потрібні права адміністратора на Windows)
-        fs::copy(update_path, &current_exe)
-            .map_err(|e| format!("Помилка заміни exe: {}", e))?;
-
-        Ok(())
-    }
-
-    /// Отримати шлях для тимчасового завантаження
-    fn get_temp_download_path(&self) -> Result<PathBuf, String> {
-        let temp_dir = std::env::temp_dir();
-        Ok(temp_dir.join("pixel_village_update.exe"))
+        Ok(UpdateInfo {
+            version,
+            download_url: asset.browser_download_url.clone(),
+            changelog: release.body,
+            size_mb,
+            is_apk: is_android,
+        })
     }
 
     /// Перевірити чи нова версія новіша за поточну
     fn is_newer_version(&self, new_version: &str) -> bool {
-        // Проста перевірка версій (1.2.0 > 1.1.0)
-        let current_parts: Vec<u32> = self.current_version
+        let current_parts: Vec<u32> = self
+            .current_version
             .split('.')
             .filter_map(|s| s.parse().ok())
             .collect();
@@ -163,23 +129,57 @@ impl Updater {
         false
     }
 
-    /// Отримати повідомлення про оновлення
-    pub fn get_update_message(&self) -> String {
-        if !self.update_available {
-            return String::new();
+    /// Отримати текст для показу в UI
+    pub fn get_update_text(&self) -> Option<String> {
+        if let Some(ref info) = self.update_info {
+            let platform = if info.is_apk { "APK" } else { "EXE" };
+            Some(format!(
+                "🎮 Нова версія {}!\n\n📦 Розмір: {:.1} MB\n💾 Тип: {}\n\n📝 Зміни:\n{}",
+                info.version, info.size_mb, platform, info.changelog
+            ))
+        } else {
+            None
         }
+    }
 
-        let version = self.latest_version.as_ref().unwrap();
-        let mut msg = format!("🎮 Доступна нова версія {}!\n\n", version);
-
-        if !self.changelog.is_empty() {
-            msg.push_str("📝 Що нового:\n");
-            for change in &self.changelog {
-                msg.push_str(&format!("  • {}\n", change));
+    /// Відкрити браузер для завантаження (для Desktop та Android)
+    pub fn open_download_page(&self) {
+        if let Some(ref info) = self.update_info {
+            // Для Android та Desktop - відкрити посилання в браузері
+            if let Err(e) = open_url(&info.download_url) {
+                eprintln!("Не вдалось відкрити браузер: {:?}", e);
             }
         }
-
-        msg.push_str("\n💾 Натисніть U для автоматичного оновлення");
-        msg
     }
+}
+
+/// Відкрити URL в браузері (кросплатформно)
+#[cfg(target_os = "windows")]
+fn open_url(url: &str) -> Result<(), String> {
+    std::process::Command::new("cmd")
+        .args(&["/c", "start", url])
+        .spawn()
+        .map_err(|e| format!("Помилка відкриття браузера: {}", e))?;
+    Ok(())
+}
+
+#[cfg(target_os = "android")]
+fn open_url(url: &str) -> Result<(), String> {
+    // На Android використовуємо Intent для відкриття браузера
+    use macroquad::prelude::*;
+    // macroquad має вбудовану функцію для Android
+    if let Err(e) = miniquad::window::open_url(url) {
+        return Err(format!("Помилка: {:?}", e));
+    }
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "android")))]
+fn open_url(url: &str) -> Result<(), String> {
+    // Linux/MacOS
+    std::process::Command::new("xdg-open")
+        .arg(url)
+        .spawn()
+        .map_err(|e| format!("Помилка відкриття браузера: {}", e))?;
+    Ok(())
 }
