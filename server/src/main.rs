@@ -185,13 +185,17 @@ async fn admin(State(app): State<App>, Query(q): Query<HashMap<String, String>>)
 async fn api_version() -> Json<serde_json::Value> {
     // Версія гри - змінюйте при кожному оновленні
     Json(serde_json::json!({
-        "version": "1.1.0",
-        "date": "2026-11-02",
+        "version": "1.2.0",
+        "date": "2026-11-06",
         "changes": [
-            "Енергія тримається довше",
-            "Їжа відновлює енергію",
-            "Речі після смерті можна забрати назад",
-            "Швидше добування ресурсів"
+            "Карта збільшена до 80x80 (+300%)",
+            "Додано 2 нові біоми: болото та пустеля",
+            "3 нові тварини: олень, ведмідь, лисиця",
+            "Нові ресурси: ягоди, гриби, лікарські трави",
+            "Нові руди: срібло та золото",
+            "Нові рецепти: ягідний пирог, грибний суп, целебний отвар",
+            "+13 нових тварин на карті",
+            "+7 нових предметів"
         ],
         "download": "https://github.com/gertyn230/game/releases/latest"
     }))
@@ -259,7 +263,7 @@ async fn client_loop(socket: WebSocket, app: App) {
                 (e < RESPAWN_SECS).then_some((*i, RESPAWN_SECS - e))
             })
             .collect();
-        (id, vec![enc(&ServerMsg::Welcome { id, version: "1.1.0".to_string() }), enc(&ServerMsg::World { dead }), enc(&ServerMsg::Market { offers: w.offers.clone() })])
+        (id, vec![enc(&ServerMsg::Welcome { id, version: "1.2.0".to_string() }), enc(&ServerMsg::World { dead }), enc(&ServerMsg::Market { offers: w.offers.clone() })])
     };
 
     let mut ok = true;

@@ -10,6 +10,7 @@ mod save;
 mod settings;
 mod ui;
 mod world;
+mod updater;
 
 // Ігрові модулі (розширення для game)
 mod game_survival;
@@ -40,7 +41,7 @@ const SERVER_URL: &str = match option_env!("PV_SERVER") {
     None => "ws://127.0.0.1:8080/ws",
 };
 const PLAYER_COLORS: [u32; 5] = [0xd94f4f, 0x4a6fa5, 0xc9a227, 0x8e5bb5, 0x2a9d8f];
-const CLIENT_VERSION: &str = "1.1.0";
+const CLIENT_VERSION: &str = "1.2.0";
 
 fn window_conf() -> Conf {
     Conf {
@@ -173,6 +174,8 @@ async fn main() {
     let mut my_id: Option<u32> = None;
     let mut connected = false;
     let mut version_mismatch: Option<String> = None;
+    let mut update_in_progress = false;
+    let mut update_message: Option<String> = None;
     let mut others: HashMap<u32, Other> = HashMap::new();
     let mut online = 0usize;
     let mut market: Vec<Offer> = vec![];
@@ -376,6 +379,13 @@ async fn main() {
         }
         if !typing && is_key_pressed(KeyCode::M) || is_key_pressed(KeyCode::Tab) {
             cmds.push(if ui.menu { Cmd::Close } else { Cmd::Menu });
+        }
+        // Обробка клавіші U для автооновлення
+        if !typing && version_mismatch.is_some() && is_key_pressed(KeyCode::U) && !update_in_progress {
+            update_in_progress = true;
+            update_message = Some("🔄 Завантаження оновлення...".to_string());
+            // TODO: Запустити завантаження оновлення в окремому потоці
+            // Поки що просто показуємо повідомлення
         }
         for c in cmds {
             match c {
@@ -790,12 +800,23 @@ async fn main() {
         }
         // Попередження про оновлення
         if let Some(ref server_ver) = version_mismatch {
-            let msg = format!("⚠️ Доступна нова версія {}! Завантажте з GitHub", server_ver);
-            let w = text_w(&font, &msg, fs * 0.95) + fs * 2.0;
-            let y_pos = pad + fs * 8.5;
-            draw_rectangle(cx - w / 2.0, y_pos, w, fs * 1.7, ha(0xff6b00, 0.85));
-            draw_rectangle_lines(cx - w / 2.0, y_pos, w, fs * 1.7, 2.0, hx(0xffd700));
-            text_c(&font, &msg, cx, y_pos + fs * 1.0, fs * 0.95, WHITE);
+            if let Some(ref msg) = update_message {
+                // Показати статус оновлення
+                let w = text_w(&font, msg, fs * 0.9) + fs * 2.0;
+                let y_pos = pad + fs * 8.5;
+                draw_rectangle(cx - w / 2.0, y_pos, w, fs * 2.0, ha(0x00aa00, 0.85));
+                draw_rectangle_lines(cx - w / 2.0, y_pos, w, fs * 2.0, 2.0, hx(0x00ff00));
+                text_c(&font, msg, cx, y_pos + fs * 1.2, fs * 0.9, WHITE);
+            } else {
+                let msg = format!("⚠️ Доступна нова версія {}!", server_ver);
+                let msg2 = "Натисніть U для автоматичного оновлення або завантажте з GitHub";
+                let w = text_w(&font, &msg2, fs * 0.8).max(text_w(&font, &msg, fs * 0.95)) + fs * 2.0;
+                let y_pos = pad + fs * 8.5;
+                draw_rectangle(cx - w / 2.0, y_pos, w, fs * 3.2, ha(0xff6b00, 0.85));
+                draw_rectangle_lines(cx - w / 2.0, y_pos, w, fs * 3.2, 2.0, hx(0xffd700));
+                text_c(&font, &msg, cx, y_pos + fs * 1.0, fs * 0.95, WHITE);
+                text_c(&font, msg2, cx, y_pos + fs * 2.2, fs * 0.8, hx(0xffdd88));
+            }
         }
         // шкала вываживания
         if g.fish.ph == 3 {
