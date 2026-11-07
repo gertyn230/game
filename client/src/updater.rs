@@ -135,30 +135,36 @@ impl Updater {
         Ok(())
     }
 
-    /// Встановити оновлення (Windows)
+    /// Встановити оновлення (Windows) через батник-скрипт
     #[cfg(target_os = "windows")]
     fn install_update(&self, update_path: &PathBuf) -> Result<(), String> {
         let current_exe = std::env::current_exe()
             .map_err(|e| format!("Не вдалося знайти поточний exe: {}", e))?;
 
-        let backup_path = current_exe.with_extension("exe.old");
+        // Створити батник-скрипт для оновлення
+        let batch_path = current_exe.parent().unwrap().join("_update.bat");
 
-        // Backup поточного exe
-        if current_exe.exists() {
-            let _ = fs::copy(&current_exe, &backup_path);
-        }
+        let batch_content = format!(
+            r#"@echo off
+chcp 65001 >nul
+timeout /t 2 /nobreak >nul
+del /f /q "{current_exe}"
+move /y "{update_path}" "{current_exe}"
+start "" "{current_exe}"
+del /f /q "%~f0"
+"#,
+            current_exe = current_exe.display(),
+            update_path = update_path.display()
+        );
 
-        // Замінити exe
-        fs::copy(update_path, &current_exe)
-            .map_err(|e| format!("Помилка заміни exe: {}", e))?;
+        fs::write(&batch_path, batch_content)
+            .map_err(|e| format!("Помилка створення батника: {}", e))?;
 
-        // Видалити temp файл
-        let _ = fs::remove_file(update_path);
-
-        // Перезапустити гру
-        std::process::Command::new(&current_exe)
+        // Запустити батник і вийти
+        std::process::Command::new("cmd")
+            .args(&["/c", "start", "/min", batch_path.to_str().unwrap()])
             .spawn()
-            .map_err(|e| format!("Помилка перезапуску: {}", e))?;
+            .map_err(|e| format!("Помилка запуску батника: {}", e))?;
 
         // Вийти з поточного процесу
         std::process::exit(0);
