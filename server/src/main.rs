@@ -185,9 +185,10 @@ async fn admin(State(app): State<App>, Query(q): Query<HashMap<String, String>>)
 async fn api_version() -> Json<serde_json::Value> {
     // Версія гри - змінюйте при кожному оновленні
     Json(serde_json::json!({
-        "version": "1.2.0",
-        "date": "2026-11-06",
+        "version": env!("CARGO_PKG_VERSION"),
+        "date": "2026-11-07",
         "changes": [
+            "Автоматичне оновлення через GitHub Releases",
             "Карта збільшена до 80x80 (+300%)",
             "Додано 2 нові біоми: болото та пустеля",
             "3 нові тварини: олень, ведмідь, лисиця",
@@ -263,7 +264,7 @@ async fn client_loop(socket: WebSocket, app: App) {
                 (e < RESPAWN_SECS).then_some((*i, RESPAWN_SECS - e))
             })
             .collect();
-        (id, vec![enc(&ServerMsg::Welcome { id, version: "1.2.0".to_string() }), enc(&ServerMsg::World { dead }), enc(&ServerMsg::Market { offers: w.offers.clone() })])
+        (id, vec![enc(&ServerMsg::Welcome { id, version: env!("CARGO_PKG_VERSION").to_string() }), enc(&ServerMsg::World { dead }), enc(&ServerMsg::Market { offers: w.offers.clone() })])
     };
 
     let mut ok = true;

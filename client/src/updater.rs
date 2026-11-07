@@ -1,289 +1,283 @@
 //! Система автоматичного оновлення гри через GitHub Releases
 
-use std::fs;
+use std::fs::{self, File};
+use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-/// Інформація про доступне оновлення
-#[derive(Clone, Debug)]
-pub struct UpdateInfo {
-    pub version: String,
-    pub download_url: String,
-    pub sha256_url: String,
-    pub changelog: String,
-    pub size_mb: f32,
+/// Стан оновлювача
+#[derive(Clone, Debug, PartialEq)]
+pub enum UpdateState {
+    Idle,
+    Checking,
+    Available(UpdateInfo),
+    Downloading(f32), // прогрес 0.0-1.0
+    Installing,
+    Failed(String),
 }
 
-/// Стан оновлювача
+/// Інформація про доступне оновлення
+#[derive(Clone, Debug, PartialEq)]
+pub struct UpdateInfo {
+    pub version: String,
+    pub sha256: String,
+    pub size: u64,
+    pub notes: String,
+}
+
 pub struct Updater {
     pub current_version: String,
-    pub update_info: Option<UpdateInfo>,
-    pub checking: bool,
-    pub downloading: bool,
-    pub download_progress: Arc<Mutex<f32>>,
+    pub state: Arc<Mutex<UpdateState>>,
+    base_url: String,
 }
 
 impl Updater {
     pub fn new(current_version: &str) -> Self {
+        #[cfg(debug_assertions)]
+        let base_url = std::env::var("UPDATE_BASE_URL")
+            .unwrap_or_else(|_| "https://github.com/gertyn230/game-releases/releases/latest/download".to_string());
+
+        #[cfg(not(debug_assertions))]
+        let base_url = "https://github.com/gertyn230/game-releases/releases/latest/download".to_string();
+
         Self {
             current_version: current_version.to_string(),
-            update_info: None,
-            checking: false,
-            downloading: false,
-            download_progress: Arc::new(Mutex::new(0.0)),
+            state: Arc::new(Mutex::new(UpdateState::Idle)),
+            base_url,
         }
     }
 
-    /// Перевірити наявність оновлень у фоновому потоці
-    pub fn check_for_updates_async(&mut self) {
-        if self.checking {
-            return;
+    /// Перевірити оновлення у фоновому потоці (викликати один раз)
+    pub fn check_for_updates(&self) {
+        let state = Arc::clone(&self.state);
+        {
+            let current = state.lock().unwrap();
+            if *current != UpdateState::Idle {
+                return; // вже перевіряємо або є результат
+            }
         }
 
-        self.checking = true;
+        *state.lock().unwrap() = UpdateState::Checking;
+
         let current_version = self.current_version.clone();
+        let base_url = self.base_url.clone();
 
         thread::spawn(move || {
-            match Self::fetch_github_release(&current_version) {
+            match Self::fetch_update_info(&base_url, &current_version) {
                 Ok(Some(info)) => {
-                    println!("✅ Знайдено оновлення: {}", info.version);
-                    // TODO: передати info назад в основний потік
+                    *state.lock().unwrap() = UpdateState::Available(info);
                 }
                 Ok(None) => {
-                    println!("✅ Оновлень немає");
+                    *state.lock().unwrap() = UpdateState::Idle;
                 }
                 Err(e) => {
-                    eprintln!("⚠️ Помилка перевірки оновлень: {}", e);
+                    eprintln!("⚠️ Update check failed: {}", e);
+                    *state.lock().unwrap() = UpdateState::Idle; // тихо, без паніки
                 }
             }
         });
     }
 
-    /// Отримати інформацію про останній реліз з GitHub
-    fn fetch_github_release(current_version: &str) -> Result<Option<UpdateInfo>, String> {
+    fn fetch_update_info(base_url: &str, current_version: &str) -> Result<Option<UpdateInfo>, String> {
         let client = reqwest::blocking::Client::builder()
             .user_agent("PixelVillage-Game")
             .timeout(std::time::Duration::from_secs(10))
+            .redirect(reqwest::redirect::Policy::limited(5))
             .build()
-            .map_err(|e| format!("HTTP клієнт: {}", e))?;
+            .map_err(|e| format!("HTTP client: {}", e))?;
 
-        let url = "https://api.github.com/repos/gertyn230/game/releases/latest";
-        let response = client.get(url)
+        let url = format!("{}/latest.json", base_url);
+        let response = client.get(&url)
             .send()
-            .map_err(|e| format!("GitHub API запит: {}", e))?;
+            .map_err(|e| format!("HTTP request: {}", e))?;
 
         if !response.status().is_success() {
-            return Err(format!("GitHub API помилка: {}", response.status()));
+            return if response.status().as_u16() == 404 {
+                Ok(None) // немає оновлень
+            } else {
+                Err(format!("HTTP {}", response.status()))
+            };
         }
 
-        let json: serde_json::Value = response.json()
-            .map_err(|e| format!("Парсинг JSON: {}", e))?;
+        #[derive(serde::Deserialize)]
+        struct LatestJson {
+            version: String,
+            sha256: String,
+            size: u64,
+            notes: String,
+        }
 
-        let tag_name = json["tag_name"].as_str()
-            .ok_or("Немає поля tag_name")?;
-        let version = tag_name.trim_start_matches('v');
+        let json: LatestJson = response.json()
+            .map_err(|e| format!("Invalid JSON: {}", e))?;
 
-        // Перевірка чи нова версія новіша
-        if !Self::is_newer_version(current_version, version) {
+        // Порівняти версії
+        if !Self::is_newer_version(current_version, &json.version) {
             return Ok(None);
         }
 
-        // Знайти файл для Windows
-        let assets = json["assets"].as_array()
-            .ok_or("Немає assets")?;
-
-        let asset = assets.iter()
-            .find(|a| {
-                a["name"].as_str()
-                    .map(|n| n == "PixelVillage.exe")
-                    .unwrap_or(false)
-            })
-            .ok_or("Не знайдено PixelVillage.exe")?;
-
-        let download_url = asset["browser_download_url"].as_str()
-            .ok_or("Немає download URL")?
-            .to_string();
-
-        let size = asset["size"].as_u64().unwrap_or(0);
-        let size_mb = size as f32 / 1024.0 / 1024.0;
-
-        // SHA256 файл має бути поряд
-        let sha256_url = download_url.replace(".exe", ".exe.sha256");
-
-        let changelog = json["body"].as_str().unwrap_or("").to_string();
-
         Ok(Some(UpdateInfo {
-            version: version.to_string(),
-            download_url,
-            sha256_url,
-            changelog,
-            size_mb,
+            version: json.version,
+            sha256: json.sha256.to_lowercase(),
+            size: json.size,
+            notes: json.notes,
         }))
     }
 
-    /// Порівняти версії (semver)
     fn is_newer_version(current: &str, new: &str) -> bool {
         match (semver::Version::parse(current), semver::Version::parse(new)) {
             (Ok(cur), Ok(new_ver)) => new_ver > cur,
-            _ => {
-                // Fallback на просте порівняння рядків
-                new > current
-            }
+            _ => new > current, // fallback
         }
     }
 
     /// Завантажити та встановити оновлення (Windows)
     #[cfg(target_os = "windows")]
-    pub fn download_and_install(&mut self) -> Result<(), String> {
-        if self.update_info.is_none() {
-            return Err("Немає інформації про оновлення".to_string());
-        }
-
-        let info = self.update_info.as_ref().unwrap();
-        self.downloading = true;
-
-        let download_url = info.download_url.clone();
-        let sha256_url = info.sha256_url.clone();
-        let progress = Arc::clone(&self.download_progress);
-
-        // Завантаження у фоновому потоці
-        thread::spawn(move || {
-            match Self::download_with_progress(&download_url, &progress) {
-                Ok(bytes) => {
-                    // Перевірка SHA256
-                    match Self::download_sha256(&sha256_url) {
-                        Ok(expected_hash) => {
-                            let actual_hash = Self::calculate_sha256(&bytes);
-                            if actual_hash != expected_hash {
-                                eprintln!("❌ SHA256 не співпадає!");
-                                return;
-                            }
-
-                            // Зберегти новий exe
-                            if let Err(e) = Self::save_and_replace(bytes) {
-                                eprintln!("❌ Помилка встановлення: {}", e);
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("❌ Не вдалось завантажити SHA256: {}", e);
-                        }
-                    }
-                }
-                Err(e) => {
-                    eprintln!("❌ Помилка завантаження: {}", e);
-                }
+    pub fn download_and_install(&self) -> Result<(), String> {
+        let info = {
+            let state = self.state.lock().unwrap();
+            match &*state {
+                UpdateState::Available(info) => info.clone(),
+                _ => return Err("No update available".to_string()),
             }
-        });
+        };
 
-        Ok(())
-    }
+        *self.state.lock().unwrap() = UpdateState::Downloading(0.0);
 
-    /// Завантажити файл з прогрес-баром
-    #[cfg(target_os = "windows")]
-    fn download_with_progress(url: &str, progress: &Arc<Mutex<f32>>) -> Result<Vec<u8>, String> {
-        use std::io::Read;
+        let url = format!("{}/PixelVillage.exe", self.base_url);
+        let temp_path = std::env::temp_dir().join("PixelVillage.exe.new");
 
+        // Завантажити потоково на диск
         let client = reqwest::blocking::Client::builder()
-            .user_agent("PixelVillage-Updater")
+            .user_agent("PixelVillage-Game")
+            .timeout(std::time::Duration::from_secs(300))
+            .redirect(reqwest::redirect::Policy::limited(5))
             .build()
-            .map_err(|e| format!("Помилка створення HTTP клієнта: {}", e))?;
+            .map_err(|e| format!("HTTP client: {}", e))?;
 
-        let mut response = client.get(url)
+        let mut response = client.get(&url)
             .send()
-            .map_err(|e| format!("Помилка HTTP запиту: {}", e))?;
+            .map_err(|e| format!("Download failed: {}", e))?;
 
         if !response.status().is_success() {
-            return Err(format!("HTTP помилка: {}", response.status()));
+            *self.state.lock().unwrap() = UpdateState::Failed(format!("HTTP {}", response.status()));
+            return Err(format!("HTTP {}", response.status()));
         }
 
-        let total_size = response.content_length().unwrap_or(0);
-        let mut bytes = Vec::new();
-        let mut downloaded = 0u64;
+        let total_size = response.content_length().unwrap_or(info.size);
+        let mut file = File::create(&temp_path)
+            .map_err(|e| format!("Create temp file: {}", e))?;
 
+        let mut downloaded = 0u64;
         let mut buffer = [0u8; 8192];
+        let state = Arc::clone(&self.state);
+
         loop {
             match response.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(n) => {
-                    bytes.extend_from_slice(&buffer[..n]);
+                    file.write_all(&buffer[..n])
+                        .map_err(|e| format!("Write error: {}", e))?;
                     downloaded += n as u64;
-
-                    if total_size > 0 {
-                        let prog = downloaded as f32 / total_size as f32;
-                        if let Ok(mut p) = progress.lock() {
-                            *p = prog;
-                        }
-                    }
+                    let progress = if total_size > 0 {
+                        (downloaded as f32 / total_size as f32).min(1.0)
+                    } else {
+                        0.0
+                    };
+                    *state.lock().unwrap() = UpdateState::Downloading(progress);
                 }
-                Err(e) => return Err(format!("Помилка читання: {}", e)),
+                Err(e) => {
+                    let _ = fs::remove_file(&temp_path);
+                    *self.state.lock().unwrap() = UpdateState::Failed(format!("Download error: {}", e));
+                    return Err(format!("Download error: {}", e));
+                }
             }
         }
 
-        Ok(bytes)
+        drop(file); // закрити файл
+
+        // Перевірити розмір
+        let actual_size = fs::metadata(&temp_path)
+            .map_err(|e| format!("Stat file: {}", e))?
+            .len();
+
+        if actual_size != info.size {
+            let _ = fs::remove_file(&temp_path);
+            *self.state.lock().unwrap() = UpdateState::Failed(format!("Size mismatch: {} != {}", actual_size, info.size));
+            return Err(format!("Size mismatch"));
+        }
+
+        // Перевірити SHA256
+        *self.state.lock().unwrap() = UpdateState::Installing;
+
+        let actual_hash = Self::calculate_sha256(&temp_path)?;
+        if actual_hash != info.sha256 {
+            let _ = fs::remove_file(&temp_path);
+            *self.state.lock().unwrap() = UpdateState::Failed("SHA256 mismatch".to_string());
+            return Err("SHA256 mismatch".to_string());
+        }
+
+        // Замінити exe
+        Self::replace_exe(&temp_path)?;
+
+        Ok(())
     }
 
-    /// Завантажити SHA256 контрольну суму
     #[cfg(target_os = "windows")]
-    fn download_sha256(url: &str) -> Result<String, String> {
-        let client = reqwest::blocking::Client::builder()
-            .user_agent("PixelVillage-Updater")
-            .build()
-            .map_err(|e| format!("HTTP клієнт: {}", e))?;
-
-        let text = client.get(url)
-            .send()
-            .map_err(|e| format!("HTTP запит: {}", e))?
-            .text()
-            .map_err(|e| format!("Читання тексту: {}", e))?;
-
-        // SHA256 файл має формат: "<hash>  <filename>"
-        Ok(text.split_whitespace().next().unwrap_or("").to_string())
-    }
-
-    /// Обчислити SHA256 хеш
-    #[cfg(target_os = "windows")]
-    fn calculate_sha256(data: &[u8]) -> String {
+    fn calculate_sha256(path: &std::path::Path) -> Result<String, String> {
         use sha2::{Sha256, Digest};
+
+        let mut file = File::open(path)
+            .map_err(|e| format!("Open file: {}", e))?;
         let mut hasher = Sha256::new();
-        hasher.update(data);
-        format!("{:x}", hasher.finalize())
+        let mut buffer = [0u8; 8192];
+
+        loop {
+            match file.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(n) => hasher.update(&buffer[..n]),
+                Err(e) => return Err(format!("Read error: {}", e)),
+            }
+        }
+
+        Ok(format!("{:x}", hasher.finalize()))
     }
 
-    /// Зберегти та замінити exe
     #[cfg(target_os = "windows")]
-    fn save_and_replace(bytes: Vec<u8>) -> Result<(), String> {
+    fn replace_exe(new_exe_path: &std::path::Path) -> Result<(), String> {
         let current_exe = std::env::current_exe()
-            .map_err(|e| format!("Не вдалось знайти поточний exe: {}", e))?;
+            .map_err(|e| format!("Get current exe: {}", e))?;
 
         let parent = current_exe.parent()
-            .ok_or("Не вдалось знайти батьківську папку")?;
+            .ok_or("No parent directory")?;
 
-        let new_exe = parent.join("PixelVillage.exe.new");
-
-        // Зберегти новий файл
-        fs::write(&new_exe, bytes)
-            .map_err(|e| format!("Помилка запису файлу: {}", e))?;
-
-        // Перейменувати поточний exe (Windows дозволяє це для запущеного процесу)
         let old_exe = parent.join("PixelVillage.exe.old");
-        fs::rename(&current_exe, &old_exe)
-            .map_err(|e| format!("Помилка перейменування поточного exe: {}", e))?;
 
-        // Перейменувати новий на основну назву
-        fs::rename(&new_exe, &current_exe)
-            .map_err(|e| {
-                // Rollback при помилці
+        // Перейменувати поточний → .old
+        fs::rename(&current_exe, &old_exe)
+            .map_err(|e| format!("Rename current: {}", e))?;
+
+        // Перейменувати new → поточний
+        match fs::rename(new_exe_path, &current_exe) {
+            Ok(_) => {}
+            Err(e) => {
+                // Rollback
                 let _ = fs::rename(&old_exe, &current_exe);
-                format!("Помилка встановлення нового exe: {}", e)
-            })?;
+                return Err(format!("Rename new: {}", e));
+            }
+        }
 
         // Запустити новий процес
         std::process::Command::new(&current_exe)
             .spawn()
-            .map_err(|e| format!("Помилка запуску оновленої гри: {}", e))?;
+            .map_err(|e| format!("Start new process: {}", e))?;
 
-        // Завершити поточний процес
+        // Завершити поточний
         std::process::exit(0);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    pub fn download_and_install(&self) -> Result<(), String> {
+        Err("Auto-update not supported on this platform".to_string())
     }
 
     /// Видалити старий backup при старті
@@ -291,39 +285,21 @@ impl Updater {
         if let Ok(current_exe) = std::env::current_exe() {
             if let Some(parent) = current_exe.parent() {
                 let old_exe = parent.join("PixelVillage.exe.old");
-                let _ = fs::remove_file(&old_exe); // Ігноруємо помилки
+                let _ = fs::remove_file(&old_exe);
             }
         }
     }
 
-    /// Заглушка для Android
-    #[cfg(target_os = "android")]
-    pub fn download_and_install(&mut self) -> Result<(), String> {
-        Err("Автооновлення на Android поки не реалізовано".to_string())
+    pub fn get_state(&self) -> UpdateState {
+        self.state.lock().unwrap().clone()
     }
 
-    /// Заглушка для інших платформ
-    #[cfg(not(any(target_os = "windows", target_os = "android")))]
-    pub fn download_and_install(&mut self) -> Result<(), String> {
-        Err("Автооновлення не підтримується на цій платформі".to_string())
+    pub fn retry(&self) {
+        *self.state.lock().unwrap() = UpdateState::Idle;
+        self.check_for_updates();
     }
 
-    /// Отримати прогрес завантаження (0.0 - 1.0)
-    pub fn get_progress(&self) -> f32 {
-        self.download_progress.lock().map(|p| *p).unwrap_or(0.0)
-    }
-
-    /// Отримати статус для UI
-    pub fn get_status_text(&self) -> String {
-        if self.checking {
-            "Перевірка оновлень...".to_string()
-        } else if self.downloading {
-            let progress = self.get_progress();
-            format!("⬇️ Завантаження... {:.0}%", progress * 100.0)
-        } else if let Some(ref info) = self.update_info {
-            format!("✨ Доступна версія {}", info.version)
-        } else {
-            String::new()
-        }
+    pub fn dismiss(&self) {
+        *self.state.lock().unwrap() = UpdateState::Idle;
     }
 }

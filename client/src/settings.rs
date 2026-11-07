@@ -95,7 +95,7 @@ fn settings_dir() -> PathBuf {
     }
     #[cfg(target_os = "android")]
     {
-        PathBuf::from("/data/data/com.example.pixelvillage/files")
+        PathBuf::from("/data/data/com.gertyn.pixelvillage/files")
     }
     #[cfg(not(target_os = "android"))]
     {

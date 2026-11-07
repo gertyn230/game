@@ -37,8 +37,8 @@ use world::*;
 
 /// Адрес сервера. При сборке можно задать переменной окружения PV_SERVER.
 const SERVER_URL: &str = match option_env!("PV_SERVER") {
-    Some(u) => u,
-    None => "ws://127.0.0.1:8080/ws",
+    Some(u) if !u.is_empty() => u,
+    _ => "ws://127.0.0.1:8080/ws",
 };
 const PLAYER_COLORS: [u32; 5] = [0xd94f4f, 0x4a6fa5, 0xc9a227, 0x8e5bb5, 0x2a9d8f];
 const CLIENT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -95,6 +95,14 @@ fn cost_text(r: &Recipe) -> String {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    // Перевірка SERVER_URL у release режимі
+    #[cfg(not(debug_assertions))]
+    {
+        if SERVER_URL.is_empty() || SERVER_URL.starts_with("ws://127.0.0.1") || SERVER_URL.starts_with("ws://localhost") {
+            panic!("PV_SERVER must be set to a valid remote server for release builds");
+        }
+    }
+
     // Видалити старі backup файли з попередніх оновлень
     updater::Updater::cleanup_old_version();
 
@@ -165,8 +173,8 @@ async fn main() {
 
     game_state.finish_loading();
 
-    // Перевірити оновлення у фоновому режимі
-    game_state.check_updates_in_background();
+    // Перевірити оновлення один раз при старті
+    game_state.check_updates_once();
 
     // Первый запуск: спрашиваем имя экранной клавиатурой.
     let mut name_edit: Option<String> = if env_name.is_none() && saved.as_ref().map_or(true, |s| s.name.is_empty()) { Some(name.clone()) } else { None };
@@ -799,21 +807,10 @@ async fn main() {
         }
 
         // Попередження про оновлення від сервера
-        if let Some(ref server_ver) = version_mismatch {
-            // Якщо сервер новіший - показати вікно оновлення
-            if !game_state.has_update() {
-                let msg = format!("⚠️ Сервер оновлено до версії {}", server_ver);
-                let msg2 = "Перевіряємо оновлення...";
-                let w = text_w(&font, &msg2, fs * 0.8).max(text_w(&font, &msg, fs * 0.95)) + fs * 2.0;
-                let y_pos = pad + fs * 8.5;
-                draw_rectangle(cx - w / 2.0, y_pos, w, fs * 3.2, ha(0xff6b00, 0.85));
-                draw_rectangle_lines(cx - w / 2.0, y_pos, w, fs * 3.2, 2.0, hx(0xffd700));
-                text_c(&font, &msg, cx, y_pos + fs * 1.0, fs * 0.95, WHITE);
-                text_c(&font, msg2, cx, y_pos + fs * 2.2, fs * 0.8, hx(0xffdd88));
-
-                // Запустити перевірку оновлень якщо ще не запущена
-                game_state.check_updates_in_background();
-            }
+        if version_mismatch.is_some() {
+            // Запустити перевірку оновлень один раз
+            game_state.check_updates_once();
+            version_mismatch = None; // не показувати більше
         }
         // шкала вываживания
         if g.fish.ph == 3 {
@@ -871,21 +868,8 @@ async fn main() {
         }
         ui.finish();
 
-        // Показати вікно оновлення (якщо доступне)
-        if game_state.has_update() {
-            if let Some(action) = game_state.draw_update_window(&font) {
-                match action {
-                    game_state::UpdateAction::Install => {
-                        if let Err(e) = game_state.install_update() {
-                            eprintln!("Помилка встановлення оновлення: {}", e);
-                        }
-                    }
-                    game_state::UpdateAction::Later => {
-                        // Закрити вікно - продовжити гру
-                    }
-                }
-            }
-        }
+        // Показати вікно оновлення (якщо є)
+        game_state.draw_update_window(&font);
 
         next_frame().await;
     }
