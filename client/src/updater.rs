@@ -1,6 +1,8 @@
 //! Система автоматичного оновлення гри
 
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
 
 #[derive(Deserialize, Serialize, Debug)]
 struct GitHubRelease {
@@ -22,13 +24,14 @@ pub struct UpdateInfo {
     pub download_url: String,
     pub changelog: String,
     pub size_mb: f32,
-    pub is_apk: bool,
 }
 
 pub struct Updater {
     pub current_version: String,
     pub update_info: Option<UpdateInfo>,
-    pub checking: bool,
+    pub downloading: bool,
+    pub download_progress: f32,
+    pub installing: bool,
     pub error: Option<String>,
 }
 
@@ -37,32 +40,28 @@ impl Updater {
         Self {
             current_version: current_version.to_string(),
             update_info: None,
-            checking: false,
+            downloading: false,
+            download_progress: 0.0,
+            installing: false,
             error: None,
         }
     }
 
     /// Перевірити наявність оновлень через GitHub API
     pub async fn check_for_updates(&mut self) -> Result<bool, String> {
-        self.checking = true;
-        self.error = None;
-
         let url = "https://api.github.com/repos/gertyn230/game/releases/latest";
 
         match self.fetch_latest_release(url).await {
             Ok(info) => {
                 if self.is_newer_version(&info.version) {
                     self.update_info = Some(info);
-                    self.checking = false;
                     Ok(true)
                 } else {
-                    self.checking = false;
                     Ok(false)
                 }
             }
             Err(e) => {
                 self.error = Some(e.clone());
-                self.checking = false;
                 Err(e)
             }
         }
@@ -71,8 +70,11 @@ impl Updater {
     /// Отримати інформацію про останній реліз з GitHub
     async fn fetch_latest_release(&self, url: &str) -> Result<UpdateInfo, String> {
         // Визначити платформу
-        let is_android = cfg!(target_os = "android");
-        let file_extension = if is_android { ".apk" } else { ".exe" };
+        let file_extension = if cfg!(target_os = "android") {
+            ".apk"
+        } else {
+            ".exe"
+        };
 
         // HTTP запит до GitHub API
         let response = macroquad::prelude::load_string(url)
@@ -98,8 +100,85 @@ impl Updater {
             download_url: asset.browser_download_url.clone(),
             changelog: release.body,
             size_mb,
-            is_apk: is_android,
         })
+    }
+
+    /// Завантажити та встановити оновлення автоматично
+    #[cfg(target_os = "windows")]
+    pub async fn download_and_install(&mut self) -> Result<(), String> {
+        if self.update_info.is_none() {
+            return Err("Немає інформації про оновлення".to_string());
+        }
+
+        let info = self.update_info.as_ref().unwrap();
+        self.downloading = true;
+        self.download_progress = 0.0;
+
+        // Завантажити файл
+        let bytes = macroquad::prelude::load_file(&info.download_url)
+            .await
+            .map_err(|e| format!("Помилка завантаження: {:?}", e))?;
+
+        self.download_progress = 1.0;
+        self.downloading = false;
+        self.installing = true;
+
+        // Зберегти у temp
+        let temp_path = std::env::temp_dir().join("PixelVillage_update.exe");
+        fs::write(&temp_path, bytes)
+            .map_err(|e| format!("Помилка збереження: {}", e))?;
+
+        // Встановити
+        self.install_update(&temp_path)?;
+
+        self.installing = false;
+        Ok(())
+    }
+
+    /// Встановити оновлення (Windows)
+    #[cfg(target_os = "windows")]
+    fn install_update(&self, update_path: &PathBuf) -> Result<(), String> {
+        let current_exe = std::env::current_exe()
+            .map_err(|e| format!("Не вдалося знайти поточний exe: {}", e))?;
+
+        let backup_path = current_exe.with_extension("exe.old");
+
+        // Backup поточного exe
+        if current_exe.exists() {
+            let _ = fs::copy(&current_exe, &backup_path);
+        }
+
+        // Замінити exe
+        fs::copy(update_path, &current_exe)
+            .map_err(|e| format!("Помилка заміни exe: {}", e))?;
+
+        // Видалити temp файл
+        let _ = fs::remove_file(update_path);
+
+        // Перезапустити гру
+        std::process::Command::new(&current_exe)
+            .spawn()
+            .map_err(|e| format!("Помилка перезапуску: {}", e))?;
+
+        // Вийти з поточного процесу
+        std::process::exit(0);
+    }
+
+    /// Заглушка для Android - просто відкриває браузер
+    #[cfg(target_os = "android")]
+    pub async fn download_and_install(&mut self) -> Result<(), String> {
+        if let Some(ref info) = self.update_info {
+            // На Android просто показуємо повідомлення
+            Err(format!("Оновлення доступне! Версія: {}. Завантажте APK вручну.", info.version))
+        } else {
+            Err("Немає інформації про оновлення".to_string())
+        }
+    }
+
+    /// Заглушка для інших платформ
+    #[cfg(not(any(target_os = "windows", target_os = "android")))]
+    pub async fn download_and_install(&mut self) -> Result<(), String> {
+        Err("Автооновлення не підтримується на цій платформі".to_string())
     }
 
     /// Перевірити чи нова версія новіша за поточну
@@ -129,54 +208,16 @@ impl Updater {
         false
     }
 
-    /// Отримати текст для показу в UI
-    pub fn get_update_text(&self) -> Option<String> {
-        if let Some(ref info) = self.update_info {
-            let platform = if info.is_apk { "APK" } else { "EXE" };
-            Some(format!(
-                "🎮 Нова версія {}!\n\n📦 Розмір: {:.1} MB\n💾 Тип: {}\n\n📝 Зміни:\n{}",
-                info.version, info.size_mb, platform, info.changelog
-            ))
+    /// Отримати статус оновлення для показу
+    pub fn get_status_text(&self) -> String {
+        if self.downloading {
+            format!("⬇️ Завантаження оновлення... {:.0}%", self.download_progress * 100.0)
+        } else if self.installing {
+            "⚙️ Встановлення оновлення...".to_string()
+        } else if let Some(ref info) = self.update_info {
+            format!("✨ Доступна версія {}", info.version)
         } else {
-            None
+            String::new()
         }
     }
-
-    /// Відкрити браузер для завантаження (для Desktop та Android)
-    pub fn open_download_page(&self) {
-        if let Some(ref info) = self.update_info {
-            // Для Android та Desktop - відкрити посилання в браузері
-            if let Err(e) = open_url(&info.download_url) {
-                eprintln!("Не вдалось відкрити браузер: {:?}", e);
-            }
-        }
-    }
-}
-
-/// Відкрити URL в браузері (кросплатформно)
-#[cfg(target_os = "windows")]
-fn open_url(url: &str) -> Result<(), String> {
-    std::process::Command::new("cmd")
-        .args(&["/c", "start", url])
-        .spawn()
-        .map_err(|e| format!("Помилка відкриття браузера: {}", e))?;
-    Ok(())
-}
-
-#[cfg(target_os = "android")]
-fn open_url(url: &str) -> Result<(), String> {
-    // На Android використовуємо JNI для відкриття браузера
-    // Для Android потрібна нативна інтеграція через quad-snd або інше рішення
-    // Поки що просто повертаємо помилку з URL
-    Err(format!("Відкрийте вручну: {}", url))
-}
-
-#[cfg(not(any(target_os = "windows", target_os = "android")))]
-fn open_url(url: &str) -> Result<(), String> {
-    // Linux/MacOS
-    std::process::Command::new("xdg-open")
-        .arg(url)
-        .spawn()
-        .map_err(|e| format!("Помилка відкриття браузера: {}", e))?;
-    Ok(())
 }
