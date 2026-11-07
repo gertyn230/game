@@ -9,7 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  build-windows:
+    name: Build Windows
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,6 +33,64 @@ jobs:
           $version = "${{ github.ref_name }}"
           Copy-Item "target/release/client.exe" "PixelVillage-$version-Windows.exe"
 
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-exe
+          path: PixelVillage-*.exe
+
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Add Android targets
+        run: |
+          rustup target add armv7-linux-androideabi
+          rustup target add aarch64-linux-android
+
+      - name: Setup Android NDK
+        run: |
+          export NDK_HOME="${ANDROID_NDK_LATEST_HOME:-$ANDROID_NDK_HOME}"
+          echo "NDK_HOME=$NDK_HOME" >> $GITHUB_ENV
+
+      - name: Install cargo-quad-apk
+        run: cargo install cargo-quad-apk
+
+      - name: Build APK
+        run: cd client && cargo quad-apk build --release
+
+      - name: Rename APK
+        run: |
+          version="${{ github.ref_name }}"
+          cp target/android-artifacts/release/apk/client.apk "PixelVillage-$version-Android.apk"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-apk
+          path: PixelVillage-*.apk
+
+  create-release:
+    name: Create Release
+    needs: [build-windows, build-android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Windows
+        uses: actions/download-artifact@v3
+        with:
+          name: windows-exe
+
+      - name: Download Android
+        uses: actions/download-artifact@v3
+        with:
+          name: android-apk
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -39,9 +98,24 @@ jobs:
           body: |
             🎮 **Pixel Village ${{ github.ref_name }}**
 
-            Auto-update system integrated!
+            ## ✨ Auto-update system integrated!
 
-            📥 Download: PixelVillage-${{ github.ref_name }}-Windows.exe
-          files: PixelVillage-*.exe
+            ## 📥 Downloads
+
+            - **Windows**: PixelVillage-${{ github.ref_name }}-Windows.exe
+            - **Android**: PixelVillage-${{ github.ref_name }}-Android.apk
+
+            ## 🎯 Features
+
+            - Built-in auto-update
+            - Cross-platform (Windows + Android)
+            - Survival & Crafting
+            - Multiplayer support
+
+            ---
+            **Developer:** @gertyn230 | **Channel:** @pixel_village
+          files: |
+            PixelVillage-*.exe
+            PixelVillage-*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
