@@ -41,7 +41,7 @@ const SERVER_URL: &str = match option_env!("PV_SERVER") {
     None => "ws://127.0.0.1:8080/ws",
 };
 const PLAYER_COLORS: [u32; 5] = [0xd94f4f, 0x4a6fa5, 0xc9a227, 0x8e5bb5, 0x2a9d8f];
-const CLIENT_VERSION: &str = "1.3.3";
+const CLIENT_VERSION: &str = "1.3.4";
 
 fn window_conf() -> Conf {
     Conf {
@@ -93,8 +93,54 @@ fn cost_text(r: &Recipe) -> String {
     r.cost.iter().map(|(it, n)| format!("{} ×{}", IT_NAMES[*it as usize], n)).collect::<Vec<_>>().join(", ")
 }
 
+/// Завершити оновлення - замінити старий exe на новий
+fn finish_update(old_exe_path: &str) {
+    use std::thread;
+    use std::time::Duration;
+
+    // Почекати 2 секунди поки старий процес закриється
+    thread::sleep(Duration::from_secs(2));
+
+    let old_exe = std::path::PathBuf::from(old_exe_path);
+    let current_exe = std::env::current_exe().unwrap();
+    let backup_exe = old_exe.with_extension("exe.old");
+
+    // Видалити старий backup якщо є
+    let _ = std::fs::remove_file(&backup_exe);
+
+    // Перейменувати старий exe в backup
+    if let Err(e) = std::fs::rename(&old_exe, &backup_exe) {
+        eprintln!("Помилка перейменування старого exe: {}", e);
+        return;
+    }
+
+    // Перейменувати новий exe (себе) в основний
+    if let Err(e) = std::fs::rename(&current_exe, &old_exe) {
+        eprintln!("Помилка перейменування нового exe: {}", e);
+        // Спроба відновити старий файл
+        let _ = std::fs::rename(&backup_exe, &old_exe);
+        return;
+    }
+
+    // Запустити оновлену гру
+    if let Err(e) = std::process::Command::new(&old_exe).spawn() {
+        eprintln!("Помилка запуску оновленої гри: {}", e);
+    }
+
+    // Видалити backup після успішного оновлення
+    thread::sleep(Duration::from_secs(1));
+    let _ = std::fs::remove_file(&backup_exe);
+}
+
 #[macroquad::main(window_conf)]
 async fn main() {
+    // Перевірити чи це запуск для завершення оновлення
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() >= 3 && args[1] == "--finish-update" {
+        finish_update(&args[2]);
+        return;
+    }
+
     simulate_mouse_with_touch(false);
     rand::srand(macroquad::miniquad::date::now() as u64);
     let font = load_ttf_font_from_bytes(include_bytes!("../assets/DejaVuSans.ttf")).expect("шрифт");

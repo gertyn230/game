@@ -135,36 +135,25 @@ impl Updater {
         Ok(())
     }
 
-    /// Встановити оновлення (Windows) через батник-скрипт
+    /// Встановити оновлення (Windows) через self-replace
     #[cfg(target_os = "windows")]
     fn install_update(&self, update_path: &PathBuf) -> Result<(), String> {
         let current_exe = std::env::current_exe()
             .map_err(|e| format!("Не вдалося знайти поточний exe: {}", e))?;
 
-        // Створити батник-скрипт для оновлення
-        let batch_path = current_exe.parent().unwrap().join("_update.bat");
+        let parent = current_exe.parent().unwrap();
+        let new_exe = parent.join("PixelVillage_new.exe");
 
-        let batch_content = format!(
-            r#"@echo off
-chcp 65001 >nul
-timeout /t 2 /nobreak >nul
-del /f /q "{current_exe}"
-move /y "{update_path}" "{current_exe}"
-start "" "{current_exe}"
-del /f /q "%~f0"
-"#,
-            current_exe = current_exe.display(),
-            update_path = update_path.display()
-        );
+        // Перемістити завантажений файл
+        fs::rename(update_path, &new_exe)
+            .map_err(|e| format!("Помилка переміщення: {}", e))?;
 
-        fs::write(&batch_path, batch_content)
-            .map_err(|e| format!("Помилка створення батника: {}", e))?;
-
-        // Запустити батник і вийти
-        std::process::Command::new("cmd")
-            .args(&["/c", "start", "/min", batch_path.to_str().unwrap()])
+        // Запустити новий exe з параметром --finish-update
+        std::process::Command::new(&new_exe)
+            .arg("--finish-update")
+            .arg(&current_exe)
             .spawn()
-            .map_err(|e| format!("Помилка запуску батника: {}", e))?;
+            .map_err(|e| format!("Помилка запуску оновлення: {}", e))?;
 
         // Вийти з поточного процесу
         std::process::exit(0);
