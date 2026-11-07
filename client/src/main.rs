@@ -41,7 +41,7 @@ const SERVER_URL: &str = match option_env!("PV_SERVER") {
     None => "ws://127.0.0.1:8080/ws",
 };
 const PLAYER_COLORS: [u32; 5] = [0xd94f4f, 0x4a6fa5, 0xc9a227, 0x8e5bb5, 0x2a9d8f];
-const CLIENT_VERSION: &str = "1.3.0";
+const CLIENT_VERSION: &str = "1.3.1";
 
 fn window_conf() -> Conf {
     Conf {
