@@ -1,0 +1,45 @@
+name: Build
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo build --release -p server
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-linux
+          path: target/release/server
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build client
+        env:
+          # Адрес вашего сервера, например wss://pixel-village.example.com/ws
+          PV_SERVER: ${{ vars.PV_SERVER }}
+        run: cargo build --release -p client
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PixelVillage-windows
+          path: target/release/client.exe
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build APK (cargo-quad-apk в Docker)
+        env:
+          PV_SERVER: ${{ vars.PV_SERVER }}
+        run: |
+          docker run --rm -e PV_SERVER \
+            -v "$(pwd)":/root/src -w /root/src/client \
+            notfl3/cargo-apk cargo quad-apk build --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PixelVillage-android
+          path: client/target/android-artifacts/release/apk/*.apk
