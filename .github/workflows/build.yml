@@ -1,1 +1,73 @@
-name: Build on:   push:   workflow_dispatch:  jobs:   server:     runs-on: ubuntu-latest     steps:       - uses: actions/checkout@v4       - run: cargo build --release -p server       - uses: actions/upload-artifact@v4         with:           name: server-linux           path: target/release/server    windows:     runs-on: windows-latest     steps:       - uses: actions/checkout@v4       - name: Build client         env:           # Server address, e.g. wss://pixel-village.example.com/ws           PV_SERVER: ${{ vars.PV_SERVER }}         run: cargo build --release -p client       - name: Package Windows release with assets         run: |           mkdir release-package           copy target\release\client.exe release-package\           xcopy /E /I client\assets release-package\assets       - uses: actions/upload-artifact@v4         with:           name: PixelVillage-windows           path: release-package\    android:     runs-on: ubuntu-latest     permissions:       contents: read     steps:       - uses: actions/checkout@v4       - name: Rust 1.95 and Android targets         run: |           rustup toolchain install 1.95.0 --profile minimal           rustup default 1.95.0           rustup target add armv7-linux-androideabi aarch64-linux-android       - name: Install cargo-quad-apk (fork with edition 2024 support)         run: cargo install --git https://github.com/hoklims/cargo-quad-apk cargo-quad-apk       - name: Android SDK         run: |           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"           yes | "$SDKM" --licenses > /dev/null || true           "$SDKM" "platforms;android-36" "build-tools;36.0.0"       - name: Build APK         env:           PV_SERVER: ${{ vars.PV_SERVER }}         run: |           export NDK_HOME="${ANDROID_NDK_LATEST_HOME:-$ANDROID_NDK_HOME}"           cd client           cargo quad-apk build --release       - uses: actions/upload-artifact@v4         with:           name: PixelVillage-android           path: |             target/android-artifacts/release/apk/*.apk             client/target/android-artifacts/release/apk/*.apk
+name: Build
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p server
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-linux
+          path: target/release/server
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Build client
+        env:
+          # Адрес сервера, например wss://pixel-village.example.com/ws
+          PV_SERVER: ${{ vars.PV_SERVER }}
+        run: cargo build --release -p client
+      - name: Package Windows release with assets
+        run: |
+          mkdir release-package
+          copy target\release\client.exe release-package\
+          xcopy /E /I client\assets release-package\assets
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PixelVillage-windows
+          path: release-package\
+
+  android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust 1.95 and Android targets
+        run: |
+          rustup toolchain install 1.95.0 --profile minimal
+          rustup default 1.95.0
+          rustup target add armv7-linux-androideabi aarch64-linux-android
+
+      - name: Install cargo-quad-apk (fork, Rust 1.95 compatible)
+        run: cargo +1.95.0 install --git https://github.com/hoklims/cargo-quad-apk cargo-quad-apk
+
+      - name: Android SDK
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Build APK
+        env:
+          PV_SERVER: ${{ vars.PV_SERVER }}
+        run: |
+          export NDK_HOME="${ANDROID_NDK_LATEST_HOME:-$ANDROID_NDK_HOME}"
+          cd client
+          cargo quad-apk build --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PixelVillage-android
+          path: |
+            target/android-artifacts/release/apk/*.apk
+            client/target/android-artifacts/release/apk/*.apk
