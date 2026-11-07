@@ -100,9 +100,36 @@ jobs:
           name: PixelVillage-android
           path: PixelVillage-android.apk
 
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxi-dev libgl1-mesa-dev libasound2-dev
+      - name: Build client
+        env:
+          PV_SERVER: ${{ vars.PV_SERVER }}
+        run: |
+          if [ -z "$PV_SERVER" ]; then
+            echo "Error: PV_SERVER variable is not set"
+            exit 1
+          fi
+          cargo build --release -p client
+      - name: Rename executable
+        run: |
+          cp target/release/client PixelVillage
+          chmod +x PixelVillage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PixelVillage-linux
+          path: PixelVillage
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [check-version, windows, android]
+    needs: [check-version, windows, android, linux]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -113,6 +140,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: PixelVillage-windows
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PixelVillage-linux
 
       - name: Download Android artifact
         uses: actions/download-artifact@v4
@@ -169,12 +201,14 @@ jobs:
 
             ## 📥 Завантажити
             - **Windows**: [PixelVillage.exe](https://github.com/gertyn230/game-releases/releases/download/${{ github.ref_name }}/PixelVillage.exe)
+            - **Linux**: [PixelVillage](https://github.com/gertyn230/game-releases/releases/download/${{ github.ref_name }}/PixelVillage)
             - **Android**: [PixelVillage-android.apk](https://github.com/gertyn230/game-releases/releases/download/${{ github.ref_name }}/PixelVillage-android.apk)
 
             ## 📱 Сайт
             https://gertyn230.github.io/game-releases/
           files: |
             PixelVillage.exe
+            PixelVillage
             latest.json
             PixelVillage-android.apk
         env:
