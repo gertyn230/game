@@ -5,6 +5,12 @@ use crate::i18n::get_texts;
 use crate::updater::Updater;
 use macroquad::prelude::*;
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum UpdateAction {
+    Install,
+    Later,
+}
+
 pub struct GameStateManager {
     pub menu: Menu,
     pub in_game: bool,
@@ -24,49 +30,181 @@ impl GameStateManager {
         }
     }
 
-    /// Перевірити оновлення і автоматично встановити (викликати після завантаження)
-    pub async fn check_and_auto_update(&mut self) {
-        // Перевірити наявність оновлень
-        match self.updater.check_for_updates().await {
-            Ok(has_update) => {
-                if has_update {
-                    // Автоматично завантажити і встановити
-                    let _ = self.updater.download_and_install().await;
-                }
-            }
-            Err(_) => {
-                // Тихо ігноруємо помилки перевірки оновлень
-            }
-        }
+    /// Перевірити оновлення у фоновому режимі (викликати після завантаження)
+    pub fn check_updates_in_background(&mut self) {
+        self.updater.check_for_updates_async();
     }
 
-    /// Показати статус оновлення внизу екрану (якщо завантажується)
-    pub fn draw_update_status(&self, font: &Font) {
-        let status = self.updater.get_status_text();
-        if !status.is_empty() {
-            let (sw, sh) = (screen_width(), screen_height());
+    /// Чи є доступне оновлення
+    pub fn has_update(&self) -> bool {
+        self.updater.update_info.is_some()
+    }
 
-            // Малий бар внизу екрану
-            let bar_w = 300.0;
-            let bar_h = 40.0;
-            let bar_x = (sw - bar_w) / 2.0;
-            let bar_y = sh - 60.0;
+    /// Отримати інформацію про оновлення
+    pub fn get_update_info(&self) -> Option<&crate::updater::UpdateInfo> {
+        self.updater.update_info.as_ref()
+    }
 
-            draw_rectangle(bar_x, bar_y, bar_w, bar_h, Color::from_rgba(30, 30, 40, 200));
-            draw_rectangle_lines(bar_x, bar_y, bar_w, bar_h, 2.0, Color::from_rgba(100, 150, 255, 255));
+    /// Встановити оновлення (показати UI з кнопкою)
+    pub fn install_update(&mut self) -> Result<(), String> {
+        self.updater.download_and_install()
+    }
 
+    /// Показати вікно оновлення з кнопками
+    pub fn draw_update_window(&mut self, font: &Font) -> Option<UpdateAction> {
+        if self.updater.update_info.is_none() {
+            return None;
+        }
+
+        let (sw, sh) = (screen_width(), screen_height());
+
+        // Напівпрозорий фон
+        draw_rectangle(0.0, 0.0, sw, sh, Color::from_rgba(0, 0, 0, 180));
+
+        // Вікно
+        let w = 600.0;
+        let h = 400.0;
+        let x = (sw - w) / 2.0;
+        let y = (sh - h) / 2.0;
+
+        draw_rectangle(x, y, w, h, Color::from_rgba(30, 30, 40, 255));
+        draw_rectangle_lines(x, y, w, h, 3.0, Color::from_rgba(100, 150, 255, 255));
+
+        let info = self.updater.update_info.as_ref().unwrap();
+
+        // Заголовок
+        let title = format!("Доступна версія {}", info.version);
+        draw_text_ex(
+            &title,
+            x + 20.0,
+            y + 40.0,
+            TextParams {
+                font: Some(font),
+                font_size: 28,
+                color: Color::from_rgba(100, 200, 255, 255),
+                ..Default::default()
+            },
+        );
+
+        // Розмір
+        let size_text = format!("Розмір: {:.1} МБ", info.size_mb);
+        draw_text_ex(
+            &size_text,
+            x + 20.0,
+            y + 80.0,
+            TextParams {
+                font: Some(font),
+                font_size: 18,
+                color: WHITE,
+                ..Default::default()
+            },
+        );
+
+        // Changelog (перші 5 рядків)
+        let changelog_lines: Vec<&str> = info.changelog.lines().take(5).collect();
+        for (i, line) in changelog_lines.iter().enumerate() {
             draw_text_ex(
-                &status,
-                bar_x + 10.0,
-                bar_y + 26.0,
+                line,
+                x + 20.0,
+                y + 120.0 + i as f32 * 25.0,
                 TextParams {
                     font: Some(font),
                     font_size: 16,
-                    color: WHITE,
+                    color: Color::from_rgba(200, 200, 200, 255),
                     ..Default::default()
                 },
             );
         }
+
+        // Статус завантаження
+        if self.updater.downloading {
+            let progress = self.updater.get_progress();
+            let bar_y = y + h - 100.0;
+            let bar_w = w - 40.0;
+            let bar_h = 30.0;
+
+            draw_rectangle(x + 20.0, bar_y, bar_w, bar_h, Color::from_rgba(50, 50, 60, 255));
+            draw_rectangle(x + 20.0, bar_y, bar_w * progress, bar_h, Color::from_rgba(100, 200, 100, 255));
+
+            let progress_text = format!("Завантаження... {:.0}%", progress * 100.0);
+            draw_text_ex(
+                &progress_text,
+                x + 20.0,
+                bar_y - 10.0,
+                TextParams {
+                    font: Some(font),
+                    font_size: 18,
+                    color: WHITE,
+                    ..Default::default()
+                },
+            );
+        } else {
+            // Кнопки
+            let btn_w = 200.0;
+            let btn_h = 50.0;
+            let btn_y = y + h - 80.0;
+            let install_x = x + (w - btn_w * 2.0 - 20.0) / 2.0;
+            let later_x = install_x + btn_w + 20.0;
+
+            // Кнопка "Встановити"
+            let mouse_pos = macroquad::input::mouse_position();
+            let mouse_on_install = mouse_pos.0 >= install_x && mouse_pos.0 <= install_x + btn_w
+                && mouse_pos.1 >= btn_y && mouse_pos.1 <= btn_y + btn_h;
+
+            let install_color = if mouse_on_install {
+                Color::from_rgba(80, 180, 80, 255)
+            } else {
+                Color::from_rgba(60, 140, 60, 255)
+            };
+
+            draw_rectangle(install_x, btn_y, btn_w, btn_h, install_color);
+            draw_rectangle_lines(install_x, btn_y, btn_w, btn_h, 2.0, WHITE);
+            draw_text_ex(
+                "Встановити",
+                install_x + 45.0,
+                btn_y + 33.0,
+                TextParams {
+                    font: Some(font),
+                    font_size: 20,
+                    color: WHITE,
+                    ..Default::default()
+                },
+            );
+
+            if mouse_on_install && macroquad::input::is_mouse_button_pressed(macroquad::input::MouseButton::Left) {
+                return Some(UpdateAction::Install);
+            }
+
+            // Кнопка "Пізніше"
+            let mouse_on_later = mouse_pos.0 >= later_x && mouse_pos.0 <= later_x + btn_w
+                && mouse_pos.1 >= btn_y && mouse_pos.1 <= btn_y + btn_h;
+
+            let later_color = if mouse_on_later {
+                Color::from_rgba(100, 100, 120, 255)
+            } else {
+                Color::from_rgba(70, 70, 90, 255)
+            };
+
+            draw_rectangle(later_x, btn_y, btn_w, btn_h, later_color);
+            draw_rectangle_lines(later_x, btn_y, btn_w, btn_h, 2.0, WHITE);
+            draw_text_ex(
+                "Пізніше",
+                later_x + 60.0,
+                btn_y + 33.0,
+                TextParams {
+                    font: Some(font),
+                    font_size: 20,
+                    color: WHITE,
+                    ..Default::default()
+                },
+            );
+
+            if mouse_on_later && macroquad::input::is_mouse_button_pressed(macroquad::input::MouseButton::Left) {
+                return Some(UpdateAction::Later);
+            }
+        }
+
+        None
     }
 
     pub fn update(&mut self, font: &Font, settings: &mut Settings) -> bool {

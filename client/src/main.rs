@@ -41,7 +41,7 @@ const SERVER_URL: &str = match option_env!("PV_SERVER") {
     None => "ws://127.0.0.1:8080/ws",
 };
 const PLAYER_COLORS: [u32; 5] = [0xd94f4f, 0x4a6fa5, 0xc9a227, 0x8e5bb5, 0x2a9d8f];
-const CLIENT_VERSION: &str = "1.3.4";
+const CLIENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn window_conf() -> Conf {
     Conf {
@@ -93,53 +93,10 @@ fn cost_text(r: &Recipe) -> String {
     r.cost.iter().map(|(it, n)| format!("{} ×{}", IT_NAMES[*it as usize], n)).collect::<Vec<_>>().join(", ")
 }
 
-/// Завершити оновлення - замінити старий exe на новий
-fn finish_update(old_exe_path: &str) {
-    use std::thread;
-    use std::time::Duration;
-
-    // Почекати 2 секунди поки старий процес закриється
-    thread::sleep(Duration::from_secs(2));
-
-    let old_exe = std::path::PathBuf::from(old_exe_path);
-    let current_exe = std::env::current_exe().unwrap();
-    let backup_exe = old_exe.with_extension("exe.old");
-
-    // Видалити старий backup якщо є
-    let _ = std::fs::remove_file(&backup_exe);
-
-    // Перейменувати старий exe в backup
-    if let Err(e) = std::fs::rename(&old_exe, &backup_exe) {
-        eprintln!("Помилка перейменування старого exe: {}", e);
-        return;
-    }
-
-    // Перейменувати новий exe (себе) в основний
-    if let Err(e) = std::fs::rename(&current_exe, &old_exe) {
-        eprintln!("Помилка перейменування нового exe: {}", e);
-        // Спроба відновити старий файл
-        let _ = std::fs::rename(&backup_exe, &old_exe);
-        return;
-    }
-
-    // Запустити оновлену гру
-    if let Err(e) = std::process::Command::new(&old_exe).spawn() {
-        eprintln!("Помилка запуску оновленої гри: {}", e);
-    }
-
-    // Видалити backup після успішного оновлення
-    thread::sleep(Duration::from_secs(1));
-    let _ = std::fs::remove_file(&backup_exe);
-}
-
 #[macroquad::main(window_conf)]
 async fn main() {
-    // Перевірити чи це запуск для завершення оновлення
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() >= 3 && args[1] == "--finish-update" {
-        finish_update(&args[2]);
-        return;
-    }
+    // Видалити старі backup файли з попередніх оновлень
+    updater::Updater::cleanup_old_version();
 
     simulate_mouse_with_touch(false);
     rand::srand(macroquad::miniquad::date::now() as u64);
@@ -208,8 +165,8 @@ async fn main() {
 
     game_state.finish_loading();
 
-    // Автоматично перевірити і встановити оновлення
-    game_state.check_and_auto_update().await;
+    // Перевірити оновлення у фоновому режимі
+    game_state.check_updates_in_background();
 
     // Первый запуск: спрашиваем имя экранной клавиатурой.
     let mut name_edit: Option<String> = if env_name.is_none() && saved.as_ref().map_or(true, |s| s.name.is_empty()) { Some(name.clone()) } else { None };
@@ -223,8 +180,6 @@ async fn main() {
     let mut my_id: Option<u32> = None;
     let mut connected = false;
     let mut version_mismatch: Option<String> = None;
-    let mut update_in_progress = false;
-    let mut update_message: Option<String> = None;
     let mut others: HashMap<u32, Other> = HashMap::new();
     let mut online = 0usize;
     let mut market: Vec<Offer> = vec![];
@@ -429,13 +384,8 @@ async fn main() {
         if !typing && is_key_pressed(KeyCode::M) || is_key_pressed(KeyCode::Tab) {
             cmds.push(if ui.menu { Cmd::Close } else { Cmd::Menu });
         }
-        // Обробка клавіші U для автооновлення
-        if !typing && version_mismatch.is_some() && is_key_pressed(KeyCode::U) && !update_in_progress {
-            update_in_progress = true;
-            update_message = Some("🔄 Завантаження оновлення...".to_string());
-            // TODO: Запустити завантаження оновлення в окремому потоці
-            // Поки що просто показуємо повідомлення
-        }
+        // ---------- ввод ----------
+        let typing = name_edit.is_some() || ui.menu;
         for c in cmds {
             match c {
                 Cmd::Eat => {
@@ -847,24 +797,22 @@ async fn main() {
             draw_rectangle(cx - w / 2.0, pad + fs * 5.2, w, fs * 1.9, ha(0x000000, 0.7));
             label(&font, &g.msg, cx, pad + fs * 6.5, fs * 1.1);
         }
-        // Попередження про оновлення
+
+        // Попередження про оновлення від сервера
         if let Some(ref server_ver) = version_mismatch {
-            if let Some(ref msg) = update_message {
-                // Показати статус оновлення
-                let w = text_w(&font, msg, fs * 0.9) + fs * 2.0;
-                let y_pos = pad + fs * 8.5;
-                draw_rectangle(cx - w / 2.0, y_pos, w, fs * 2.0, ha(0x00aa00, 0.85));
-                draw_rectangle_lines(cx - w / 2.0, y_pos, w, fs * 2.0, 2.0, hx(0x00ff00));
-                text_c(&font, msg, cx, y_pos + fs * 1.2, fs * 0.9, WHITE);
-            } else {
-                let msg = format!("⚠️ Доступна нова версія {}!", server_ver);
-                let msg2 = "Натисніть U для автоматичного оновлення або завантажте з GitHub";
+            // Якщо сервер новіший - показати вікно оновлення
+            if !game_state.has_update() {
+                let msg = format!("⚠️ Сервер оновлено до версії {}", server_ver);
+                let msg2 = "Перевіряємо оновлення...";
                 let w = text_w(&font, &msg2, fs * 0.8).max(text_w(&font, &msg, fs * 0.95)) + fs * 2.0;
                 let y_pos = pad + fs * 8.5;
                 draw_rectangle(cx - w / 2.0, y_pos, w, fs * 3.2, ha(0xff6b00, 0.85));
                 draw_rectangle_lines(cx - w / 2.0, y_pos, w, fs * 3.2, 2.0, hx(0xffd700));
                 text_c(&font, &msg, cx, y_pos + fs * 1.0, fs * 0.95, WHITE);
                 text_c(&font, msg2, cx, y_pos + fs * 2.2, fs * 0.8, hx(0xffdd88));
+
+                // Запустити перевірку оновлень якщо ще не запущена
+                game_state.check_updates_in_background();
             }
         }
         // шкала вываживания
@@ -923,8 +871,21 @@ async fn main() {
         }
         ui.finish();
 
-        // Показати статус оновлення (якщо завантажується)
-        game_state.draw_update_status(&font);
+        // Показати вікно оновлення (якщо доступне)
+        if game_state.has_update() {
+            if let Some(action) = game_state.draw_update_window(&font) {
+                match action {
+                    game_state::UpdateAction::Install => {
+                        if let Err(e) = game_state.install_update() {
+                            eprintln!("Помилка встановлення оновлення: {}", e);
+                        }
+                    }
+                    game_state::UpdateAction::Later => {
+                        // Закрити вікно - продовжити гру
+                    }
+                }
+            }
+        }
 
         next_frame().await;
     }

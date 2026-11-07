@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["shared", "server", "client", "launcher"]
+members = ["shared", "server", "client"]
 
 [profile.release]
 opt-level = 3
