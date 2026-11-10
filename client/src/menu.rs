@@ -555,27 +555,94 @@ impl Menu {
         let (sw, sh) = (screen_width(), screen_height());
         let fs = (sw.min(sh) * 0.04).max(16.0);
 
-        // Напівпрозорий фон
-        draw_rectangle(0.0, 0.0, sw, sh, Color::from_rgba(0, 0, 0, 200));
+        // Напівпрозорий фон з blur ефектом
+        draw_rectangle(0.0, 0.0, sw, sh, Color::from_rgba(0, 0, 0, 220));
 
-        // Панель налаштувань
-        let panel_width = sw * 0.7;
-        let panel_height = sh * 0.8;
+        // Панель налаштувань (більша і красивіша)
+        let panel_width = (sw * 0.8).min(900.0);
+        let panel_height = (sh * 0.85).min(700.0);
         let panel_x = (sw - panel_width) / 2.0;
         let panel_y = (sh - panel_height) / 2.0;
 
-        // Тінь панелі
-        draw_rectangle(panel_x + 6.0, panel_y + 6.0, panel_width, panel_height, Color::from_rgba(0, 0, 0, 120));
+        // М'яка тінь (багатошарова)
+        for i in 0..8 {
+            let offset = (8 - i) as f32 * 1.5;
+            let alpha = 30 - i * 3;
+            draw_rectangle(
+                panel_x + offset,
+                panel_y + offset,
+                panel_width,
+                panel_height,
+                Color::from_rgba(0, 0, 0, alpha)
+            );
+        }
 
-        // Панель
-        draw_rectangle(panel_x, panel_y, panel_width, panel_height, Color::from_rgba(29, 31, 27, 255));
-        draw_rectangle_lines(panel_x, panel_y, panel_width, panel_height, 3.0, Color::from_rgba(42, 157, 143, 255));
+        // Градієнтний фон панелі
+        for i in 0..20 {
+            let y_step = panel_height / 20.0;
+            let alpha_top = 240;
+            let alpha_bottom = 200;
+            let alpha = (alpha_top as f32 + (alpha_bottom - alpha_top) as f32 * (i as f32 / 20.0)) as u8;
+            draw_rectangle(
+                panel_x,
+                panel_y + i as f32 * y_step,
+                panel_width,
+                y_step,
+                Color::from_rgba(29, 31, 27, alpha)
+            );
+        }
 
-        // Заголовок
+        // Декоративна верхня смуга з градієнтом
+        let header_height = 80.0;
+        for i in 0..header_height as i32 {
+            let progress = i as f32 / header_height;
+            let color = Color::from_rgba(
+                (42.0 + progress * 10.0) as u8,
+                (157.0 - progress * 20.0) as u8,
+                (143.0 - progress * 20.0) as u8,
+                255
+            );
+            draw_rectangle(panel_x, panel_y + i as f32, panel_width, 1.0, color);
+        }
+
+        // Рамка з подвійною обводкою
+        draw_rectangle_lines(panel_x, panel_y, panel_width, panel_height, 4.0, Color::from_rgba(42, 157, 143, 255));
+        draw_rectangle_lines(panel_x + 4.0, panel_y + 4.0, panel_width - 8.0, panel_height - 8.0, 2.0, Color::from_rgba(236, 232, 220, 80));
+
+        // Декоративні кутові елементи
+        let corner_size = 20.0;
+        let corner_color = Color::from_rgba(42, 157, 143, 255);
+        // Ліво-верх
+        draw_rectangle(panel_x + 15.0, panel_y + 15.0, corner_size, 3.0, corner_color);
+        draw_rectangle(panel_x + 15.0, panel_y + 15.0, 3.0, corner_size, corner_color);
+        // Право-верх
+        draw_rectangle(panel_x + panel_width - 15.0 - corner_size, panel_y + 15.0, corner_size, 3.0, corner_color);
+        draw_rectangle(panel_x + panel_width - 18.0, panel_y + 15.0, 3.0, corner_size, corner_color);
+        // Ліво-низ
+        draw_rectangle(panel_x + 15.0, panel_y + panel_height - 18.0, corner_size, 3.0, corner_color);
+        draw_rectangle(panel_x + 15.0, panel_y + panel_height - 15.0 - corner_size, 3.0, corner_size, corner_color);
+        // Право-низ
+        draw_rectangle(panel_x + panel_width - 15.0 - corner_size, panel_y + panel_height - 18.0, corner_size, 3.0, corner_color);
+        draw_rectangle(panel_x + panel_width - 18.0, panel_y + panel_height - 15.0 - corner_size, 3.0, corner_size, corner_color);
+
+        // Заголовок з іконкою
+        let title_icon = "⚙️";
+        let title_text = texts.settings;
         draw_text_ex(
-            texts.settings,
-            panel_x + 30.0,
-            panel_y + 50.0,
+            title_icon,
+            panel_x + 35.0,
+            panel_y + 55.0,
+            TextParams {
+                font: Some(font),
+                font_size: (fs * 2.2) as u16,
+                color: Color::from_rgba(255, 220, 100, 255),
+                ..Default::default()
+            },
+        );
+        draw_text_ex(
+            title_text,
+            panel_x + 90.0,
+            panel_y + 53.0,
             TextParams {
                 font: Some(font),
                 font_size: (fs * 2.0) as u16,
@@ -584,94 +651,102 @@ impl Menu {
             },
         );
 
-        // Налаштування мови
-        let mut y_offset = panel_y + 120.0;
-        draw_text_ex(
-            texts.language,
-            panel_x + 50.0,
-            y_offset,
-            TextParams {
-                font: Some(font),
-                font_size: (fs * 1.2) as u16,
-                color: Color::from_rgba(236, 232, 220, 255),
-                ..Default::default()
-            },
-        );
+        // Контент починається нижче заголовка
+        let content_y = panel_y + header_height + 30.0;
+        let mut y_offset = content_y;
+        let left_margin = panel_x + 40.0;
 
-        // Кнопки вибору мови
+        // ===== СЕКЦІЯ: МОВА =====
+        draw_section_header(font, "🌍 ", texts.language, left_margin, y_offset, fs);
+        y_offset += 50.0;
+
+        // Кнопки мови в ряд (горизонтально)
         let lang_buttons = [
             ("🇺🇦 Українська", Language::Ukrainian),
             ("🇬🇧 English", Language::English),
             ("🇷🇺 Русский", Language::Russian),
         ];
 
-        y_offset += 40.0;
-        for (label, lang) in lang_buttons.iter() {
-            let btn_x = panel_x + 50.0;
-            let btn_width = 200.0;
-            let btn_height = 45.0;
+        let btn_width = 160.0;
+        let btn_height = 50.0;
+        let btn_spacing = 15.0;
+        let start_x = left_margin;
+
+        for (i, (label, lang)) in lang_buttons.iter().enumerate() {
+            let btn_x = start_x + i as f32 * (btn_width + btn_spacing);
             let hovered = is_button_hovered(btn_x, y_offset, btn_width, btn_height);
             let selected = settings.language == *lang;
 
-            let btn_color = if selected {
-                Color::from_rgba(42, 157, 143, 255)
-            } else if hovered {
-                Color::from_rgba(67, 71, 62, 200)
-            } else {
-                Color::from_rgba(67, 71, 62, 150)
-            };
-
-            draw_rectangle(btn_x, y_offset, btn_width, btn_height, btn_color);
-            draw_rectangle_lines(btn_x, y_offset, btn_width, btn_height, 2.0, Color::from_rgba(236, 232, 220, 100));
-
-            let text_measure = measure_text(label, Some(font), fs as u16, 1.0);
-            draw_text_ex(
-                label,
-                btn_x + (btn_width - text_measure.width) / 2.0,
-                y_offset + (btn_height + text_measure.height) / 2.0,
-                TextParams {
-                    font: Some(font),
-                    font_size: fs as u16,
-                    color: Color::from_rgba(236, 232, 220, 255),
-                    ..Default::default()
-                },
+            draw_modern_button(
+                btn_x, y_offset, btn_width, btn_height,
+                label, font, fs,
+                selected, hovered
             );
 
             if hovered && is_mouse_button_pressed(MouseButton::Left) {
                 settings.language = *lang;
             }
-
-            y_offset += btn_height + 10.0;
         }
 
-        // Кнопка "Назад"
-        let back_btn_width = 150.0;
-        let back_btn_height = 50.0;
+        y_offset += btn_height + 40.0;
+
+        // ===== СЕКЦІЯ: АУДІО =====
+        draw_section_header(font, "🔊 ", "Аудіо", left_margin, y_offset, fs);
+        y_offset += 50.0;
+
+        // Музика
+        let (music_changed, new_music_enabled) = draw_toggle(
+            font, "🎵 Музика", left_margin, y_offset, fs, settings.music_enabled
+        );
+        if music_changed {
+            settings.music_enabled = new_music_enabled;
+        }
+        y_offset += 35.0;
+
+        // Гучність музики (якщо увімкнена)
+        if settings.music_enabled {
+            let slider_width = panel_width - 180.0;
+            let new_volume = draw_slider(
+                font, "   Гучність", left_margin + 30.0, y_offset,
+                slider_width, fs, settings.music_volume
+            );
+            settings.music_volume = new_volume;
+            y_offset += 45.0;
+        } else {
+            y_offset += 10.0;
+        }
+
+        // Звуки
+        let (sound_changed, new_sound_enabled) = draw_toggle(
+            font, "🔔 Звуки", left_margin, y_offset, fs, settings.sounds_enabled
+        );
+        if sound_changed {
+            settings.sounds_enabled = new_sound_enabled;
+        }
+        y_offset += 35.0;
+
+        // Гучність звуків (якщо увімкнені)
+        if settings.sounds_enabled {
+            let slider_width = panel_width - 180.0;
+            let new_volume = draw_slider(
+                font, "   Гучність", left_margin + 30.0, y_offset,
+                slider_width, fs, settings.sound_volume
+            );
+            settings.sound_volume = new_volume;
+            y_offset += 45.0;
+        }
+
+        // Кнопка "Зберегти і вийти" внизу
+        let back_btn_width = 220.0;
+        let back_btn_height = 55.0;
         let back_btn_x = panel_x + panel_width - back_btn_width - 30.0;
-        let back_btn_y = panel_y + panel_height - back_btn_height - 30.0;
+        let back_btn_y = panel_y + panel_height - back_btn_height - 25.0;
 
         let back_hovered = is_button_hovered(back_btn_x, back_btn_y, back_btn_width, back_btn_height);
-        let back_color = if back_hovered {
-            Color::from_rgba(42, 157, 143, 255)
-        } else {
-            Color::from_rgba(67, 71, 62, 255)
-        };
 
-        draw_rectangle(back_btn_x, back_btn_y, back_btn_width, back_btn_height, back_color);
-        draw_rectangle_lines(back_btn_x, back_btn_y, back_btn_width, back_btn_height, 2.0, Color::from_rgba(236, 232, 220, 150));
-
-        let back_text = texts.close;
-        let back_measure = measure_text(back_text, Some(font), (fs * 1.2) as u16, 1.0);
-        draw_text_ex(
-            back_text,
-            back_btn_x + (back_btn_width - back_measure.width) / 2.0,
-            back_btn_y + (back_btn_height + back_measure.height) / 2.0,
-            TextParams {
-                font: Some(font),
-                font_size: (fs * 1.2) as u16,
-                color: Color::from_rgba(236, 232, 220, 255),
-                ..Default::default()
-            },
+        draw_action_button(
+            back_btn_x, back_btn_y, back_btn_width, back_btn_height,
+            "✓ Зберегти", font, fs * 1.3, back_hovered
         );
 
         if back_hovered && is_mouse_button_pressed(MouseButton::Left) {
@@ -710,3 +785,272 @@ fn is_button_hovered(x: f32, y: f32, width: f32, height: f32) -> bool {
 
     false
 }
+
+// Малює заголовок секції
+fn draw_section_header(font: &Font, icon: &str, text: &str, x: f32, y: f32, fs: f32) {
+    let full_text = format!("{}{}", icon, text);
+    draw_text_ex(
+        &full_text,
+        x,
+        y,
+        TextParams {
+            font: Some(font),
+            font_size: (fs * 1.5) as u16,
+            color: Color::from_rgba(42, 157, 143, 255),
+            ..Default::default()
+        },
+    );
+    // Декоративна лінія під заголовком
+    draw_rectangle(x, y + 8.0, 250.0, 2.0, Color::from_rgba(42, 157, 143, 100));
+}
+
+// Малює сучасну кнопку
+fn draw_modern_button(
+    x: f32, y: f32, width: f32, height: f32,
+    label: &str, font: &Font, fs: f32,
+    selected: bool, hovered: bool
+) {
+    // Тінь
+    if hovered || selected {
+        draw_rectangle(x + 3.0, y + 3.0, width, height, Color::from_rgba(0, 0, 0, 80));
+    }
+
+    // Фон кнопки
+    let btn_color = if selected {
+        Color::from_rgba(42, 157, 143, 255)
+    } else if hovered {
+        Color::from_rgba(67, 71, 62, 230)
+    } else {
+        Color::from_rgba(67, 71, 62, 180)
+    };
+    draw_rectangle(x, y, width, height, btn_color);
+
+    // Внутрішня обводка (якщо обрано)
+    if selected {
+        draw_rectangle_lines(x + 3.0, y + 3.0, width - 6.0, height - 6.0, 2.0, Color::from_rgba(255, 255, 255, 100));
+    }
+
+    // Зовнішня рамка
+    let border_color = if selected {
+        Color::from_rgba(42, 157, 143, 255)
+    } else {
+        Color::from_rgba(236, 232, 220, 120)
+    };
+    draw_rectangle_lines(x, y, width, height, 2.0, border_color);
+
+    // Текст
+    let text_measure = measure_text(label, Some(font), (fs * 1.05) as u16, 1.0);
+    let text_color = if selected || hovered {
+        Color::from_rgba(236, 232, 220, 255)
+    } else {
+        Color::from_rgba(236, 232, 220, 200)
+    };
+    draw_text_ex(
+        label,
+        x + (width - text_measure.width) / 2.0,
+        y + (height + text_measure.height) / 2.0,
+        TextParams {
+            font: Some(font),
+            font_size: (fs * 1.05) as u16,
+            color: text_color,
+            ..Default::default()
+        },
+    );
+}
+
+// Малює перемикач (toggle)
+fn draw_toggle(font: &Font, label: &str, x: f32, y: f32, fs: f32, enabled: bool) -> (bool, bool) {
+    // Текст
+    draw_text_ex(
+        label,
+        x,
+        y + 15.0,
+        TextParams {
+            font: Some(font),
+            font_size: (fs * 1.1) as u16,
+            color: Color::from_rgba(236, 232, 220, 255),
+            ..Default::default()
+        },
+    );
+
+    // Перемикач справа від тексту
+    let label_width = measure_text(label, Some(font), (fs * 1.1) as u16, 1.0).width;
+    let toggle_x = x + label_width + 20.0;
+    let toggle_y = y;
+    let toggle_width = 60.0;
+    let toggle_height = 28.0;
+    let toggle_radius = toggle_height / 2.0;
+
+    let hovered = is_button_hovered(toggle_x, toggle_y, toggle_width, toggle_height);
+    let clicked = hovered && is_mouse_button_pressed(MouseButton::Left);
+
+    // Фон перемикача
+    let bg_color = if enabled {
+        Color::from_rgba(42, 157, 143, 255)
+    } else {
+        Color::from_rgba(80, 80, 80, 255)
+    };
+
+    // Округлений прямокутник (імітація)
+    draw_rectangle(toggle_x + toggle_radius, toggle_y, toggle_width - toggle_height, toggle_height, bg_color);
+    draw_circle(toggle_x + toggle_radius, toggle_y + toggle_radius, toggle_radius, bg_color);
+    draw_circle(toggle_x + toggle_width - toggle_radius, toggle_y + toggle_radius, toggle_radius, bg_color);
+
+    // Рамка
+    draw_circle_lines(toggle_x + toggle_radius, toggle_y + toggle_radius, toggle_radius, 2.0, Color::from_rgba(236, 232, 220, 100));
+    draw_circle_lines(toggle_x + toggle_width - toggle_radius, toggle_y + toggle_radius, toggle_radius, 2.0, Color::from_rgba(236, 232, 220, 100));
+    draw_line(toggle_x + toggle_radius, toggle_y, toggle_x + toggle_width - toggle_radius, toggle_y, 2.0, Color::from_rgba(236, 232, 220, 100));
+    draw_line(toggle_x + toggle_radius, toggle_y + toggle_height, toggle_x + toggle_width - toggle_radius, toggle_y + toggle_height, 2.0, Color::from_rgba(236, 232, 220, 100));
+
+    // Кружечок всередині
+    let knob_radius = toggle_radius - 4.0;
+    let knob_x = if enabled {
+        toggle_x + toggle_width - toggle_radius
+    } else {
+        toggle_x + toggle_radius
+    };
+    let knob_y = toggle_y + toggle_radius;
+
+    // Тінь кружечка
+    draw_circle(knob_x + 1.0, knob_y + 1.0, knob_radius, Color::from_rgba(0, 0, 0, 80));
+    // Кружечок
+    draw_circle(knob_x, knob_y, knob_radius, Color::from_rgba(255, 255, 255, 255));
+    draw_circle_lines(knob_x, knob_y, knob_radius, 2.0, Color::from_rgba(200, 200, 200, 255));
+
+    (clicked, if clicked { !enabled } else { enabled })
+}
+
+// Малює слайдер
+fn draw_slider(font: &Font, label: &str, x: f32, y: f32, width: f32, fs: f32, value: f32) -> f32 {
+    // Текст
+    draw_text_ex(
+        label,
+        x,
+        y + 12.0,
+        TextParams {
+            font: Some(font),
+            font_size: (fs * 1.0) as u16,
+            color: Color::from_rgba(200, 200, 200, 255),
+            ..Default::default()
+        },
+    );
+
+    // Слайдер
+    let slider_x = x + 120.0;
+    let slider_y = y;
+    let slider_width = width - 250.0;
+    let slider_height = 8.0;
+    let knob_radius = 12.0;
+
+    // Трек слайдера
+    draw_rectangle(slider_x, slider_y + 8.0, slider_width, slider_height, Color::from_rgba(67, 71, 62, 255));
+    // Заповнена частина
+    let filled_width = slider_width * value;
+    draw_rectangle(slider_x, slider_y + 8.0, filled_width, slider_height, Color::from_rgba(42, 157, 143, 255));
+
+    // Кружечок
+    let knob_x = slider_x + filled_width;
+    let knob_y = slider_y + 12.0;
+
+    let (mx, my) = mouse_position();
+    let dragging = is_mouse_button_down(MouseButton::Left) &&
+        (mx - knob_x).abs() < 200.0 && (my - knob_y).abs() < 50.0;
+
+    let new_value = if dragging {
+        ((mx - slider_x) / slider_width).clamp(0.0, 1.0)
+    } else {
+        value
+    };
+
+    // Малюємо кружечок
+    draw_circle(knob_x + 1.0, knob_y + 1.0, knob_radius, Color::from_rgba(0, 0, 0, 80));
+    draw_circle(knob_x, knob_y, knob_radius, Color::from_rgba(236, 232, 220, 255));
+    draw_circle_lines(knob_x, knob_y, knob_radius, 2.0, Color::from_rgba(42, 157, 143, 255));
+
+    // Відсоток
+    let percent_text = format!("{}%", (new_value * 100.0) as i32);
+    draw_text_ex(
+        &percent_text,
+        slider_x + slider_width + 15.0,
+        y + 15.0,
+        TextParams {
+            font: Some(font),
+            font_size: (fs * 0.95) as u16,
+            color: Color::from_rgba(236, 232, 220, 255),
+            ..Default::default()
+        },
+    );
+
+    new_value
+}
+
+// Малює велику action кнопку
+fn draw_action_button(
+    x: f32, y: f32, width: f32, height: f32,
+    label: &str, font: &Font, fs: f32, hovered: bool
+) {
+    // М'яка тінь
+    for i in 0..4 {
+        let offset = (4 - i) as f32;
+        draw_rectangle(
+            x + offset,
+            y + offset,
+            width,
+            height,
+            Color::from_rgba(0, 0, 0, 40 - i * 8)
+        );
+    }
+
+    // Градієнтний фон
+    let base_color = if hovered {
+        Color::from_rgba(42, 157, 143, 255)
+    } else {
+        Color::from_rgba(35, 130, 120, 255)
+    };
+
+    for i in 0..height as i32 {
+        let progress = i as f32 / height;
+        let alpha_mod = (1.0 - progress * 0.3) as f32;
+        let color = Color::from_rgba(
+            (base_color.r as f32 * alpha_mod) as u8,
+            (base_color.g as f32 * (alpha_mod * 1.1).min(1.0)) as u8,
+            (base_color.b as f32 * alpha_mod) as u8,
+            255
+        );
+        draw_rectangle(x, y + i as f32, width, 1.0, color);
+    }
+
+    // Рамки
+    draw_rectangle_lines(x, y, width, height, 3.0, Color::from_rgba(42, 157, 143, 255));
+    draw_rectangle_lines(x + 3.0, y + 3.0, width - 6.0, height - 6.0, 1.0, Color::from_rgba(255, 255, 255, 80));
+
+    // Текст з тінню
+    let text_measure = measure_text(label, Some(font), fs as u16, 1.0);
+    let text_x = x + (width - text_measure.width) / 2.0;
+    let text_y = y + (height + text_measure.height) / 2.0;
+
+    draw_text_ex(
+        label,
+        text_x + 2.0,
+        text_y + 2.0,
+        TextParams {
+            font: Some(font),
+            font_size: fs as u16,
+            color: Color::from_rgba(0, 0, 0, 100),
+            ..Default::default()
+        },
+    );
+
+    draw_text_ex(
+        label,
+        text_x,
+        text_y,
+        TextParams {
+            font: Some(font),
+            font_size: fs as u16,
+            color: Color::from_rgba(255, 255, 255, 255),
+            ..Default::default()
+        },
+    );
+}
+
