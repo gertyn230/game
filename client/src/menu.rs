@@ -588,69 +588,117 @@ impl Menu {
     pub fn draw_settings_menu(&mut self, font: &Font, texts: &Texts, settings: &mut Settings) -> Option<MenuAction> {
         let (sw, sh) = (screen_width(), screen_height());
         let fs = (sw.min(sh) * 0.04).max(16.0);
+        let time = get_time() as f32;
 
-        // Тьмавий фон з легким blur ефектом
-        draw_rectangle(0.0, 0.0, sw, sh, Color::from_rgba(10, 10, 20, 230));
+        // Анімований backdrop з градієнтом
+        for i in 0..50 {
+            let progress = i as f32 / 50.0;
+            let wave = (time * 0.5 + progress * 3.14).sin() * 0.15;
+            let alpha = (180.0 + wave * 30.0) as u8;
+            draw_rectangle(
+                0.0,
+                i as f32 * (sh / 50.0),
+                sw,
+                sh / 50.0 + 1.0,
+                Color::from_rgba(10 + (wave * 5.0) as u8, 10, 25 + (wave * 10.0) as u8, alpha)
+            );
+        }
+
+        // Анімовані частинки на фоні
+        for i in 0..8 {
+            let phase = (time * 0.3 + i as f32 * 0.8).sin();
+            let x = sw * 0.1 + i as f32 * (sw * 0.1) + phase * 30.0;
+            let y = sh * 0.2 + (time * 0.2 + i as f32).cos() * 100.0;
+            let size = 3.0 + phase.abs() * 2.0;
+            draw_circle(x, y, size, Color::from_rgba(168, 85, 247, 30));
+        }
 
         // Головна панель (сучасні пропорції)
-        let panel_width = (sw * 0.75).min(800.0).max(600.0);
-        let panel_height = (sh * 0.8).min(650.0).max(500.0);
+        let panel_width = (sw * 0.75).min(850.0).max(600.0);
+        let panel_height = (sh * 0.85).min(700.0).max(500.0);
         let panel_x = (sw - panel_width) / 2.0;
         let panel_y = (sh - panel_height) / 2.0;
 
-        // М'яка тінь
-        draw_rectangle(
-            panel_x + 8.0,
-            panel_y + 8.0,
-            panel_width,
-            panel_height,
-            Color::from_rgba(0, 0, 0, 100)
-        );
+        // Багатошарова м'яка тінь (глибина)
+        for i in 0..5 {
+            let offset = 4.0 + i as f32 * 2.0;
+            let alpha = 25 - i * 4;
+            draw_rectangle(
+                panel_x + offset,
+                panel_y + offset,
+                panel_width,
+                panel_height,
+                Color::from_rgba(0, 0, 0, alpha)
+            );
+        }
 
-        // Glassmorphism фон панелі з градієнтом
-        for i in 0..30 {
-            let progress = i as f32 / 30.0;
-            let y_step = panel_height / 30.0;
-            let r = (25.0 + progress * 10.0) as u8;
-            let g = (28.0 + progress * 8.0) as u8;
-            let b = (35.0 + progress * 15.0) as u8;
+        // Glassmorphism фон панелі з покращеним градієнтом
+        for i in 0..40 {
+            let progress = i as f32 / 40.0;
+            let y_step = panel_height / 40.0;
+            let wave = (time * 0.4 + progress * 2.0).sin() * 3.0;
+            let r = (20.0 + progress * 15.0 + wave) as u8;
+            let g = (24.0 + progress * 12.0 + wave * 0.5) as u8;
+            let b = (40.0 + progress * 20.0 + wave * 1.5) as u8;
             draw_rectangle(
                 panel_x,
                 panel_y + i as f32 * y_step,
                 panel_width,
                 y_step,
-                Color::from_rgba(r, g, b, 245)
+                Color::from_rgba(r, g, b, 250)
             );
         }
 
-        // Тонка світла рамка
+        // Світлові акценти по краях (glow effect)
+        let glow_alpha = ((time * 2.0).sin() * 0.3 + 0.7) * 60.0;
+        draw_rectangle_lines(panel_x - 1.0, panel_y - 1.0, panel_width + 2.0, panel_height + 2.0, 3.0,
+            Color::from_rgba(124, 58, 237, glow_alpha as u8));
+
+        // Основна рамка
         draw_rectangle_lines(panel_x, panel_y, panel_width, panel_height, 2.0,
-            Color::from_rgba(124, 58, 237, 180));
+            Color::from_rgba(139, 92, 246, 200));
 
-        // Внутрішня підсвітка
+        // Внутрішня підсвітка (динамічна)
         draw_rectangle_lines(panel_x + 2.0, panel_y + 2.0, panel_width - 4.0, panel_height - 4.0, 1.0,
-            Color::from_rgba(255, 255, 255, 30));
+            Color::from_rgba(255, 255, 255, 40));
 
-        // Заголовок (сучасний стиль)
-        let title_y = panel_y + 50.0;
+        // Заголовок з анімацією
+        let title_y = panel_y + 55.0;
         let title_icon = "⚙️";
-        let title_size = fs * 1.8;
+        let title_size = fs * 2.0;
+        let icon_bounce = (time * 2.0).sin() * 3.0;
+
+        // Світлове коло за іконкою
+        let icon_glow = ((time * 1.5).sin() * 0.5 + 0.5) * 80.0;
+        draw_circle(panel_x + 55.0, title_y - 10.0, 25.0, Color::from_rgba(168, 85, 247, icon_glow as u8));
 
         draw_text_ex(
             title_icon,
             panel_x + 40.0,
-            title_y,
+            title_y + icon_bounce,
             TextParams {
                 font: Some(font),
                 font_size: title_size as u16,
-                color: Color::from_rgba(168, 85, 247, 255),
+                color: Color::from_rgba(255, 255, 255, 255),
                 ..Default::default()
             },
         );
 
+        // Заголовок з градієнтом (імітація через текст з тінню)
         draw_text_ex(
             texts.settings,
-            panel_x + 85.0,
+            panel_x + 92.0,
+            title_y + 2.0,
+            TextParams {
+                font: Some(font),
+                font_size: title_size as u16,
+                color: Color::from_rgba(100, 50, 180, 100),
+                ..Default::default()
+            },
+        );
+        draw_text_ex(
+            texts.settings,
+            panel_x + 90.0,
             title_y,
             TextParams {
                 font: Some(font),
@@ -660,94 +708,173 @@ impl Menu {
             },
         );
 
-        // Тонка лінія під заголовком
+        // Анімована лінія під заголовком
+        let line_width = panel_width - 80.0;
+        let line_progress = ((time * 1.2).sin() * 0.5 + 0.5) * 0.3 + 0.7;
+
+        // Тінь лінії
         draw_rectangle(
             panel_x + 40.0,
-            title_y + 15.0,
-            panel_width - 80.0,
-            1.0,
-            Color::from_rgba(124, 58, 237, 100)
+            title_y + 18.0,
+            line_width * line_progress,
+            3.0,
+            Color::from_rgba(168, 85, 247, 50)
         );
 
-        let mut y_offset = title_y + 60.0;
+        // Основна лінія з градієнтом
+        for i in 0..20 {
+            let segment_width = (line_width * line_progress) / 20.0;
+            let gradient_factor = i as f32 / 20.0;
+            let alpha = (200.0 * (1.0 - gradient_factor * 0.5)) as u8;
+            draw_rectangle(
+                panel_x + 40.0 + i as f32 * segment_width,
+                title_y + 17.0,
+                segment_width + 1.0,
+                2.0,
+                Color::from_rgba(124, 58, 237, alpha)
+            );
+        }
+
+        let mut y_offset = title_y + 70.0;
         let left_margin = panel_x + 50.0;
 
         // ===== СЕКЦІЯ: МОВА =====
+        let section_icon_glow = ((time * 1.8 + 0.5).sin() * 0.5 + 0.5) * 40.0;
+        draw_circle(left_margin - 5.0, y_offset - 12.0, 15.0, Color::from_rgba(100, 200, 255, section_icon_glow as u8));
+
         draw_text_ex(
             "🌍  Мова",
             left_margin,
             y_offset,
             TextParams {
                 font: Some(font),
-                font_size: (fs * 1.3) as u16,
-                color: Color::from_rgba(220, 220, 230, 255),
+                font_size: (fs * 1.4) as u16,
+                color: Color::from_rgba(230, 240, 255, 255),
                 ..Default::default()
             },
         );
-        y_offset += 40.0;
+        y_offset += 45.0;
 
-        // Кнопки мови (карткового стилю)
+        // Кнопки мови з покращеним дизайном
         let lang_buttons = [
             ("🇺🇦 Українська", Language::Ukrainian),
             ("🇬🇧 English", Language::English),
             ("🇷🇺 Русский", Language::Russian),
         ];
 
-        let btn_width = 150.0;
-        let btn_height = 48.0;
-        let btn_spacing = 12.0;
+        let btn_width = 155.0;
+        let btn_height = 52.0;
+        let btn_spacing = 15.0;
 
         for (i, (label, lang)) in lang_buttons.iter().enumerate() {
             let btn_x = left_margin + i as f32 * (btn_width + btn_spacing);
             let hovered = is_button_hovered(btn_x, y_offset, btn_width, btn_height);
             let selected = settings.language == *lang;
 
-            // Фон кнопки
-            let bg_color = if selected {
-                Color::from_rgba(124, 58, 237, 255)
-            } else if hovered {
-                Color::from_rgba(55, 48, 163, 180)
-            } else {
-                Color::from_rgba(40, 40, 60, 180)
-            };
+            // Анімація hover
+            let hover_lift = if hovered { -3.0 } else { 0.0 };
+            let scale = if hovered { 1.02 } else { 1.0 };
 
-            // Тінь кнопки
+            // Багатошарова тінь
             if hovered || selected {
+                for j in 0..3 {
+                    let shadow_offset = 3.0 + j as f32 * 2.0;
+                    let shadow_alpha = 30 - j * 8;
+                    draw_rectangle(
+                        btn_x + shadow_offset,
+                        y_offset + hover_lift + shadow_offset,
+                        btn_width,
+                        btn_height,
+                        Color::from_rgba(0, 0, 0, shadow_alpha)
+                    );
+                }
+            }
+
+            // Градієнтний фон кнопки
+            for j in 0..10 {
+                let segment_height = btn_height / 10.0;
+                let gradient_progress = j as f32 / 10.0;
+
+                let bg_color = if selected {
+                    let r = (124.0 + gradient_progress * 20.0) as u8;
+                    let g = (58.0 + gradient_progress * 30.0) as u8;
+                    let b = (237.0 - gradient_progress * 20.0) as u8;
+                    Color::from_rgba(r, g, b, 255)
+                } else if hovered {
+                    let r = (60.0 + gradient_progress * 15.0) as u8;
+                    let g = (55.0 + gradient_progress * 20.0) as u8;
+                    let b = (180.0 - gradient_progress * 30.0) as u8;
+                    Color::from_rgba(r, g, b, 200)
+                } else {
+                    let brightness = 45.0 + gradient_progress * 10.0;
+                    Color::from_rgba(brightness as u8, brightness as u8, (brightness + 15.0) as u8, 180)
+                };
+
                 draw_rectangle(
-                    btn_x + 2.0,
-                    y_offset + 2.0,
+                    btn_x,
+                    y_offset + hover_lift + j as f32 * segment_height,
                     btn_width,
-                    btn_height,
-                    Color::from_rgba(0, 0, 0, 80)
+                    segment_height + 1.0,
+                    bg_color
                 );
             }
 
-            // Основна кнопка з округленими кутами (імітація)
-            draw_rectangle(btn_x, y_offset, btn_width, btn_height, bg_color);
+            // Світлова рамка
+            if selected {
+                let glow_pulse = ((time * 2.5 + i as f32).sin() * 0.3 + 0.7) * 255.0;
+                draw_rectangle_lines(btn_x - 1.0, y_offset + hover_lift - 1.0, btn_width + 2.0, btn_height + 2.0, 2.5,
+                    Color::from_rgba(168, 85, 247, glow_pulse as u8));
+            }
 
-            // Рамка
+            // Основна рамка
             let border_color = if selected {
-                Color::from_rgba(168, 85, 247, 255)
+                Color::from_rgba(200, 150, 255, 255)
+            } else if hovered {
+                Color::from_rgba(120, 100, 150, 200)
             } else {
-                Color::from_rgba(100, 100, 120, 100)
+                Color::from_rgba(100, 100, 120, 120)
             };
-            draw_rectangle_lines(btn_x, y_offset, btn_width, btn_height, 1.5, border_color);
+            draw_rectangle_lines(btn_x, y_offset + hover_lift, btn_width, btn_height, 2.0, border_color);
+
+            // Внутрішня підсвітка
+            if selected || hovered {
+                draw_rectangle_lines(btn_x + 2.0, y_offset + hover_lift + 2.0, btn_width - 4.0, btn_height - 4.0, 1.0,
+                    Color::from_rgba(255, 255, 255, 50));
+            }
 
             // Текст кнопки
             let text_color = if selected {
                 Color::from_rgba(255, 255, 255, 255)
+            } else if hovered {
+                Color::from_rgba(230, 230, 255, 255)
             } else {
                 Color::from_rgba(200, 200, 220, 255)
             };
 
-            let text_measure = measure_text(label, Some(font), (fs * 1.0) as u16, 1.0);
+            let text_measure = measure_text(label, Some(font), (fs * 1.05) as u16, 1.0);
+
+            // Тінь тексту для selected
+            if selected {
+                draw_text_ex(
+                    label,
+                    btn_x + (btn_width - text_measure.width) / 2.0 + 1.0,
+                    y_offset + hover_lift + (btn_height + text_measure.height) / 2.0 + 1.0,
+                    TextParams {
+                        font: Some(font),
+                        font_size: (fs * 1.05) as u16,
+                        color: Color::from_rgba(0, 0, 0, 100),
+                        ..Default::default()
+                    },
+                );
+            }
+
             draw_text_ex(
                 label,
                 btn_x + (btn_width - text_measure.width) / 2.0,
-                y_offset + (btn_height + text_measure.height) / 2.0,
+                y_offset + hover_lift + (btn_height + text_measure.height) / 2.0,
                 TextParams {
                     font: Some(font),
-                    font_size: (fs * 1.0) as u16,
+                    font_size: (fs * 1.05) as u16,
                     color: text_color,
                     ..Default::default()
                 },
@@ -758,21 +885,24 @@ impl Menu {
             }
         }
 
-        y_offset += btn_height + 45.0;
+        y_offset += btn_height + 50.0;
 
         // ===== СЕКЦІЯ: АУДІО =====
+        let audio_glow = ((time * 1.8 + 1.0).sin() * 0.5 + 0.5) * 40.0;
+        draw_circle(left_margin - 5.0, y_offset - 12.0, 15.0, Color::from_rgba(255, 150, 100, audio_glow as u8));
+
         draw_text_ex(
             "🔊  Аудіо",
             left_margin,
             y_offset,
             TextParams {
                 font: Some(font),
-                font_size: (fs * 1.3) as u16,
-                color: Color::from_rgba(220, 220, 230, 255),
+                font_size: (fs * 1.4) as u16,
+                color: Color::from_rgba(230, 240, 255, 255),
                 ..Default::default()
             },
         );
-        y_offset += 45.0;
+        y_offset += 50.0;
 
         // Музика toggle (сучасний стиль)
         let (music_changed, new_music_enabled) = draw_modern_toggle(
@@ -816,46 +946,124 @@ impl Menu {
             y_offset += 50.0;
         }
 
-        // Кнопка "Зберегти" (сучасна)
-        let save_btn_width = 200.0;
-        let save_btn_height = 52.0;
+        // Кнопка "Зберегти" з покращеною анімацією
+        let save_btn_width = 220.0;
+        let save_btn_height = 58.0;
         let save_btn_x = (sw - save_btn_width) / 2.0;
-        let save_btn_y = panel_y + panel_height - save_btn_height - 30.0;
+        let save_btn_y = panel_y + panel_height - save_btn_height - 35.0;
 
         let save_hovered = is_button_hovered(save_btn_x, save_btn_y, save_btn_width, save_btn_height);
 
-        // Тінь кнопки
+        // Анімація hover
+        let save_lift = if save_hovered { -4.0 } else { 0.0 };
+        let save_glow = ((time * 3.0).sin() * 0.5 + 0.5) * 150.0;
+
+        // Світлове коло під кнопкою
         if save_hovered {
-            draw_rectangle(
-                save_btn_x + 3.0,
-                save_btn_y + 3.0,
-                save_btn_width,
-                save_btn_height,
-                Color::from_rgba(0, 0, 0, 100)
+            draw_circle(
+                save_btn_x + save_btn_width / 2.0,
+                save_btn_y + save_btn_height / 2.0 + save_lift,
+                save_btn_width * 0.6,
+                Color::from_rgba(168, 85, 247, save_glow as u8)
             );
         }
 
-        // Градієнт кнопки
-        let btn_color = if save_hovered {
-            Color::from_rgba(139, 92, 246, 255)
-        } else {
-            Color::from_rgba(124, 58, 237, 255)
-        };
+        // Багатошарова тінь
+        for i in 0..4 {
+            let shadow_offset = 4.0 + i as f32 * 2.0;
+            let shadow_alpha = 40 - i * 8;
+            draw_rectangle(
+                save_btn_x + shadow_offset,
+                save_btn_y + save_lift + shadow_offset,
+                save_btn_width,
+                save_btn_height,
+                Color::from_rgba(0, 0, 0, shadow_alpha)
+            );
+        }
 
-        draw_rectangle(save_btn_x, save_btn_y, save_btn_width, save_btn_height, btn_color);
-        draw_rectangle_lines(save_btn_x, save_btn_y, save_btn_width, save_btn_height, 2.0,
-            Color::from_rgba(168, 85, 247, 255));
+        // Градієнтний фон кнопки
+        for i in 0..12 {
+            let segment_height = save_btn_height / 12.0;
+            let gradient_progress = i as f32 / 12.0;
+            let wave_offset = (time * 1.5 + gradient_progress * 3.14).sin() * 10.0;
 
-        // Текст кнопки
+            let btn_color = if save_hovered {
+                let r = (145.0 + wave_offset) as u8;
+                let g = (95.0 + gradient_progress * 20.0) as u8;
+                let b = (255.0 - gradient_progress * 20.0) as u8;
+                Color::from_rgba(r, g, b, 255)
+            } else {
+                let r = (124.0 + gradient_progress * 20.0) as u8;
+                let g = (58.0 + gradient_progress * 30.0) as u8;
+                let b = (237.0 - gradient_progress * 15.0) as u8;
+                Color::from_rgba(r, g, b, 255)
+            };
+
+            draw_rectangle(
+                save_btn_x,
+                save_btn_y + save_lift + i as f32 * segment_height,
+                save_btn_width,
+                segment_height + 1.0,
+                btn_color
+            );
+        }
+
+        // Анімована світлова рамка
+        let border_glow = ((time * 2.5).sin() * 0.3 + 0.7) * 255.0;
+        draw_rectangle_lines(
+            save_btn_x - 1.0,
+            save_btn_y + save_lift - 1.0,
+            save_btn_width + 2.0,
+            save_btn_height + 2.0,
+            3.0,
+            Color::from_rgba(200, 150, 255, border_glow as u8)
+        );
+
+        // Основна рамка
+        draw_rectangle_lines(
+            save_btn_x,
+            save_btn_y + save_lift,
+            save_btn_width,
+            save_btn_height,
+            2.0,
+            Color::from_rgba(255, 255, 255, 200)
+        );
+
+        // Внутрішня підсвітка
+        draw_rectangle_lines(
+            save_btn_x + 2.0,
+            save_btn_y + save_lift + 2.0,
+            save_btn_width - 4.0,
+            save_btn_height - 4.0,
+            1.0,
+            Color::from_rgba(255, 255, 255, 80)
+        );
+
+        // Текст кнопки з тінню
         let save_text = "✓  Зберегти";
-        let save_measure = measure_text(save_text, Some(font), (fs * 1.4) as u16, 1.0);
+        let save_measure = measure_text(save_text, Some(font), (fs * 1.5) as u16, 1.0);
+
+        // Тінь тексту
+        draw_text_ex(
+            save_text,
+            save_btn_x + (save_btn_width - save_measure.width) / 2.0 + 2.0,
+            save_btn_y + save_lift + (save_btn_height + save_measure.height) / 2.0 + 2.0,
+            TextParams {
+                font: Some(font),
+                font_size: (fs * 1.5) as u16,
+                color: Color::from_rgba(0, 0, 0, 120),
+                ..Default::default()
+            },
+        );
+
+        // Основний текст
         draw_text_ex(
             save_text,
             save_btn_x + (save_btn_width - save_measure.width) / 2.0,
-            save_btn_y + (save_btn_height + save_measure.height) / 2.0,
+            save_btn_y + save_lift + (save_btn_height + save_measure.height) / 2.0,
             TextParams {
                 font: Some(font),
-                font_size: (fs * 1.4) as u16,
+                font_size: (fs * 1.5) as u16,
                 color: Color::from_rgba(255, 255, 255, 255),
                 ..Default::default()
             },
