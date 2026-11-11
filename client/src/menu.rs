@@ -548,6 +548,40 @@ impl Menu {
             }
         }
 
+        // Версія гри в правому нижньому куті
+        let version = env!("CARGO_PKG_VERSION");
+        let version_text = format!("v{}", version);
+        let version_fs = (fs * 0.7).max(12.0);
+        let version_measure = measure_text(&version_text, Some(font), version_fs as u16, 1.0);
+        let version_x = sw - version_measure.width - 20.0;
+        let version_y = sh - 20.0;
+
+        // Тінь версії
+        draw_text_ex(
+            &version_text,
+            version_x + 1.0,
+            version_y + 1.0,
+            TextParams {
+                font: Some(font),
+                font_size: version_fs as u16,
+                color: Color::from_rgba(0, 0, 0, 100),
+                ..Default::default()
+            },
+        );
+
+        // Текст версії
+        draw_text_ex(
+            &version_text,
+            version_x,
+            version_y,
+            TextParams {
+                font: Some(font),
+                font_size: version_fs as u16,
+                color: Color::from_rgba(200, 200, 200, 180),
+                ..Default::default()
+            },
+        );
+
         action
     }
 

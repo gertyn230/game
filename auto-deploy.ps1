@@ -3,7 +3,6 @@
 
 param(
     [string]$Message = "Автоматичне оновлення",
-    [switch]$Patch,
     [switch]$Minor,
     [switch]$Major
 )
@@ -21,26 +20,26 @@ if (-not $status) {
 # Читання поточної версії
 $cargoToml = Get-Content "client/Cargo.toml" -Raw
 if ($cargoToml -match 'version = "(\d+)\.(\d+)\.(\d+)"') {
-    $major_v = [int]$matches[1]
-    $minor_v = [int]$matches[2]
-    $patch_v = [int]$matches[3]
+    [int]$majorNum = $matches[1]
+    [int]$minorNum = $matches[2]
+    [int]$patchNum = $matches[3]
 
-    $currentVersion = "$major_v.$minor_v.$patch_v"
+    $currentVersion = [string]$majorNum + "." + [string]$minorNum + "." + [string]$patchNum
     Write-Host "📦 Поточна версія: v$currentVersion" -ForegroundColor Yellow
 
-    # Автоматичне збільшення patch версії (або вибір користувача)
+    # Автоматичне збільшення версії
     if ($Major) {
-        $major_v++
-        $minor_v = 0
-        $patch_v = 0
+        $majorNum = $majorNum + 1
+        $minorNum = 0
+        $patchNum = 0
     } elseif ($Minor) {
-        $minor_v++
-        $patch_v = 0
+        $minorNum = $minorNum + 1
+        $patchNum = 0
     } else {
-        $patch_v++
+        $patchNum = $patchNum + 1
     }
 
-    $newVersion = "$major_v.$minor_v.$patch_v"
+    $newVersion = [string]$majorNum + "." + [string]$minorNum + "." + [string]$patchNum
     Write-Host "📦 Нова версія: v$newVersion" -ForegroundColor Green
 
     # Оновлення версії в Cargo.toml
@@ -50,7 +49,7 @@ if ($cargoToml -match 'version = "(\d+)\.(\d+)\.(\d+)"') {
     Write-Host ""
     Write-Host "📝 Коміт змін..." -ForegroundColor Cyan
 
-    # Додавання всіх змін (крім ігнорованих)
+    # Додавання всіх змін
     git add .
 
     # Створення коміту
