@@ -226,14 +226,13 @@ jobs:
         env:
           PV_SERVER: ${{ vars.PV_SERVER }}
         run: |
-          cd client
-          cargo mobile build --release --platform ios
+          cargo apple build --release ios
 
       - name: Package IPA
         if: steps.check_mobile.outputs.has_config == 'true'
         run: |
-          # Find the .app bundle
-          APP_PATH=$(find client/target -name "*.app" -type d | head -n 1)
+          # Find the .app bundle in target directory
+          APP_PATH=$(find target -name "*.app" -type d | head -n 1)
           if [ -n "$APP_PATH" ]; then
             mkdir -p Payload
             cp -r "$APP_PATH" Payload/
