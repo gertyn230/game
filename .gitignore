@@ -23,3 +23,9 @@ saves/
 *.dll
 *.so
 *.dylib
+*.apk
+
+# Temporary files
+latest.json
+FIXME.md
+TODO.md
