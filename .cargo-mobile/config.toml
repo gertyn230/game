@@ -1,0 +1,33 @@
+[metadata]
+schema-version = 1
+
+[package]
+name = "Pixel Village"
+stylized-name = "Pixel Village"
+identifier = "com.gertyn.pixelvillage"
+developer-name = "Gertyn"
+category = "Game"
+
+[apple]
+development-team = "NOTSET"
+
+[apple.ios]
+bundle-version = "1"
+bundle-version-short = "1.3.10"
+deployment-target = "13.0"
+
+[apple.macos]
+bundle-version = "1"
+bundle-version-short = "1.3.10"
+deployment-target = "11.0"
+
+[android]
+build-dir = "gen/android"
+manifest-path = "client/Cargo.toml"
+min-sdk-version = 23
+target-sdk-version = 33
+
+[[android.gradle-substitutions]]
+path = "../../client/Cargo.toml"
+search = "version = \".*\""
+replace = "version = \"1.3.10\""
