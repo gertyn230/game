@@ -18,7 +18,7 @@ use axum::{
 };
 use futures_util::{SinkExt, StreamExt};
 use shared::{
-    ClientMsg, Offer, PlayerState, ServerMsg, ITEM_COUNT, MAX_NAME_CHARS, NODE_COUNT_MAX, RESPAWN_SECS, WORLD_SIZE,
+    ClientMsg, DeviceInfo, Offer, PlayerState, ServerMsg, ITEM_COUNT, MAX_NAME_CHARS, NODE_COUNT_MAX, RESPAWN_SECS, WORLD_SIZE,
 };
 use tokio::sync::{broadcast, mpsc, Mutex};
 
@@ -32,6 +32,7 @@ struct Conn {
     score: u32,
     big: f32,
     fish: u32,
+    device: Option<DeviceInfo>,
 }
 
 #[derive(Default)]
@@ -150,35 +151,89 @@ async fn admin(State(app): State<App>, Query(q): Query<HashMap<String, String>>)
     let w = app.world.lock().await;
     let mut list: Vec<&Conn> = w.players.values().collect();
     list.sort_by_key(|c| c.state.id);
+
+    // Статистика по платформам
+    let mut os_stats: HashMap<String, usize> = HashMap::new();
+    for conn in &list {
+        if let Some(dev) = &conn.device {
+            *os_stats.entry(dev.os.clone()).or_insert(0) += 1;
+        }
+    }
+
     let rows: String = list
         .iter()
         .map(|c| {
+            let device = if let Some(d) = &c.device {
+                format!("{} {} ({})", esc(&d.os), esc(&d.version), esc(&d.arch))
+            } else {
+                "Невідомо".to_string()
+            };
             format!(
-                "<tr><td>{}</td><td>{}</td><td>{:.1}, {:.1}</td><td>{}</td><td>{:.2} кг</td><td>{} с</td></tr>",
+                "<tr><td>{}</td><td>{}</td><td>{:.1}, {:.1}</td><td>{}</td><td>{:.2} кг</td><td>{} с</td><td>{}</td></tr>",
                 c.state.id,
                 esc(&c.state.name),
                 c.state.x,
                 c.state.y,
                 c.score,
                 c.big,
-                c.joined.elapsed().as_secs()
+                c.joined.elapsed().as_secs(),
+                device
             )
         })
         .collect();
+
+    let os_rows: String = os_stats
+        .iter()
+        .map(|(os, count)| format!("<tr><td>{}</td><td>{}</td></tr>", esc(os), count))
+        .collect();
+
     let offers: String = w
         .offers
         .iter()
         .map(|o| format!("<tr><td>{}</td><td>{}</td><td>{} ×{}</td><td>{}</td></tr>", o.id, esc(&o.seller_name), o.item, o.qty, o.price))
         .collect();
-    page(
-        "Pixel Village: админка",
-        &format!(
-            "<h1>Онлайн: {}</h1><table><tr><th>ID</th><th>Имя</th><th>Позиция</th><th>Очки</th><th>Рекорд рыбы</th><th>В игре</th></tr>{rows}</table>\
-             <h2>Рынок: {}</h2><table><tr><th>№</th><th>Продавец</th><th>Предмет</th><th>Цена</th></tr>{offers}</table>",
-            list.len(),
-            w.offers.len()
-        ),
-    )
+
+    Html(format!(
+        "<!doctype html><html lang=\"uk\"><head><meta charset=\"utf-8\">\
+         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
+         <meta http-equiv=\"refresh\" content=\"5\"><title>Pixel Village: Адмінка</title>\
+         <style>\
+         body{{font:14px system-ui;background:#0a0e14;color:#d9d7ce;margin:0;padding:20px}}\
+         .container{{max-width:1400px;margin:0 auto}}\
+         h1{{color:#ffb454;margin:0 0 20px 0;font-size:28px}}\
+         h2{{color:#59c2ff;margin:30px 0 10px 0;font-size:20px}}\
+         .stats{{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin:20px 0}}\
+         .stat-card{{background:#151a21;padding:20px;border-radius:8px;border:1px solid #2d3640}}\
+         .stat-value{{font-size:32px;font-weight:bold;color:#ffb454;margin:10px 0}}\
+         .stat-label{{color:#7d8590;font-size:12px;text-transform:uppercase}}\
+         table{{border-collapse:collapse;width:100%;background:#151a21;margin:10px 0;border-radius:8px;overflow:hidden}}\
+         td,th{{border-bottom:1px solid #2d3640;padding:12px;text-align:left}}\
+         th{{background:#1c2128;color:#59c2ff;font-weight:600}}\
+         tr:hover{{background:#1c2128}}\
+         .online{{color:#3fb950}}\
+         .platform{{display:inline-block;padding:4px 8px;background:#2d3640;border-radius:4px;font-size:11px;color:#7d8590}}\
+         </style>\
+         </head><body><div class=\"container\">\
+         <h1>🎮 Pixel Village — Адмінка</h1>\
+         <div class=\"stats\">\
+         <div class=\"stat-card\"><div class=\"stat-label\">Гравців онлайн</div><div class=\"stat-value online\">{}</div></div>\
+         <div class=\"stat-card\"><div class=\"stat-label\">Активних оголошень</div><div class=\"stat-value\">{}</div></div>\
+         <div class=\"stat-card\"><div class=\"stat-label\">Платформ</div><div class=\"stat-value\">{}</div></div>\
+         </div>\
+         <h2>👥 Гравці онлайн</h2>\
+         <table><tr><th>ID</th><th>Ім'я</th><th>Позиція</th><th>Очки</th><th>Рекорд риби</th><th>В грі</th><th>Пристрій</th></tr>{}</table>\
+         <h2>📊 Статистика по платформах</h2>\
+         <table><tr><th>Платформа</th><th>Гравців</th></tr>{}</table>\
+         <h2>🛒 Ринок</h2>\
+         <table><tr><th>№</th><th>Продавець</th><th>Предмет</th><th>Ціна</th></tr>{}</table>\
+         </div></body></html>",
+        list.len(),
+        w.offers.len(),
+        os_stats.len(),
+        rows,
+        os_rows,
+        offers
+    ))
     .into_response()
 }
 
@@ -254,6 +309,7 @@ async fn client_loop(socket: WebSocket, app: App) {
                 score: 0,
                 big: 0.0,
                 fish: 0,
+                device: None,
             },
         );
         let dead: Vec<(u32, u32)> = w
@@ -316,10 +372,11 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
         return;
     }
     match msg {
-        ClientMsg::Join { name } => {
+        ClientMsg::Join { name, device_info } => {
             if let Some(n) = clean_name(&name) {
                 if let Some(c) = w.players.get_mut(&id) {
                     c.state.name = n;
+                    c.device = device_info;
                 }
             }
         }

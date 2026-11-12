@@ -22,7 +22,7 @@ mod game_crafting;
 use std::collections::HashMap;
 
 use macroquad::prelude::*;
-use shared::{ClientMsg, Offer, PlayerState, ServerMsg};
+use shared::{ClientMsg, DeviceInfo, Offer, PlayerState, ServerMsg};
 
 use art::*;
 use audio::*;
@@ -511,7 +511,10 @@ async fn main() {
                             name_edit = Some(b);
                         } else {
                             name = n.clone();
-                            net.send(ClientMsg::Join { name: n });
+                            net.send(ClientMsg::Join {
+                                name: n,
+                                device_info: Some(DeviceInfo::detect()),
+                            });
                             save::store(&snapshot(&g, now, &name, &posted));
                         }
                     }

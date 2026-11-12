@@ -7,6 +7,49 @@ pub const RESPAWN_SECS: u32 = 480;
 pub const NODE_COUNT_MAX: u32 = 1600;
 pub const ITEM_COUNT: u8 = 19;
 
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct DeviceInfo {
+    pub os: String,
+    pub version: String,
+    pub arch: String,
+}
+
+impl DeviceInfo {
+    pub fn detect() -> Self {
+        let os = if cfg!(target_os = "windows") {
+            "Windows"
+        } else if cfg!(target_os = "macos") {
+            "macOS"
+        } else if cfg!(target_os = "linux") {
+            "Linux"
+        } else if cfg!(target_os = "android") {
+            "Android"
+        } else if cfg!(target_os = "ios") {
+            "iOS"
+        } else {
+            "Unknown"
+        };
+
+        let arch = if cfg!(target_arch = "x86_64") {
+            "x64"
+        } else if cfg!(target_arch = "aarch64") {
+            "ARM64"
+        } else if cfg!(target_arch = "x86") {
+            "x86"
+        } else if cfg!(target_arch = "arm") {
+            "ARM"
+        } else {
+            "unknown"
+        };
+
+        Self {
+            os: os.to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            arch: arch.to_string(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PlayerState {
     pub id: u32,
@@ -36,7 +79,11 @@ pub struct Offer {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "t")]
 pub enum ClientMsg {
-    Join { name: String },
+    Join {
+        name: String,
+        #[serde(default)]
+        device_info: Option<DeviceInfo>,
+    },
     Move { x: f32, y: f32, face: u8, moving: bool, boat: bool, coat: bool, held: u8 },
     /// Ресурс на карте добыт (индекс клетки y*40+x).
     Dead { idx: u32 },

@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use shared::{ClientMsg, ServerMsg};
+use shared::{ClientMsg, DeviceInfo, ServerMsg};
 use tungstenite::{connect, stream::MaybeTlsStream, Message};
 
 pub enum NetEvent {
@@ -48,17 +48,20 @@ impl Net {
                         set_timeout(ws.get_mut());
                         // Старые движения не нужны, но смену имени запоминаем.
                         while let Ok(m) = out_rx.try_recv() {
-                            if let ClientMsg::Join { name: n } = m {
+                            if let ClientMsg::Join { name: n, .. } = m {
                                 name = n;
                             }
                         }
                         let _ = in_tx.send(NetEvent::Connected);
-                        let join = serde_json::to_string(&ClientMsg::Join { name: name.clone() }).unwrap();
+                        let join = serde_json::to_string(&ClientMsg::Join {
+                            name: name.clone(),
+                            device_info: Some(DeviceInfo::detect()),
+                        }).unwrap();
                         let _ = ws.send(Message::Text(join));
 
                         'conn: loop {
                             while let Ok(m) = out_rx.try_recv() {
-                                if let ClientMsg::Join { name: n } = &m {
+                                if let ClientMsg::Join { name: n, .. } = &m {
                                     name = n.clone();
                                 }
                                 let txt = serde_json::to_string(&m).unwrap();
@@ -87,7 +90,7 @@ impl Net {
                 }
                 // Если ждали пробуждения сервера, не спамим подключениями.
                 while let Ok(m) = out_rx.try_recv() {
-                    if let ClientMsg::Join { name: n } = m {
+                    if let ClientMsg::Join { name: n, .. } = m {
                         name = n;
                     }
                 }
