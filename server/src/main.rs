@@ -106,6 +106,7 @@ async fn main() {
         .route("/", get(index))
         .route("/admin", get(admin))
         .route("/api/players", get(api_players))
+        .route("/api/admin/stats", get(api_admin_stats))
         .route("/api/version", get(api_version))
         .route("/ws", get(ws_handler))
         .with_state(app);
@@ -261,6 +262,57 @@ async fn api_players(State(app): State<App>) -> Json<serde_json::Value> {
     let w = app.world.lock().await;
     let names: Vec<&str> = w.players.values().map(|c| c.state.name.as_str()).collect();
     Json(serde_json::json!({ "count": names.len(), "players": names }))
+}
+
+async fn api_admin_stats(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
+    match (&app.admin_key, q.get("key")) {
+        (Some(k), Some(given)) if k == given => {}
+        _ => return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response(),
+    }
+
+    let w = app.world.lock().await;
+    let mut os_stats: HashMap<String, usize> = HashMap::new();
+    let mut version_stats: HashMap<String, usize> = HashMap::new();
+    let mut arch_stats: HashMap<String, usize> = HashMap::new();
+
+    let players: Vec<serde_json::Value> = w.players.values().map(|c| {
+        if let Some(dev) = &c.device {
+            *os_stats.entry(dev.os.clone()).or_insert(0) += 1;
+            *version_stats.entry(dev.version.clone()).or_insert(0) += 1;
+            *arch_stats.entry(dev.arch.clone()).or_insert(0) += 1;
+        }
+
+        serde_json::json!({
+            "id": c.state.id,
+            "name": c.state.name,
+            "position": {"x": c.state.x, "y": c.state.y},
+            "score": c.score,
+            "big_fish": c.big,
+            "fish_count": c.fish,
+            "online_seconds": c.joined.elapsed().as_secs(),
+            "device": c.device.as_ref().map(|d| serde_json::json!({
+                "os": d.os,
+                "version": d.version,
+                "arch": d.arch,
+            }))
+        })
+    }).collect();
+
+    Json(serde_json::json!({
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "players": {
+            "online": players.len(),
+            "list": players,
+        },
+        "market": {
+            "offers": w.offers.len(),
+        },
+        "stats": {
+            "by_os": os_stats,
+            "by_version": version_stats,
+            "by_arch": arch_stats,
+        }
+    })).into_response()
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, State(app): State<App>) -> impl IntoResponse {
