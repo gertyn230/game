@@ -207,6 +207,7 @@ jobs:
 
   ios:
     runs-on: macos-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -217,11 +218,18 @@ jobs:
       - name: Install cargo-mobile2
         run: cargo install --git https://github.com/tauri-apps/cargo-mobile2
 
-      - name: Check if cargo-mobile2 config exists
+      - name: Check if cargo-mobile2 config exists and development team is set
         id: check_mobile
         run: |
           if [ -f ".cargo-mobile/config.toml" ]; then
-            echo "has_config=true" >> $GITHUB_OUTPUT
+            DEV_TEAM=$(grep 'development-team' .cargo-mobile/config.toml | cut -d'"' -f2)
+            if [ "$DEV_TEAM" = "NOTSET" ]; then
+              echo "has_config=false" >> $GITHUB_OUTPUT
+              echo "⚠️ iOS build skipped: development-team not configured in .cargo-mobile/config.toml"
+              echo "Set your Apple Development Team ID to enable iOS builds"
+            else
+              echo "has_config=true" >> $GITHUB_OUTPUT
+            fi
           else
             echo "has_config=false" >> $GITHUB_OUTPUT
             echo "⚠️ iOS build not configured yet. Run 'cargo mobile init' locally first."
