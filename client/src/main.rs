@@ -5,6 +5,7 @@ mod game;
 mod game_state;
 mod i18n;
 mod menu;
+mod settings_menu;
 mod net;
 mod save;
 mod settings;
