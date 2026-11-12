@@ -18,7 +18,7 @@ use axum::{
 };
 use futures_util::{SinkExt, StreamExt};
 use shared::{
-    ClientMsg, DeviceInfo, Offer, PlayerState, ServerMsg, ITEM_COUNT, MAX_NAME_CHARS, NODE_COUNT_MAX, RESPAWN_SECS, WORLD_SIZE,
+    Ban, ClientMsg, DeviceInfo, Mute, Offer, PlayerState, ServerMsg, ITEM_COUNT, MAX_NAME_CHARS, NODE_COUNT_MAX, RESPAWN_SECS, WORLD_SIZE,
 };
 use tokio::sync::{broadcast, mpsc, Mutex};
 
@@ -42,6 +42,8 @@ struct World {
     dead: HashMap<u32, Instant>,
     offers: Vec<Offer>,
     next_offer: u32,
+    bans: Vec<Ban>,
+    mutes: Vec<Mute>,
 }
 
 #[derive(Clone)]
@@ -107,6 +109,11 @@ async fn main() {
         .route("/admin", get(admin))
         .route("/api/players", get(api_players))
         .route("/api/admin/stats", get(api_admin_stats))
+        .route("/api/admin/ban", get(api_ban))
+        .route("/api/admin/unban", get(api_unban))
+        .route("/api/admin/mute", get(api_mute))
+        .route("/api/admin/unmute", get(api_unmute))
+        .route("/api/admin/bans", get(api_list_bans))
         .route("/api/version", get(api_version))
         .route("/ws", get(ws_handler))
         .with_state(app);
@@ -161,28 +168,6 @@ async fn admin(State(app): State<App>, Query(q): Query<HashMap<String, String>>)
         }
     }
 
-    let rows: String = list
-        .iter()
-        .map(|c| {
-            let device = if let Some(d) = &c.device {
-                format!("{} {} ({})", esc(&d.os), esc(&d.version), esc(&d.arch))
-            } else {
-                "Невідомо".to_string()
-            };
-            format!(
-                "<tr><td>{}</td><td>{}</td><td>{:.1}, {:.1}</td><td>{}</td><td>{:.2} кг</td><td>{} с</td><td>{}</td></tr>",
-                c.state.id,
-                esc(&c.state.name),
-                c.state.x,
-                c.state.y,
-                c.score,
-                c.big,
-                c.joined.elapsed().as_secs(),
-                device
-            )
-        })
-        .collect();
-
     let os_rows: String = os_stats
         .iter()
         .map(|(os, count)| format!("<tr><td>{}</td><td>{}</td></tr>", esc(os), count))
@@ -193,6 +178,45 @@ async fn admin(State(app): State<App>, Query(q): Query<HashMap<String, String>>)
         .iter()
         .map(|o| format!("<tr><td>{}</td><td>{}</td><td>{} ×{}</td><td>{}</td></tr>", o.id, esc(&o.seller_name), o.item, o.qty, o.price))
         .collect();
+
+    // Статистика банів та мутів
+    let now = chrono::Utc::now().timestamp();
+    let active_bans: Vec<&Ban> = w.bans.iter()
+        .filter(|b| b.expires_at.is_none() || b.expires_at.unwrap() > now)
+        .collect();
+    let active_mutes: Vec<&Mute> = w.mutes.iter()
+        .filter(|m| m.expires_at.is_none() || m.expires_at.unwrap() > now)
+        .collect();
+
+    let ban_rows: String = active_bans.iter().map(|b| {
+        let expires = match b.expires_at {
+            Some(ts) => {
+                let hours_left = (ts - now) / 3600;
+                format!("{} год", hours_left)
+            }
+            None => "Постійно".to_string()
+        };
+        format!(
+            "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+            esc(&b.player_name), esc(&b.reason), esc(&b.banned_by), expires
+        )
+    }).collect();
+
+    let mute_rows: String = active_mutes.iter().map(|m| {
+        let expires = match m.expires_at {
+            Some(ts) => {
+                let hours_left = (ts - now) / 3600;
+                format!("{} год", hours_left)
+            }
+            None => "Постійно".to_string()
+        };
+        format!(
+            "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+            esc(&m.player_name), esc(&m.reason), esc(&m.muted_by), expires
+        )
+    }).collect();
+
+    let admin_key = q.get("key").unwrap();
 
     Html(format!(
         "<!doctype html><html lang=\"uk\"><head><meta charset=\"utf-8\">\
@@ -213,6 +237,16 @@ async fn admin(State(app): State<App>, Query(q): Query<HashMap<String, String>>)
          tr:hover{{background:#1c2128}}\
          .online{{color:#3fb950}}\
          .platform{{display:inline-block;padding:4px 8px;background:#2d3640;border-radius:4px;font-size:11px;color:#7d8590}}\
+         .action-btn{{padding:6px 12px;background:#238636;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;margin:2px}}\
+         .action-btn:hover{{background:#2ea043}}\
+         .ban-btn{{background:#da3633}}\
+         .ban-btn:hover{{background:#f85149}}\
+         .mute-btn{{background:#ff922b}}\
+         .mute-btn:hover{{background:#ffa94d}}\
+         .form-section{{background:#151a21;padding:20px;border-radius:8px;margin:20px 0;border:1px solid #2d3640}}\
+         input,select{{background:#0d1117;border:1px solid #30363d;color:#d9d7ce;padding:8px;border-radius:6px;margin:5px}}\
+         .banned{{color:#f85149}}\
+         .muted{{color:#ffa94d}}\
          </style>\
          </head><body><div class=\"container\">\
          <h1>🎮 Pixel Village — Адмінка</h1>\
@@ -220,9 +254,40 @@ async fn admin(State(app): State<App>, Query(q): Query<HashMap<String, String>>)
          <div class=\"stat-card\"><div class=\"stat-label\">Гравців онлайн</div><div class=\"stat-value online\">{}</div></div>\
          <div class=\"stat-card\"><div class=\"stat-label\">Активних оголошень</div><div class=\"stat-value\">{}</div></div>\
          <div class=\"stat-card\"><div class=\"stat-label\">Платформ</div><div class=\"stat-value\">{}</div></div>\
+         <div class=\"stat-card\"><div class=\"stat-label banned\">Активних банів</div><div class=\"stat-value banned\">{}</div></div>\
+         <div class=\"stat-card\"><div class=\"stat-label muted\">Активних мутів</div><div class=\"stat-value muted\">{}</div></div>\
          </div>\
+         \
+         <h2>🔨 Модерація</h2>\
+         <div class=\"form-section\">\
+         <h3>Забанити гравця</h3>\
+         <form action=\"/api/admin/ban\" method=\"get\" target=\"_blank\">\
+         <input type=\"hidden\" name=\"key\" value=\"{}\">\
+         <input type=\"text\" name=\"player\" placeholder=\"Ім'я гравця\" required>\
+         <input type=\"text\" name=\"reason\" placeholder=\"Причина\" value=\"Порушення правил\">\
+         <input type=\"number\" name=\"hours\" placeholder=\"Годин (пусто = назавжди)\">\
+         <input type=\"text\" name=\"admin\" placeholder=\"Ваше ім'я\" value=\"Адмін\">\
+         <button type=\"submit\" class=\"action-btn ban-btn\">Забанити</button>\
+         </form>\
+         <h3 style=\"margin-top:20px\">Видати мут</h3>\
+         <form action=\"/api/admin/mute\" method=\"get\" target=\"_blank\">\
+         <input type=\"hidden\" name=\"key\" value=\"{}\">\
+         <input type=\"text\" name=\"player\" placeholder=\"Ім'я гравця\" required>\
+         <input type=\"text\" name=\"reason\" placeholder=\"Причина\" value=\"Спам/образи\">\
+         <input type=\"number\" name=\"hours\" placeholder=\"Годин (пусто = назавжди)\">\
+         <input type=\"text\" name=\"admin\" placeholder=\"Ваше ім'я\" value=\"Адмін\">\
+         <button type=\"submit\" class=\"action-btn mute-btn\">Замутити</button>\
+         </form>\
+         </div>\
+         \
+         <h2>🚫 Активні бани ({})</h2>\
+         <table><tr><th>Гравець</th><th>Причина</th><th>Забанив</th><th>Закінчується</th><th>Дії</th></tr>{}</table>\
+         \
+         <h2>🔇 Активні мути ({})</h2>\
+         <table><tr><th>Гравець</th><th>Причина</th><th>Видав</th><th>Закінчується</th><th>Дії</th></tr>{}</table>\
+         \
          <h2>👥 Гравці онлайн</h2>\
-         <table><tr><th>ID</th><th>Ім'я</th><th>Позиція</th><th>Очки</th><th>Рекорд риби</th><th>В грі</th><th>Пристрій</th></tr>{}</table>\
+         <table><tr><th>ID</th><th>Ім'я</th><th>Позиція</th><th>Очки</th><th>Рекорд риби</th><th>В грі</th><th>Пристрій</th><th>Дії</th></tr>{}</table>\
          <h2>📊 Статистика по платформах</h2>\
          <table><tr><th>Платформа</th><th>Гравців</th></tr>{}</table>\
          <h2>🛒 Ринок</h2>\
@@ -231,7 +296,52 @@ async fn admin(State(app): State<App>, Query(q): Query<HashMap<String, String>>)
         list.len(),
         w.offers.len(),
         os_stats.len(),
-        rows,
+        active_bans.len(),
+        active_mutes.len(),
+        admin_key,
+        admin_key,
+        active_bans.len(),
+        if ban_rows.is_empty() {
+            "<tr><td colspan=\"5\" style=\"text-align:center;color:#7d8590\">Немає активних банів</td></tr>".to_string()
+        } else {
+            ban_rows.clone() + &active_bans.iter().map(|b| {
+                format!("<td><a href=\"/api/admin/unban?key={}&player={}\" target=\"_blank\" class=\"action-btn\">Розбанити</a></td></tr>",
+                    admin_key, urlencoding::encode(&b.player_name))
+            }).collect::<String>()
+        },
+        active_mutes.len(),
+        if mute_rows.is_empty() {
+            "<tr><td colspan=\"5\" style=\"text-align:center;color:#7d8590\">Немає активних мутів</td></tr>".to_string()
+        } else {
+            mute_rows.clone() + &active_mutes.iter().map(|m| {
+                format!("<td><a href=\"/api/admin/unmute?key={}&player={}\" target=\"_blank\" class=\"action-btn\">Зняти мут</a></td></tr>",
+                    admin_key, urlencoding::encode(&m.player_name))
+            }).collect::<String>()
+        },
+        list.iter().map(|c| {
+            let device = if let Some(d) = &c.device {
+                format!("{} {} ({})", esc(&d.os), esc(&d.version), esc(&d.arch))
+            } else {
+                "Невідомо".to_string()
+            };
+            format!(
+                "<tr><td>{}</td><td>{}</td><td>{:.1}, {:.1}</td><td>{}</td><td>{:.2} кг</td><td>{} с</td><td>{}</td>\
+                <td>\
+                <a href=\"/api/admin/ban?key={}&player={}&reason=Порушення&hours=24&admin=Адмін\" target=\"_blank\" class=\"action-btn ban-btn\">Бан 24г</a>\
+                <a href=\"/api/admin/mute?key={}&player={}&reason=Спам&hours=1&admin=Адмін\" target=\"_blank\" class=\"action-btn mute-btn\">Мут 1г</a>\
+                </td></tr>",
+                c.state.id,
+                esc(&c.state.name),
+                c.state.x,
+                c.state.y,
+                c.score,
+                c.big,
+                c.joined.elapsed().as_secs(),
+                device,
+                admin_key, urlencoding::encode(&c.state.name),
+                admin_key, urlencoding::encode(&c.state.name)
+            )
+        }).collect::<String>(),
         os_rows,
         offers
     ))
@@ -256,6 +366,178 @@ async fn api_version() -> Json<serde_json::Value> {
         ],
         "download": "https://github.com/gertyn230/game/releases/latest"
     }))
+}
+
+async fn api_ban(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
+    match (&app.admin_key, q.get("key")) {
+        (Some(k), Some(given)) if k == given => {}
+        _ => return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response(),
+    }
+
+    let player_name = match q.get("player") {
+        Some(n) => n.clone(),
+        None => return (StatusCode::BAD_REQUEST, "Missing player name").into_response(),
+    };
+
+    let reason = q.get("reason").cloned().unwrap_or_else(|| "Порушення правил".to_string());
+    let duration_hours = q.get("hours").and_then(|h| h.parse::<i64>().ok());
+    let banned_by = q.get("admin").cloned().unwrap_or_else(|| "Адміністратор".to_string());
+
+    let now = chrono::Utc::now().timestamp();
+    let expires_at = duration_hours.map(|h| now + h * 3600);
+
+    let ban = Ban {
+        player_name: player_name.clone(),
+        reason: reason.clone(),
+        banned_at: now,
+        expires_at,
+        banned_by: banned_by.clone(),
+    };
+
+    let mut w = app.world.lock().await;
+
+    // Видалити старий бан якщо є
+    w.bans.retain(|b| b.player_name != player_name);
+    w.bans.push(ban.clone());
+
+    // Відключити гравця якщо він онлайн
+    let player_id = w.players.iter().find(|(_, c)| c.state.name == player_name).map(|(id, _)| *id);
+    if let Some(pid) = player_id {
+        if let Some(c) = w.players.get(&pid) {
+            let msg = format!("Ви заблоковані: {}. Забанив: {}", reason, banned_by);
+            reply(c, &ServerMsg::Err { text: msg });
+        }
+        w.players.remove(&pid);
+    }
+
+    Json(serde_json::json!({
+        "success": true,
+        "ban": ban,
+        "message": format!("Гравець {} заблокований", player_name)
+    })).into_response()
+}
+
+async fn api_unban(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
+    match (&app.admin_key, q.get("key")) {
+        (Some(k), Some(given)) if k == given => {}
+        _ => return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response(),
+    }
+
+    let player_name = match q.get("player") {
+        Some(n) => n.clone(),
+        None => return (StatusCode::BAD_REQUEST, "Missing player name").into_response(),
+    };
+
+    let mut w = app.world.lock().await;
+    let before = w.bans.len();
+    w.bans.retain(|b| b.player_name != player_name);
+    let removed = before != w.bans.len();
+
+    Json(serde_json::json!({
+        "success": removed,
+        "message": if removed {
+            format!("Гравець {} розблокований", player_name)
+        } else {
+            format!("Гравець {} не знайдений у списку банів", player_name)
+        }
+    })).into_response()
+}
+
+async fn api_mute(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
+    match (&app.admin_key, q.get("key")) {
+        (Some(k), Some(given)) if k == given => {}
+        _ => return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response(),
+    }
+
+    let player_name = match q.get("player") {
+        Some(n) => n.clone(),
+        None => return (StatusCode::BAD_REQUEST, "Missing player name").into_response(),
+    };
+
+    let reason = q.get("reason").cloned().unwrap_or_else(|| "Порушення правил спілкування".to_string());
+    let duration_hours = q.get("hours").and_then(|h| h.parse::<i64>().ok());
+    let muted_by = q.get("admin").cloned().unwrap_or_else(|| "Адміністратор".to_string());
+
+    let now = chrono::Utc::now().timestamp();
+    let expires_at = duration_hours.map(|h| now + h * 3600);
+
+    let mute = Mute {
+        player_name: player_name.clone(),
+        reason: reason.clone(),
+        muted_at: now,
+        expires_at,
+        muted_by: muted_by.clone(),
+    };
+
+    let mut w = app.world.lock().await;
+
+    // Видалити старий мут якщо є
+    w.mutes.retain(|m| m.player_name != player_name);
+    w.mutes.push(mute.clone());
+
+    // Повідомити гравця якщо він онлайн
+    if let Some((_, c)) = w.players.iter().find(|(_, c)| c.state.name == player_name) {
+        let msg = format!("Вам видано мут: {}. Видав: {}", reason, muted_by);
+        reply(c, &ServerMsg::Err { text: msg });
+    }
+
+    Json(serde_json::json!({
+        "success": true,
+        "mute": mute,
+        "message": format!("Гравцю {} видано мут", player_name)
+    })).into_response()
+}
+
+async fn api_unmute(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
+    match (&app.admin_key, q.get("key")) {
+        (Some(k), Some(given)) if k == given => {}
+        _ => return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response(),
+    }
+
+    let player_name = match q.get("player") {
+        Some(n) => n.clone(),
+        None => return (StatusCode::BAD_REQUEST, "Missing player name").into_response(),
+    };
+
+    let mut w = app.world.lock().await;
+    let before = w.mutes.len();
+    w.mutes.retain(|m| m.player_name != player_name);
+    let removed = before != w.mutes.len();
+
+    Json(serde_json::json!({
+        "success": removed,
+        "message": if removed {
+            format!("З гравця {} знято мут", player_name)
+        } else {
+            format!("Гравець {} не знайдений у списку мутів", player_name)
+        }
+    })).into_response()
+}
+
+async fn api_list_bans(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
+    match (&app.admin_key, q.get("key")) {
+        (Some(k), Some(given)) if k == given => {}
+        _ => return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response(),
+    }
+
+    let w = app.world.lock().await;
+    let now = chrono::Utc::now().timestamp();
+
+    // Видалити прострочені бани та мути
+    let active_bans: Vec<&Ban> = w.bans.iter()
+        .filter(|b| b.expires_at.is_none() || b.expires_at.unwrap() > now)
+        .collect();
+
+    let active_mutes: Vec<&Mute> = w.mutes.iter()
+        .filter(|m| m.expires_at.is_none() || m.expires_at.unwrap() > now)
+        .collect();
+
+    Json(serde_json::json!({
+        "bans": active_bans,
+        "mutes": active_mutes,
+        "total_bans": active_bans.len(),
+        "total_mutes": active_mutes.len(),
+    })).into_response()
 }
 
 async fn api_players(State(app): State<App>) -> Json<serde_json::Value> {
@@ -426,8 +708,30 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
     match msg {
         ClientMsg::Join { name, device_info } => {
             if let Some(n) = clean_name(&name) {
+                // Перевірка бану
+                let now = chrono::Utc::now().timestamp();
+                if let Some(ban) = w.bans.iter().find(|b| b.player_name == n) {
+                    if ban.expires_at.is_none() || ban.expires_at.unwrap() > now {
+                        let reason = format!("Ви заблоковані: {}. Забанив: {}", ban.reason, ban.banned_by);
+                        if let Some(c) = w.players.get(&id) {
+                            reply(c, &ServerMsg::Err { text: reason });
+                        }
+                        return;
+                    }
+                }
+
+                // Перевірка муту
+                let is_muted = w.mutes.iter().any(|m| {
+                    m.player_name == n && (m.expires_at.is_none() || m.expires_at.unwrap() > now)
+                });
+
                 if let Some(c) = w.players.get_mut(&id) {
-                    c.state.name = n;
+                    // Якщо гравець замучений, не дозволяємо змінювати ім'я
+                    if !is_muted || c.state.name == format!("Игрок{id}") {
+                        c.state.name = n;
+                    } else {
+                        reply(c, &ServerMsg::Err { text: "У вас мут, не можна змінювати ім'я".to_string() });
+                    }
                     c.device = device_info;
                 }
             }

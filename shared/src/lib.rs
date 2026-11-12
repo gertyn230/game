@@ -51,6 +51,24 @@ impl DeviceInfo {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Ban {
+    pub player_name: String,
+    pub reason: String,
+    pub banned_at: i64,
+    pub expires_at: Option<i64>, // None = permanent
+    pub banned_by: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Mute {
+    pub player_name: String,
+    pub reason: String,
+    pub muted_at: i64,
+    pub expires_at: Option<i64>,
+    pub muted_by: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PlayerState {
     pub id: u32,
     pub name: String,
