@@ -126,7 +126,13 @@ jobs:
             sleep 3
           done
 
-          sudo apt-get install -y libx11-dev libxi-dev libgl1-mesa-dev libasound2-dev
+          # Ubuntu 26.04 uses new package names
+          sudo apt-get install -y \
+            libx11-dev libxi-dev libgl1-mesa-dev libasound2-dev \
+            libxcursor-dev libxrandr-dev libxinerama-dev || \
+          sudo apt-get install -y \
+            libx11-6-dev libxi6-dev libgl-dev libasound-dev \
+            libxcursor1-dev libxrandr2-dev libxinerama1-dev
       - name: Build client
         env:
           PV_SERVER: ${{ vars.PV_SERVER }}
@@ -226,7 +232,8 @@ jobs:
         env:
           PV_SERVER: ${{ vars.PV_SERVER }}
         run: |
-          cargo apple build --release ios
+          cd client
+          cargo apple build --release aarch64
 
       - name: Package IPA
         if: steps.check_mobile.outputs.has_config == 'true'
