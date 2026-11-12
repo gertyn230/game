@@ -22,6 +22,12 @@ pub struct Menu {
     clouds: Vec<Cloud>,
     stars: Vec<Star>,
     background: Option<Texture2D>,
+    // Нові текстури для налаштувань
+    settings_bg: Option<Texture2D>,
+    icon_settings: Option<Texture2D>,
+    icon_language: Option<Texture2D>,
+    icon_music: Option<Texture2D>,
+    icon_sound: Option<Texture2D>,
 }
 
 struct Particle {
@@ -93,6 +99,11 @@ impl Menu {
             clouds,
             stars,
             background: None,
+            settings_bg: None,
+            icon_settings: None,
+            icon_language: None,
+            icon_music: None,
+            icon_sound: None,
         }
     }
 
@@ -116,6 +127,59 @@ impl Menu {
                 println!("❌ Failed to load embedded background: {:?}", e);
             }
         }
+
+        // Завантажуємо нові текстури для налаштувань
+        self.load_settings_assets().await;
+    }
+
+    /// Завантажує ассети для меню налаштувань
+    async fn load_settings_assets(&mut self) {
+        // Фон налаштувань
+        const SETTINGS_BG: &[u8] = include_bytes!("../assets/backgrounds/settings_bg_main.png");
+        const ICON_SETTINGS: &[u8] = include_bytes!("../assets/ui/icon_settings_32.png");
+        const ICON_LANGUAGE: &[u8] = include_bytes!("../assets/ui/icon_language_32.png");
+        const ICON_MUSIC: &[u8] = include_bytes!("../assets/ui/icon_music_32.png");
+        const ICON_SOUND: &[u8] = include_bytes!("../assets/ui/icon_sound_32.png");
+
+        // Завантаження фону
+        if let Ok(img) = image::load_from_memory(SETTINGS_BG) {
+            let rgba = img.to_rgba8();
+            let texture = Texture2D::from_rgba8(rgba.width() as u16, rgba.height() as u16, &rgba.into_raw());
+            texture.set_filter(FilterMode::Linear);
+            self.settings_bg = Some(texture);
+            println!("✅ Settings background loaded!");
+        }
+
+        // Завантаження іконок
+        if let Ok(img) = image::load_from_memory(ICON_SETTINGS) {
+            let rgba = img.to_rgba8();
+            let texture = Texture2D::from_rgba8(rgba.width() as u16, rgba.height() as u16, &rgba.into_raw());
+            texture.set_filter(FilterMode::Nearest); // Піксельний стиль
+            self.icon_settings = Some(texture);
+        }
+
+        if let Ok(img) = image::load_from_memory(ICON_LANGUAGE) {
+            let rgba = img.to_rgba8();
+            let texture = Texture2D::from_rgba8(rgba.width() as u16, rgba.height() as u16, &rgba.into_raw());
+            texture.set_filter(FilterMode::Nearest);
+            self.icon_language = Some(texture);
+        }
+
+        if let Ok(img) = image::load_from_memory(ICON_MUSIC) {
+            let rgba = img.to_rgba8();
+            let texture = Texture2D::from_rgba8(rgba.width() as u16, rgba.height() as u16, &rgba.into_raw());
+            texture.set_filter(FilterMode::Nearest);
+            self.icon_music = Some(texture);
+        }
+
+        if let Ok(img) = image::load_from_memory(ICON_SOUND) {
+            let rgba = img.to_rgba8();
+            let texture = Texture2D::from_rgba8(rgba.width() as u16, rgba.height() as u16, &rgba.into_raw());
+            texture.set_filter(FilterMode::Nearest);
+            self.icon_sound = Some(texture);
+        }
+
+        println!("✅ Settings icons loaded!");
     }
 
     pub fn update_loading(&mut self, progress: f32, message: &str) {
@@ -590,17 +654,39 @@ impl Menu {
         let fs = (sw.min(sh) * 0.04).max(16.0);
         let time = get_time() as f32;
 
-        // Простий тьмавий backdrop з легкою анімацією
-        let backdrop_pulse = ((time * 0.5).sin() * 10.0) as u8;
-        draw_rectangle(0.0, 0.0, sw, sh, Color::from_rgba(10 + backdrop_pulse, 10, 20 + backdrop_pulse, 235));
+        // Малюємо фон налаштувань якщо є
+        if let Some(bg) = &self.settings_bg {
+            // Масштабуємо фон на весь екран з легким parallax ефектом
+            let mouse_pos = mouse_position();
+            let parallax_x = (mouse_pos.0 / sw - 0.5) * 20.0;
+            let parallax_y = (mouse_pos.1 / sh - 0.5) * 20.0;
+
+            draw_texture_ex(
+                bg,
+                parallax_x - 10.0,
+                parallax_y - 10.0,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(sw + 20.0, sh + 20.0)),
+                    ..Default::default()
+                },
+            );
+
+            // Темний оверлей для кращої читабельності
+            draw_rectangle(0.0, 0.0, sw, sh, Color::from_rgba(0, 0, 0, 120));
+        } else {
+            // Фолбек - простий тьмавий backdrop з анімацією
+            let backdrop_pulse = ((time * 0.5).sin() * 10.0) as u8;
+            draw_rectangle(0.0, 0.0, sw, sh, Color::from_rgba(10 + backdrop_pulse, 10, 20 + backdrop_pulse, 235));
+        }
 
         // Анімовані частинки на фоні
-        for i in 0..6 {
+        for i in 0..8 {
             let phase = (time * 0.5 + i as f32).sin();
-            let x = sw * 0.15 + i as f32 * (sw * 0.15) + phase * 40.0;
-            let y = sh * 0.3 + (time * 0.3 + i as f32 * 0.7).cos() * 80.0;
-            let size = 4.0 + phase.abs() * 3.0;
-            let alpha = (40.0 + phase.abs() * 30.0) as u8;
+            let x = sw * 0.15 + i as f32 * (sw * 0.12) + phase * 50.0;
+            let y = sh * 0.3 + (time * 0.3 + i as f32 * 0.7).cos() * 100.0;
+            let size = 3.0 + phase.abs() * 4.0;
+            let alpha = (30.0 + phase.abs() * 40.0) as u8;
             draw_circle(x, y, size, Color::from_rgba(168, 85, 247, alpha));
         }
 
@@ -610,60 +696,84 @@ impl Menu {
         let panel_x = (sw - panel_width) / 2.0;
         let panel_y = (sh - panel_height) / 2.0;
 
-        // М'яка тінь під панеллю
-        draw_rectangle(
-            panel_x + 6.0,
-            panel_y + 6.0,
-            panel_width,
-            panel_height,
-            Color::from_rgba(0, 0, 0, 80)
-        );
+        // М'яка тінь під панеллю (більша для глибини)
+        for i in 0..3 {
+            let offset = (i + 1) as f32 * 3.0;
+            let alpha = 30 - i * 8;
+            draw_rectangle(
+                panel_x + offset,
+                panel_y + offset,
+                panel_width,
+                panel_height,
+                Color::from_rgba(0, 0, 0, alpha as u8)
+            );
+        }
 
         // Фон панелі з легким градієнтом
-        draw_rectangle(panel_x, panel_y, panel_width, panel_height, Color::from_rgba(25, 28, 40, 250));
+        draw_rectangle(panel_x, panel_y, panel_width, panel_height, Color::from_rgba(20, 24, 35, 245));
 
-        // Акцентна рамка з анімацією
-        let glow_pulse = ((time * 2.5).sin() * 0.3 + 0.7) * 200.0;
-        draw_rectangle_lines(panel_x, panel_y, panel_width, panel_height, 2.5,
+        // Акцентна рамка з анімацією (піксельний стиль)
+        let glow_pulse = ((time * 2.5).sin() * 0.3 + 0.7) * 255.0;
+        draw_rectangle_lines(panel_x, panel_y, panel_width, panel_height, 3.0,
             Color::from_rgba(124, 58, 237, glow_pulse as u8));
 
-        // Внутрішня підсвітка
-        draw_rectangle_lines(panel_x + 3.0, panel_y + 3.0, panel_width - 6.0, panel_height - 6.0, 1.0,
-            Color::from_rgba(168, 85, 247, 40));
+        // Внутрішня рамка (піксельний ефект)
+        draw_rectangle_lines(panel_x + 4.0, panel_y + 4.0, panel_width - 8.0, panel_height - 8.0, 1.5,
+            Color::from_rgba(168, 85, 247, 60));
 
-        // Заголовок з простою анімацією
-        let title_y = panel_y + 50.0;
-        let title_icon = "⚙️";
+        // Заголовок з іконкою
+        let title_y = panel_y + 55.0;
         let title_size = fs * 2.0;
-        let icon_bounce = (time * 1.5).sin() * 2.0;
+        let icon_bounce = (time * 1.5).sin() * 3.0;
+        let icon_size = 48.0;
 
-        // Іконка
-        draw_text_ex(
-            title_icon,
-            panel_x + 40.0,
-            title_y + icon_bounce,
-            TextParams {
-                font: Some(font),
-                font_size: title_size as u16,
-                color: Color::from_rgba(168, 85, 247, 255),
-                ..Default::default()
-            },
-        );
+        // Малюємо іконку налаштувань якщо є
+        if let Some(icon) = &self.icon_settings {
+            // Анімація обертання
+            let rotation = (time * 0.5).sin() * 0.1;
+            let scale = 1.0 + (time * 2.0).sin() * 0.05;
 
-        // Заголовок
+            draw_texture_ex(
+                icon,
+                panel_x + 35.0,
+                title_y - icon_size + 10.0 + icon_bounce,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(icon_size * scale, icon_size * scale)),
+                    rotation,
+                    ..Default::default()
+                },
+            );
+        } else {
+            // Фолбек - емодзі
+            draw_text_ex(
+                "⚙️",
+                panel_x + 40.0,
+                title_y + icon_bounce,
+                TextParams {
+                    font: Some(font),
+                    font_size: title_size as u16,
+                    color: Color::from_rgba(168, 85, 247, 255),
+                    ..Default::default()
+                },
+            );
+        }
+
+        // Заголовок з ефектом світіння
+        let title_glow = ((time * 3.0).sin() * 0.2 + 0.8) * 255.0;
         draw_text_ex(
             texts.settings,
-            panel_x + 90.0,
+            panel_x + 95.0,
             title_y,
             TextParams {
                 font: Some(font),
                 font_size: title_size as u16,
-                color: Color::from_rgba(255, 255, 255, 255),
+                color: Color::from_rgba(255, 255, 255, title_glow as u8),
                 ..Default::default()
             },
         );
 
-        // Проста лінія під заголовком з анімацією
+        // Лінія під заголовком з градієнтом
         let line_width = panel_width - 80.0;
         let line_alpha = ((time * 1.5).sin() * 0.3 + 0.7) * 150.0;
         draw_rectangle(
@@ -678,17 +788,47 @@ impl Menu {
         let left_margin = panel_x + 50.0;
 
         // ===== СЕКЦІЯ: МОВА =====
-        draw_text_ex(
-            "🌍  Мова",
-            left_margin,
-            y_offset,
-            TextParams {
-                font: Some(font),
-                font_size: (fs * 1.4) as u16,
-                color: Color::from_rgba(230, 240, 255, 255),
-                ..Default::default()
-            },
-        );
+        let section_icon_size = 32.0;
+
+        // Малюємо іконку мови
+        if let Some(icon) = &self.icon_language {
+            let icon_pulse = 1.0 + (time * 2.0).sin() * 0.08;
+            draw_texture_ex(
+                icon,
+                left_margin - 5.0,
+                y_offset - section_icon_size + 8.0,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(section_icon_size * icon_pulse, section_icon_size * icon_pulse)),
+                    ..Default::default()
+                },
+            );
+
+            draw_text_ex(
+                "Мова",
+                left_margin + 40.0,
+                y_offset,
+                TextParams {
+                    font: Some(font),
+                    font_size: (fs * 1.4) as u16,
+                    color: Color::from_rgba(230, 240, 255, 255),
+                    ..Default::default()
+                },
+            );
+        } else {
+            // Фолбек - емодзі
+            draw_text_ex(
+                "🌍  Мова",
+                left_margin,
+                y_offset,
+                TextParams {
+                    font: Some(font),
+                    font_size: (fs * 1.4) as u16,
+                    color: Color::from_rgba(230, 240, 255, 255),
+                    ..Default::default()
+                },
+            );
+        }
         y_offset += 45.0;
 
         // Кнопки мови з простим дизайном
@@ -778,25 +918,84 @@ impl Menu {
         y_offset += btn_height + 50.0;
 
         // ===== СЕКЦІЯ: АУДІО =====
-        draw_text_ex(
-            "🔊  Аудіо",
-            left_margin,
-            y_offset,
-            TextParams {
-                font: Some(font),
-                font_size: (fs * 1.4) as u16,
-                color: Color::from_rgba(230, 240, 255, 255),
-                ..Default::default()
-            },
-        );
+        // Малюємо іконку звуку для секції
+        if let Some(icon) = &self.icon_sound {
+            let icon_pulse = 1.0 + (time * 2.5).sin() * 0.1;
+            draw_texture_ex(
+                icon,
+                left_margin - 5.0,
+                y_offset - section_icon_size + 8.0,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(section_icon_size * icon_pulse, section_icon_size * icon_pulse)),
+                    ..Default::default()
+                },
+            );
+
+            draw_text_ex(
+                "Аудіо",
+                left_margin + 40.0,
+                y_offset,
+                TextParams {
+                    font: Some(font),
+                    font_size: (fs * 1.4) as u16,
+                    color: Color::from_rgba(230, 240, 255, 255),
+                    ..Default::default()
+                },
+            );
+        } else {
+            // Фолбек - емодзі
+            draw_text_ex(
+                "🔊  Аудіо",
+                left_margin,
+                y_offset,
+                TextParams {
+                    font: Some(font),
+                    font_size: (fs * 1.4) as u16,
+                    color: Color::from_rgba(230, 240, 255, 255),
+                    ..Default::default()
+                },
+            );
+        }
         y_offset += 50.0;
 
-        // Музика toggle (сучасний стиль)
-        let (music_changed, new_music_enabled) = draw_modern_toggle(
-            font, "🎵  Музика", left_margin, y_offset, fs, settings.music_enabled
-        );
-        if music_changed {
-            settings.music_enabled = new_music_enabled;
+        // Музика toggle з іконкою
+        let toggle_y = y_offset;
+
+        // Малюємо іконку музики
+        if let Some(icon) = &self.icon_music {
+            let music_pulse = if settings.music_enabled {
+                1.0 + (time * 3.0).sin() * 0.15
+            } else {
+                1.0
+            };
+            let music_alpha = if settings.music_enabled { 255 } else { 100 };
+
+            draw_texture_ex(
+                icon,
+                left_margin,
+                toggle_y - 24.0,
+                Color::from_rgba(255, 255, 255, music_alpha),
+                DrawTextureParams {
+                    dest_size: Some(vec2(28.0 * music_pulse, 28.0 * music_pulse)),
+                    ..Default::default()
+                },
+            );
+
+            let (music_changed, new_music_enabled) = draw_modern_toggle(
+                font, "Музика", left_margin + 40.0, toggle_y, fs, settings.music_enabled
+            );
+            if music_changed {
+                settings.music_enabled = new_music_enabled;
+            }
+        } else {
+            // Фолбек - емодзі
+            let (music_changed, new_music_enabled) = draw_modern_toggle(
+                font, "🎵  Музика", left_margin, toggle_y, fs, settings.music_enabled
+            );
+            if music_changed {
+                settings.music_enabled = new_music_enabled;
+            }
         }
         y_offset += 40.0;
 
