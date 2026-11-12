@@ -47,9 +47,10 @@ const CLIENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 fn window_conf() -> Conf {
     Conf {
         window_title: "Pixel Village".to_owned(),
-        window_width: 1920,
-        window_height: 1080,
-        fullscreen: true,
+        window_width: 1280,
+        window_height: 720,
+        fullscreen: false,
+        window_resizable: true,
         high_dpi: true,
         ..Default::default()
     }
