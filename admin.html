@@ -85,23 +85,16 @@ input,select,textarea{background:var(--bg);color:var(--ink);border:2px solid var
 <section class="sec on" id="dash">
 <h1>Дашборд</h1><div class="sub">Стан гри в реальному часі</div>
 <div class="grid">
-<div class="card"><div class="k">Онлайн зараз</div><div class="v" id="onl">1 284</div><div class="up">▲ 12% за годину</div></div>
-<div class="card"><div class="k">DAU</div><div class="v">8 910</div><div class="up">▲ 4%</div></div>
-<div class="card"><div class="k">Нові сьогодні</div><div class="v">342</div><div class="dn">▼ 3%</div></div>
-<div class="card"><div class="k">Утримання D7</div><div class="v">27%</div><div class="up">▲ 1.5%</div></div>
-<div class="card"><div class="k">Дохід (реклама + покупки)</div><div class="v">$214</div><div class="up">▲ 8%</div></div>
-<div class="card"><div class="k">Скарги в черзі</div><div class="v">17</div><div class="dn">потрібна увага</div></div>
+<div class="card"><div class="k">Онлайн зараз</div><div class="v" id="onl">—</div></div>
+<div class="card"><div class="k">Всього гравців</div><div class="v" id="total-players">—</div></div>
+<div class="card"><div class="k">Активних банів</div><div class="v" id="dash-bans">—</div></div>
+<div class="card"><div class="k">Активних мутів</div><div class="v" id="dash-mutes">—</div></div>
+<div class="card"><div class="k">Пропозицій на ринку</div><div class="v" id="dash-offers">—</div></div>
+<div class="card"><div class="k">Нових тікетів</div><div class="v" id="dash-tickets">—</div></div>
 </div>
-<div class="two">
-<div class="card"><div class="k">Онлайн за 24 години</div>
-<svg viewBox="0 0 300 110" width="100%" role="img" aria-label="графік онлайну"><polyline fill="none" stroke="var(--acc)" stroke-width="3" points="0,90 25,85 50,95 75,80 100,70 125,60 150,55 175,40 200,30 225,38 250,22 275,28 300,15"/><line x1="0" y1="105" x2="300" y2="105" stroke="var(--line)"/></svg></div>
 <div class="card"><div class="k">Платформи</div>
-<div style="margin-top:8px">Android 61%<div class="bar"><i style="width:61%"></i></div></div>
-<div style="margin-top:8px">Windows 36%<div class="bar"><i style="width:36%;background:var(--info)"></i></div></div>
-<div style="margin-top:8px">Інше 3%<div class="bar"><i style="width:3%;background:var(--acc2)"></i></div></div></div>
+<div id="plat-content" style="margin-top:8px;color:var(--mut)">Завантаження...</div>
 </div>
-<div class="card"><div class="k">Остання активність</div>
-<div class="log" style="margin-top:8px"><div>12:01 Steve_99 побудував Майстерню (ур. 3)</div><div>12:03 WolfTamer приручив вовка</div><div class="w">12:05 Скарга: гравець Noob42 → "спам у чаті"</div><div>12:07 Новий рекорд риби: 14.2 кг (FishKing)</div><div class="e">12:08 Помилка синхронізації світу, шард #2 (автовідновлено)</div></div></div>
 </section>
 
 <section class="sec" id="players">
@@ -470,27 +463,23 @@ fetch('/api/admin/stats?key='+encodeURIComponent(adminKey))
 .then(function(data){
 gameData=data;
 
-// ДАШБОРД
+// ДАШБОРД - оновлюємо всі картки
 if(data.players){
 var onl=g('onl');if(onl)onl.textContent=(data.players.online||0).toLocaleString('uk-UA');
+var totalP=g('total-players');if(totalP)totalP.textContent=(data.players.list?.length||0).toLocaleString('uk-UA');
 }
 if(data.moderation){
-var bansCard=document.querySelectorAll('.grid .card')[2];
-if(bansCard){
-var bv=bansCard.querySelector('.v');
-if(bv)bv.textContent=data.moderation.active_bans||0;
+var dashBans=g('dash-bans');if(dashBans)dashBans.textContent=data.moderation.active_bans||0;
+var dashMutes=g('dash-mutes');if(dashMutes)dashMutes.textContent=data.moderation.active_mutes||0;
 }
-var mutesCard=document.querySelectorAll('.grid .card')[3];
-if(mutesCard){
-var mv=mutesCard.querySelector('.v');
-if(mv)mv.textContent=data.moderation.active_mutes||0;
-}
+if(data.market){
+var dashOffers=g('dash-offers');if(dashOffers)dashOffers.textContent=data.market.offers_count||0;
 }
 
 // ПЛАТФОРМИ
 if(data.stats&&data.stats.by_os){
-var platCard=document.querySelector('.two .card:last-child');
-if(platCard){
+var platContent=g('plat-content');
+if(platContent){
 var html='';
 var total=data.players.online||1;
 var entries=Object.entries(data.stats.by_os);
@@ -499,8 +488,7 @@ entries.forEach(function(e,i){
 var os=e[0],cnt=e[1],pct=Math.round(cnt/total*100);
 html+='<div style="margin-top:8px">'+esc(os)+' '+pct+'%<div class="bar"><i style="width:'+pct+'%'+(i>0?';'+colors[i]:'')+'"></i></div></div>';
 });
-var content=platCard.querySelector('div:last-child');
-if(content)content.innerHTML=html;
+platContent.innerHTML=html;
 }
 }
 
