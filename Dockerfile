@@ -4,6 +4,7 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY shared ./shared
 COPY server ./server
+COPY admin.html ./admin.html
 COPY client/Cargo.toml ./client/Cargo.toml
 RUN mkdir -p client/src && echo 'fn main(){}' > client/src/main.rs
 RUN cargo build --release -p server
