@@ -453,81 +453,192 @@ CO.forEach(function(r){ch+='<tr><td>'+r[0]+'</td>';for(var i=1;i<6;i++)ch+=r[i]?
 g('th').addEventListener('change',function(){try{localStorage.setItem('pvt',this.value)}catch(e){}});
 try{var sv=localStorage.getItem('pvt');if(sv){g('th').value=sv;g('th').dispatchEvent(new Event('change'))}}catch(e){}
 rN();rP();pv();
-renderA();
-var h=location.hash.slice(1);
-if(h){var m=document.querySelector('#nav button[data-t="'+h+'"]');if(m)m.click()}
-
 // Завантаження реальних даних з сервера
 var adminKey=new URLSearchParams(location.search).get('key');
+var gameData={};
+
+function esc(s){return s.replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+
 function loadRealData(){
-if(!adminKey)return;
+if(!adminKey){toast('Потрібен ключ: додайте ?key=ВАШ_КЛЮЧ до URL');return}
 fetch('/api/admin/stats?key='+encodeURIComponent(adminKey))
-.then(function(r){return r.json()})
+.then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
 .then(function(data){
-// Оновити онлайн гравців
-if(data.players){
-g('onl').textContent=data.players.online;
-// Оновити таблицю гравців
-var tb=document.querySelector('#players tbody');
-if(!tb){tb=document.querySelector('#players table');if(tb){var t=document.createElement('tbody');tb.appendChild(t);tb=t}}
-if(tb&&data.players.list){
-tb.innerHTML='';
-data.players.list.forEach(function(p){
-var dev=p.device?(p.device.os+' '+p.device.version+' ('+p.device.arch+')'):'Невідомо';
-var tr=document.createElement('tr');
-tr.innerHTML='<td>'+p.name+'</td><td>'+Math.round(p.score)+'</td><td>'+p.position.x.toFixed(1)+','+p.position.y.toFixed(1)+'</td><td>'+dev+'</td><td><span class="tag ok">онлайн</span></td><td><button class="btn">Профіль</button> <button class="btn d tb">Бан</button></td>';
-tb.appendChild(tr)
+gameData=data;
+updateDashboard(data);
+updatePlayers(data);
+updateModeration(data);
+updateMarket(data);
 })
+.catch(function(e){console.error('Помилка завантаження даних:',e);toast('Помилка завантаження даних')})
 }
-}
-// Оновити статистику модерації
-if(data.moderation){
-var bansCard=document.querySelectorAll('.stat-card')[3];
-if(bansCard){
-var v=bansCard.querySelector('.v');
-if(v)v.textContent=data.moderation.active_bans
-}
-var mutesCard=document.querySelectorAll('.stat-card')[4];
-if(mutesCard){
-var v=mutesCard.querySelector('.v');
-if(v)v.textContent=data.moderation.active_mutes
-}
-}
-// Оновити ринок
-if(data.market){
-var offersCard=document.querySelectorAll('.stat-card')[1];
-if(offersCard){
-var v=offersCard.querySelector('.v');
-if(v)v.textContent=data.market.offers_count
-}
-}
-// Оновити статистику платформ
-if(data.stats&&data.stats.by_os){
-var osCard=document.querySelectorAll('.stat-card')[2];
-if(osCard){
-var v=osCard.querySelector('.v');
-if(v)v.textContent=Object.keys(data.stats.by_os).length
-}
+
+function updateDashboard(data){
+// Оновити онлайн гравців
+g('onl').textContent=(data.players?.online||0).toLocaleString('uk-UA');
+// Оновити статистику
+var cards=document.querySelectorAll('.stat-card .v');
+if(cards[1])cards[1].textContent=data.market?.offers_count||0;
+if(cards[2])cards[2].textContent=Object.keys(data.stats?.by_os||{}).length;
+if(cards[3])cards[3].textContent=data.moderation?.active_bans||0;
+if(cards[4])cards[4].textContent=data.moderation?.active_mutes||0;
+
 // Оновити діаграму платформ
+if(data.stats&&data.stats.by_os){
 var total=data.players.online||1;
-var cardPlatforms=document.querySelector('.card .k');
-if(cardPlatforms&&cardPlatforms.textContent==='Платформи'){
-var parent=cardPlatforms.parentElement;
-var html='';
+var platformsCard=document.querySelectorAll('.card')[1];
+if(platformsCard){
+var html='<div class="k">Платформи</div>';
+var colors=['var(--acc)','var(--info)','var(--acc2)'];
+var i=0;
 Object.entries(data.stats.by_os).forEach(function(e){
 var os=e[0],cnt=e[1],pct=Math.round(cnt/total*100);
-html+='<div style="margin-top:8px">'+os+' '+pct+'%<div class="bar"><i style="width:'+pct+'%"></i></div></div>'
+html+='<div style="margin-top:8px">'+os+' '+pct+'%<div class="bar"><i style="width:'+pct+'%;background:'+colors[i%3]+'"></i></div></div>';
+i++
 });
-parent.innerHTML='<div class="k">Платформи</div>'+html
+platformsCard.innerHTML=html
 }
 }
+}
+
+function updatePlayers(data){
+if(!data.players||!data.players.list)return;
+var table=document.querySelector('#players table tbody');
+if(!table){
+var t=document.querySelector('#players table');
+if(t){table=document.createElement('tbody');t.appendChild(table)}
+}
+if(!table)return;
+table.innerHTML='';
+data.players.list.forEach(function(p){
+var dev=p.device?(esc(p.device.os)+' '+esc(p.device.version)):'Невідомо';
+var isMuted=data.moderation?.mutes?.some(function(m){return m.player_name===p.name});
+var isBanned=data.moderation?.bans?.some(function(b){return b.player_name===p.name});
+var status=isBanned?'<span class="tag bad">забанений</span>':isMuted?'<span class="tag warn">замучений</span>':'<span class="tag ok">онлайн</span>';
+var tr=document.createElement('tr');
+tr.innerHTML='<td>'+esc(p.name)+'</td>'
++'<td>'+Math.round(p.score)+'</td>'
++'<td>'+Math.round(p.score)+'</td>'
++'<td>'+dev+'</td>'
++'<td>'+status+'</td>'
++'<td><button class="btn" onclick="openPlayerProfile(\''+esc(p.name)+'\')">Профіль</button> '
++'<a href="/api/admin/ban?key='+encodeURIComponent(adminKey)+'&player='+encodeURIComponent(p.name)+'&reason=Порушення&hours=24&admin=Адмін" target="_blank" class="btn d">Бан 24г</a> '
++'<a href="/api/admin/mute?key='+encodeURIComponent(adminKey)+'&player='+encodeURIComponent(p.name)+'&reason=Спам&hours=1&admin=Адмін" target="_blank" class="btn d">Мут 1г</a></td>';
+table.appendChild(tr)
 })
-.catch(function(e){console.error('Помилка завантаження даних:',e)})
 }
+
+function updateModeration(data){
+if(!data.moderation)return;
+// Оновити таблицю банів
+var bansSection=document.querySelector('#mod');
+if(bansSection&&data.moderation.bans){
+var html='<h1>Модерація</h1><div class="sub">Бани, мути, скарги</div>';
+html+='<div class="card"><h3>🚫 Активні бани ('+data.moderation.active_bans+')</h3>';
+html+='<div class="scroll"><table><tr><th>Гравець</th><th>Причина</th><th>Забанив</th><th>Закінчується</th><th>Дії</th></tr>';
+if(data.moderation.bans.length===0){
+html+='<tr><td colspan="5" style="text-align:center;color:var(--mut)">Немає активних банів</td></tr>'
+}else{
+data.moderation.bans.forEach(function(b){
+var expires=b.expires_at?new Date(b.expires_at*1000).toLocaleString('uk-UA'):'Назавжди';
+html+='<tr><td>'+esc(b.player_name)+'</td>'
++'<td>'+esc(b.reason)+'</td>'
++'<td>'+esc(b.banned_by)+'</td>'
++'<td>'+expires+'</td>'
++'<td><a href="/api/admin/unban?key='+encodeURIComponent(adminKey)+'&player='+encodeURIComponent(b.player_name)+'" target="_blank" class="btn">Розбанити</a></td></tr>'
+})
+}
+html+='</table></div></div>';
+
+html+='<div class="card"><h3>🔇 Активні мути ('+data.moderation.active_mutes+')</h3>';
+html+='<div class="scroll"><table><tr><th>Гравець</th><th>Причина</th><th>Видав</th><th>Закінчується</th><th>Дії</th></tr>';
+if(data.moderation.mutes.length===0){
+html+='<tr><td colspan="5" style="text-align:center;color:var(--mut)">Немає активних мутів</td></tr>'
+}else{
+data.moderation.mutes.forEach(function(m){
+var expires=m.expires_at?new Date(m.expires_at*1000).toLocaleString('uk-UA'):'Назавжди';
+html+='<tr><td>'+esc(m.player_name)+'</td>'
++'<td>'+esc(m.reason)+'</td>'
++'<td>'+esc(m.muted_by)+'</td>'
++'<td>'+expires+'</td>'
++'<td><a href="/api/admin/unmute?key='+encodeURIComponent(adminKey)+'&player='+encodeURIComponent(m.player_name)+'" target="_blank" class="btn">Зняти мут</a></td></tr>'
+})
+}
+html+='</table></div></div>';
+
+// Форми модерації
+html+='<div class="card"><h3>Забанити гравця</h3>';
+html+='<form action="/api/admin/ban" method="get" target="_blank">';
+html+='<input type="hidden" name="key" value="'+esc(adminKey)+'">';
+html+='<div class="row"><input type="text" name="player" placeholder="Ім\'я гравця" required>';
+html+='<input type="text" name="reason" placeholder="Причина" value="Порушення правил">';
+html+='<input type="number" name="hours" placeholder="Годин (пусто = назавжди)" style="width:150px">';
+html+='<input type="text" name="admin" placeholder="Ваше ім\'я" value="Адмін">';
+html+='<button type="submit" class="btn p">Забанити</button></div></form></div>';
+
+html+='<div class="card"><h3>Видати мут</h3>';
+html+='<form action="/api/admin/mute" method="get" target="_blank">';
+html+='<input type="hidden" name="key" value="'+esc(adminKey)+'">';
+html+='<div class="row"><input type="text" name="player" placeholder="Ім\'я гравця" required>';
+html+='<input type="text" name="reason" placeholder="Причина" value="Спам/образи">';
+html+='<input type="number" name="hours" placeholder="Годин (пусто = назавжди)" style="width:150px">';
+html+='<input type="text" name="admin" placeholder="Ваше ім\'я" value="Адмін">';
+html+='<button type="submit" class="btn p">Замутити</button></div></form></div>';
+
+var modContent=bansSection.querySelector('.sec');
+if(!modContent)modContent=bansSection;
+modContent.innerHTML=html
+}
+}
+
+function updateMarket(data){
+if(!data.market||!data.market.offers)return;
+var econSection=document.querySelector('#econ');
+if(!econSection)return;
+var html='<h1>Торгівля</h1><div class="sub">Ринок між гравцями</div>';
+html+='<div class="grid">';
+html+='<div class="card"><div class="k">Активних пропозицій</div><div class="v">'+data.market.offers_count+'</div></div>';
+html+='</div>';
+html+='<div class="card"><h3>🛒 Торгові пропозиції</h3>';
+html+='<div class="scroll"><table><tr><th>ID</th><th>Продавець</th><th>Предмет</th><th>Кількість</th><th>Ціна</th></tr>';
+if(data.market.offers.length===0){
+html+='<tr><td colspan="5" style="text-align:center;color:var(--mut)">Немає активних пропозицій</td></tr>'
+}else{
+data.market.offers.forEach(function(o){
+html+='<tr><td>'+o.id+'</td>'
++'<td>'+esc(o.seller_name)+'</td>'
++'<td>'+esc(o.item)+'</td>'
++'<td>'+o.qty+'</td>'
++'<td>'+o.price+' 🪙</td></tr>'
+})
+}
+html+='</table></div></div>';
+econSection.innerHTML=html
+}
+
+window.openPlayerProfile=function(name){
+var p=gameData.players?.list?.find(function(x){return x.name===name});
+if(!p){toast('Гравець не знайдений');return}
+var mb=g('mb');
+mb.innerHTML='<h2>'+esc(name)+'</h2>';
+mb.innerHTML+='<div class="st">';
+mb.innerHTML+='<div><div class="k">ID</div><b>'+p.id+'</b></div>';
+mb.innerHTML+='<div><div class="k">Очки</div><b>'+Math.round(p.score)+'</b></div>';
+mb.innerHTML+='<div><div class="k">Рекорд риби</div><b>'+p.big_fish.toFixed(2)+' кг</b></div>';
+mb.innerHTML+='</div>';
+mb.innerHTML+='<div class="k">Позиція</div><div>X: '+p.position.x.toFixed(1)+', Y: '+p.position.y.toFixed(1)+'</div>';
+mb.innerHTML+='<div class="k">Пристрій</div><div>'+(p.device?(esc(p.device.os)+' '+esc(p.device.version)+' ('+esc(p.device.arch)+')'):'Невідомо')+'</div>';
+mb.innerHTML+='<div class="k">В грі</div><div>'+Math.floor(p.online_seconds/60)+' хв</div>';
+mb.innerHTML+='<div class="row" style="margin-top:10px"><button class="btn" onclick="closeM()">Закрити</button></div>';
+g('md').classList.add('on')
+};
+
 // Завантажити дані зараз і кожні 5 секунд
 if(adminKey){
 loadRealData();
 setInterval(loadRealData,5000)
+}else{
+toast('Додайте ?key=ВАШ_КЛЮЧ до URL для доступу до адмінки')
 }
 </script>
 </body>
