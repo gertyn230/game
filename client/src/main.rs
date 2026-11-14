@@ -208,6 +208,13 @@ async fn main() {
     loop {
         let dt = get_frame_time().min(0.05);
         let now = get_time();
+
+        // Перевірка закриття вікна (працює завжди, незалежно від стану гри)
+        if is_quit_requested() {
+            save::store(&snapshot(&g, now, &name, &posted));
+            break;
+        }
+
         let texts = get_texts(&settings.language);
         let (sw, sh) = (screen_width(), screen_height());
         let base = sw.min(sh);
@@ -229,11 +236,6 @@ async fn main() {
             }
             next_frame().await;
             continue;
-        }
-
-        if is_quit_requested() {
-            save::store(&snapshot(&g, now, &name, &posted));
-            std::process::exit(0);
         }
 
         // ---------- сеть ----------

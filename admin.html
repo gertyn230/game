@@ -63,237 +63,63 @@ input,select,textarea{background:var(--bg);color:var(--ink);border:2px solid var
 <div class="logo">▣ PIXEL VILLAGE</div>
 <button data-t="dash" class="on">📊 Дашборд</button>
 <button data-t="players">👥 Гравці</button>
-<button data-t="world">🌍 Світ</button>
-<button data-t="items">🎒 Предмети й крафт</button>
-<button data-t="rating">🏆 Рейтинг і турніри</button>
 <button data-t="econ">🐟 Торгівля</button>
 <button data-t="mod">🛡 Модерація</button>
-<button data-t="rel">🚀 Оновлення</button>
-<button data-t="srv">🖥 Сервер</button>
-<button data-t="stats">📈 Аналітика</button>
-<button data-t="map">🗺 Карта світу</button>
-<button data-t="tickets">🎫 Підтримка</button>
-<button data-t="shop">🛒 Магазин</button>
-<button data-t="news">📣 Розсилки</button>
-<button data-t="promo">🎁 Промокоди</button>
-<button data-t="audit">📜 Журнал дій</button>
-<button data-t="set">⚙ Ролі й налаштування</button>
-<div style="padding:12px 4px 0"><div class="k">Переглянути як</div><select id="va" style="width:100%;margin-top:4px"></select></div>
+<button data-t="set">⚙ Налаштування</button>
 </nav>
 <main>
 
 <section class="sec on" id="dash">
 <h1>Дашборд</h1><div class="sub">Стан гри в реальному часі</div>
 <div class="grid">
-<div class="card"><div class="k">Онлайн зараз</div><div class="v" id="onl">1 284</div><div class="up">▲ 12% за годину</div></div>
-<div class="card"><div class="k">DAU</div><div class="v">8 910</div><div class="up">▲ 4%</div></div>
-<div class="card"><div class="k">Нові сьогодні</div><div class="v">342</div><div class="dn">▼ 3%</div></div>
-<div class="card"><div class="k">Утримання D7</div><div class="v">27%</div><div class="up">▲ 1.5%</div></div>
-<div class="card"><div class="k">Дохід (реклама + покупки)</div><div class="v">$214</div><div class="up">▲ 8%</div></div>
-<div class="card"><div class="k">Скарги в черзі</div><div class="v">17</div><div class="dn">потрібна увага</div></div>
+<div class="card"><div class="k">Онлайн зараз</div><div class="v" id="onl">—</div></div>
+<div class="card"><div class="k">Активних банів</div><div class="v" id="bans">—</div></div>
+<div class="card"><div class="k">Активних мутів</div><div class="v" id="mutes">—</div></div>
+<div class="card"><div class="k">Торгових пропозицій</div><div class="v" id="offers">—</div></div>
 </div>
 <div class="two">
-<div class="card"><div class="k">Онлайн за 24 години</div>
-<svg viewBox="0 0 300 110" width="100%" role="img" aria-label="графік онлайну"><polyline fill="none" stroke="var(--acc)" stroke-width="3" points="0,90 25,85 50,95 75,80 100,70 125,60 150,55 175,40 200,30 225,38 250,22 275,28 300,15"/><line x1="0" y1="105" x2="300" y2="105" stroke="var(--line)"/></svg></div>
-<div class="card"><div class="k">Платформи</div>
-<div style="margin-top:8px">Android 61%<div class="bar"><i style="width:61%"></i></div></div>
-<div style="margin-top:8px">Windows 36%<div class="bar"><i style="width:36%;background:var(--info)"></i></div></div>
-<div style="margin-top:8px">Інше 3%<div class="bar"><i style="width:3%;background:var(--acc2)"></i></div></div></div>
+<div class="card" id="platforms-card"><div class="k">Платформи</div><div style="margin-top:8px;color:var(--mut)">Завантаження...</div></div>
 </div>
-<div class="card"><div class="k">Остання активність</div>
-<div class="log" style="margin-top:8px"><div>12:01 Steve_99 побудував Майстерню (ур. 3)</div><div>12:03 WolfTamer приручив вовка</div><div class="w">12:05 Скарга: гравець Noob42 → "спам у чаті"</div><div>12:07 Новий рекорд риби: 14.2 кг (FishKing)</div><div class="e">12:08 Помилка синхронізації світу, шард #2 (автовідновлено)</div></div></div>
 </section>
 
 <section class="sec" id="players">
-<h1>Гравці</h1><div class="sub">Пошук, профілі, покарання, видача предметів</div>
-<div class="row"><input id="ps" placeholder="Нік або ID…" style="flex:1;min-width:160px"><select id="pf"><option>Усі</option><option>Онлайн</option><option>Забанені</option><option>Підозрілі (чіти)</option></select><button class="btn p">Знайти</button></div>
+<h1>Гравці</h1><div class="sub">Пошук, профілі, покарання</div>
+<div class="row"><input id="ps" placeholder="Нік або ID…" style="flex:1;min-width:160px"><select id="pf"><option>Усі</option><option>Онлайн</option><option>Забанені</option></select><button class="btn p" onclick="filt()">Знайти</button></div>
 <div class="card scroll"><table>
-<tr><th>Нік</th><th>Рівень</th><th>Рейтинг</th><th>Платформа</th><th>Статус</th><th>Дії</th></tr>
-<tr><td>Steve_99</td><td>24</td><td>1840</td><td>Android</td><td><span class="tag ok">онлайн</span></td><td><button class="btn">Профіль</button> <button class="btn">Видати</button> <button class="btn d tb">Бан</button></td></tr>
-<tr><td>WolfTamer</td><td>31</td><td>2210</td><td>Windows</td><td><span class="tag ok">онлайн</span></td><td><button class="btn">Профіль</button> <button class="btn">Видати</button> <button class="btn d tb">Бан</button></td></tr>
-<tr><td>Noob42</td><td>5</td><td>980</td><td>Android</td><td><span class="tag warn">мут 24г</span></td><td><button class="btn">Профіль</button> <button class="btn">Видати</button> <button class="btn d tb">Бан</button></td></tr>
-<tr><td>SpeedHax</td><td>12</td><td>1500</td><td>Windows</td><td><span class="tag bad">підозра: швидкість</span></td><td><button class="btn">Профіль</button> <button class="btn">Видати</button> <button class="btn d tb">Бан</button></td></tr>
+<thead><tr><th>Нік</th><th>Очки</th><th>Рейтинг</th><th>Платформа</th><th>Статус</th><th>Дії</th></tr></thead>
+<tbody id="players-tbody"></tbody>
 </table></div>
-<div class="card"><div class="k">Профіль гравця (відкривається по кнопці)</div>
-<div style="margin-top:6px">Інвентар · Прогрес дослідження · Село (карта) · Історія торгів · Журнал входів/IP · Прикручені улюбленці · Нотатки адміна · Скинути прогрес / відновити з бекапу</div></div>
 </section>
 
-<section class="sec" id="world">
-<h1>Світ</h1><div class="sub">Ресурси, погода, біоми, події, спавн мобів</div>
-<div class="two">
-<div class="card"><div class="k">Керування</div>
-<div class="row" style="margin-top:8px"><label>Час доби <select><option>Авто</option><option>День</option><option>Ніч</option></select></label>
-<label>Погода <select><option>Авто</option><option>Ясно</option><option>Дощ</option><option>Шторм</option></select></label></div>
-<div class="row"><button class="btn p">Застосувати</button><button class="btn">Подія: Ніч вовків 🐺</button><button class="btn">Подія: Рибний фестиваль 🎣</button></div></div>
-<div class="card"><div class="k">Відновлення ресурсів</div>
-<div class="sw"><span>Дерева</span><span><input type="number" value="30" style="width:70px"> хв</span></div>
-<div class="sw"><span>Руда</span><span><input type="number" value="120" style="width:70px"> хв</span></div>
-<div class="sw"><span>Риба в річках</span><span><input type="number" value="15" style="width:70px"> хв</span></div></div>
-</div>
-<div class="card"><div class="k">Моби й біоми</div>
-<div class="scroll"><table><tr><th>Біом</th><th>Моби</th><th>Ліміт</th><th>Нічна небезпека</th><th></th></tr>
-<tr><td>Ліс</td><td>Олень, Вовк</td><td>40</td><td>Середня</td><td><button class="btn">Ред.</button></td></tr>
-<tr><td>Річка</td><td>Риба, Жаба</td><td>80</td><td>Низька</td><td><button class="btn">Ред.</button></td></tr>
-<tr><td>Гори</td><td>Козел, Павук</td><td>25</td><td>Висока</td><td><button class="btn">Ред.</button></td></tr></table></div>
-<div class="row" style="margin-top:10px"><button class="btn">Редактор карти</button><button class="btn">Мінікарта / теплова карта гравців</button><button class="btn d">Скинути світ…</button></div></div>
-</section>
 
-<section class="sec" id="items">
-<h1>Предмети й крафт</h1><div class="sub">Додавайте предмети та рецепти без оновлення гри</div>
-<div class="row"><input placeholder="Пошук предмета…" style="flex:1;min-width:160px"><button class="btn p">+ Новий предмет</button><button class="btn">+ Рецепт</button><button class="btn">Завантажити текстуру</button></div>
-<div class="card scroll"><table>
-<tr><th>Предмет</th><th>Тип</th><th>Рідкість</th><th>Міцність</th><th>Рецепт</th><th></th></tr>
-<tr><td>Кам'яна кирка</td><td>Інструмент</td><td><span class="rar" style="background:#8a8a8a"></span>Звичайний</td><td>60</td><td>Палиця 1 + Мотузка 1 + Камінь 2</td><td><button class="btn">Ред.</button></td></tr>
-<tr><td>Вудка</td><td>Інструмент</td><td><span class="rar" style="background:#3f9b4b"></span>Незвичайний</td><td>80</td><td>Палиця 1 + Волокно 3</td><td><button class="btn">Ред.</button></td></tr>
-<tr><td>Залізна лопата</td><td>Інструмент</td><td><span class="rar" style="background:#2f7fc1"></span>Рідкісний</td><td>200</td><td>Залізо 3 + Палиця 2</td><td><button class="btn">Ред.</button></td></tr>
-<tr><td>Вогнище</td><td>Будівля</td><td><span class="rar" style="background:#8a8a8a"></span>Звичайний</td><td>—</td><td>Дрова 5 + Камінь 4</td><td><button class="btn">Ред.</button></td></tr>
-</table></div>
-<div class="card"><div class="k">Дерево досліджень</div><div style="margin-top:6px">Візуальний редактор: що відкриває що, вартість дослідження, час. Баланс-симулятор показує, скільки ресурсів потрібно новачку до кожного рівня.</div></div>
-</section>
 
-<section class="sec" id="rating">
-<h1>Рейтинг і турніри</h1><div class="sub">Таблиця лідерів, змагання з риболовлі, сезони</div>
-<div class="two">
-<div class="card"><div class="k">Топ сезону</div><div class="scroll"><table style="min-width:260px"><tr><th>#</th><th>Гравець</th><th>Очки</th></tr><tr><td>1</td><td>WolfTamer</td><td>2210</td></tr><tr><td>2</td><td>FishKing</td><td>2105</td></tr><tr><td>3</td><td>Steve_99</td><td>1840</td></tr></table></div>
-<div class="row" style="margin-top:10px"><button class="btn">Перерахувати</button><button class="btn d">Завершити сезон</button></div></div>
-<div class="card"><div class="k">Рибний турнір</div>
-<div style="margin:8px 0">Статус: <span class="tag ok">триває</span> · залишилось 2д 5г</div>
-<div class="row"><label>Нагорода за 1 місце <input value="Золота вудка + 500 монет"></label></div>
-<div class="row"><button class="btn p">Створити турнір</button><button class="btn">Достроково завершити</button></div></div>
-</div>
-<div class="card"><div class="k">Антифрод рейтингу</div><div style="margin-top:6px">Автоматичні позначки: підозріле зростання очок, ботоферми, один IP з багатьох акаунтів. Дія: зняти очки / обнулити / бан.</div></div>
-</section>
 
 <section class="sec" id="econ">
-<h1>Торгівля</h1><div class="sub">Ринок між гравцями (риба, ресурси, предмети)</div>
+<h1>Торгівля</h1><div class="sub">Ринок між гравцями</div>
 <div class="grid">
-<div class="card"><div class="k">Угод за добу</div><div class="v">3 420</div></div>
-<div class="card"><div class="k">Середня ціна риби</div><div class="v">18🪙</div></div>
-<div class="card"><div class="k">Монет в обігу</div><div class="v">4.2M</div><div class="dn">інфляція +2%</div></div>
+<div class="card"><div class="k">Активних пропозицій</div><div class="v" id="offers-count">—</div></div>
 </div>
-<div class="card"><div class="k">Керування ринком</div>
-<div class="sw"><span>Ліміт ціни (мін / макс) для кожного предмета</span><button class="btn">Налаштувати</button></div>
-<div class="sw"><span>Податок на торгівлю (антиінфляція)</span><span><input type="number" value="5" style="width:60px">%</span></div>
-<div class="sw"><span>Підозрілі угоди (передача ресурсів між мультиакаунтами)</span><button class="btn">Дивитись (6)</button></div>
-<div class="sw"><span>Скасувати угоду / повернути предмети</span><button class="btn d">Відкат…</button></div></div>
+<div class="card" id="market-section"><div class="k">Завантаження...</div></div>
 </section>
 
 <section class="sec" id="mod">
-<h1>Модерація</h1><div class="sub">Скарги, чат, автофільтри</div>
-<div class="card scroll"><table>
-<tr><th>Від</th><th>На</th><th>Причина</th><th>Час</th><th>Дії</th></tr>
-<tr><td>Steve_99</td><td>Noob42</td><td>Спам у чаті</td><td>2 хв тому</td><td><button class="btn">Чат</button> <button class="btn">Мут</button> <button class="btn d">Бан</button> <button class="btn">Закрити</button></td></tr>
-<tr><td>FishKing</td><td>SpeedHax</td><td>Чіти (швидкість)</td><td>9 хв тому</td><td><button class="btn">Чат</button> <button class="btn">Мут</button> <button class="btn d">Бан</button> <button class="btn">Закрити</button></td></tr>
-</table></div>
-<div class="card"><div class="k">Автомодерація</div>
-<div class="sw"><span>Фільтр лайки в чаті</span><button class="tg on"></button></div>
-<div class="sw"><span>Автомут за спам (5 повідомлень / 5 с)</span><button class="tg on"></button></div>
-<div class="sw"><span>Авто-позначка читерів за швидкістю/телепортом</span><button class="tg on"></button></div>
-<div class="sw"><span>Глобальний чат увімкнено</span><button class="tg on"></button></div></div>
+<h1>Модерація</h1><div class="sub">Бани, мути</div>
+<div id="moderation-section"><div class="k">Завантаження...</div></div>
 </section>
 
-<section class="sec" id="rel">
-<h1>Оновлення</h1><div class="sub">Версії, автооновлення в грі, GitHub Actions збірки</div>
-<div class="two">
-<div class="card"><div class="k">Поточні версії</div>
-<div class="sw"><span>Android (APK)</span><span class="tag ok">v0.4.2</span></div>
-<div class="sw"><span>Windows (exe)</span><span class="tag ok">v0.4.2</span></div>
-<div class="sw"><span>Мін. підтримувана версія</span><span class="tag warn">v0.4.0</span></div></div>
-<div class="card"><div class="k">Випустити оновлення</div>
-<div class="row" style="margin-top:8px"><input placeholder="Версія, напр. 0.4.3" style="width:150px"><select><option>Android + Windows</option><option>Лише Android</option><option>Лише Windows</option></select></div>
-<textarea rows="3" placeholder="Що нового (бачать гравці в вікні оновлення)…" style="width:100%"></textarea>
-<div class="row" style="margin-top:8px"><label>Розкатка <select><option>10%</option><option>50%</option><option selected>100%</option></select></label>
-<label class="row" style="margin:0"><button class="tg tb2"></button> Примусове</label></div>
-<div class="row"><button class="btn p">Опублікувати</button><button class="btn d">Відкликати версію</button></div></div>
-</div>
-<div class="card"><div class="k">Збірки (GitHub Actions)</div><div class="scroll"><table><tr><th>Збірка</th><th>Гілка</th><th>Статус</th><th></th></tr>
-<tr><td>#128 Android APK</td><td>main</td><td><span class="tag ok">успішно</span></td><td><button class="btn">Лог</button></td></tr>
-<tr><td>#127 Windows exe</td><td>main</td><td><span class="tag bad">помилка</span></td><td><button class="btn">Лог</button> <button class="btn">Перезапустити</button></td></tr></table></div></div>
-</section>
 
-<section class="sec" id="srv">
-<h1>Сервер</h1><div class="sub">Стан, логи, обслуговування, бекапи</div>
-<div class="grid">
-<div class="card"><div class="k">CPU</div><div class="v">38%</div><div class="bar"><i style="width:38%"></i></div></div>
-<div class="card"><div class="k">RAM</div><div class="v">61%</div><div class="bar"><i style="width:61%;background:var(--acc2)"></i></div></div>
-<div class="card"><div class="k">Пінг</div><div class="v">42 мс</div></div>
-<div class="card"><div class="k">Шарди світу</div><div class="v">4 / 4</div></div>
-</div>
-<div class="two">
-<div class="card"><div class="k">Дії</div>
-<div class="sw"><span>Режим обслуговування (гравців не пускає)</span><button class="tg"></button></div>
-<div class="row" style="margin-top:10px"><input placeholder="Повідомлення всім гравцям…" style="flex:1;min-width:160px"><button class="btn p">Надіслати</button></div>
-<div class="row"><button class="btn">Створити бекап</button><button class="btn">Відновити бекап…</button><button class="btn d">Перезапустити шард</button></div></div>
-<div class="card"><div class="k">Логи</div><div class="log" id="slog" style="margin-top:8px"><div>[12:10] shard#1 tick ok 16ms</div><div class="w">[12:11] shard#3 high latency 180ms</div><div>[12:12] autosave done (4.1s)</div><div class="e">[12:13] shard#2 desync, restarted</div></div><input id="cin" placeholder="Консоль: help, online, say привіт, kick нік" style="width:100%;margin-top:8px;font-family:ui-monospace,Menlo,Consolas,monospace"></div>
-</div>
-</section>
 
-<section class="sec" id="stats">
-<h1>Аналітика</h1><div class="sub">Активність гравців і утримання (демо-дані)</div>
-<div class="row"><select id="sp"><option value="7">7 днів</option><option value="30" selected>30 днів</option><option value="90">90 днів</option></select><span class="tag" id="sav"></span></div>
-<div class="card"><div class="k">DAU</div><svg id="sg" viewBox="0 0 400 120" width="100%" role="img" aria-label="графік DAU"></svg></div>
-<div class="card scroll"><div class="k">Утримання по когортах</div><table id="co"></table></div>
-</section>
 
-<section class="sec" id="map">
-<h1>Карта світу</h1><div class="sub">Гравці в реальному часі (демо): ліс, річка, озеро, гори. Клік по точці показує гравця</div>
-<div class="row"><label><input type="checkbox" id="hm"> Теплова карта</label><span class="tag" id="mc"></span></div>
-<div class="card"><svg id="wm" viewBox="0 0 320 200" width="100%" style="display:block;max-height:70vh" role="img" aria-label="карта світу"></svg></div>
-</section>
 
-<section class="sec" id="tickets">
-<h1>Підтримка</h1><div class="sub">Баг-репорти, питання та пропозиції від гравців</div>
-<div class="row"><select id="tf"><option>Усі</option><option>нова</option><option>в роботі</option><option>закрита</option></select><span class="tag warn" id="tc"></span></div>
-<div class="card scroll"><table><tr><th>#</th><th>Гравець</th><th>Тип</th><th>Тема</th><th>Статус</th><th></th></tr><tbody id="tt"></tbody></table></div>
-</section>
 
-<section class="sec" id="shop">
-<h1>Магазин</h1><div class="sub">Ціни, акції й продажі (внутрішньоігрові покупки)</div>
-<div class="grid"><div class="card"><div class="k">Дохід від покупок</div><div class="v" id="sr"></div></div><div class="card"><div class="k">Покупок</div><div class="v" id="sn"></div></div><div class="card"><div class="k">Активні акції</div><div class="v" id="sa"></div></div></div>
-<div class="row"><label>Розмір знижки для акцій <select id="sd"><option value="20">−20%</option><option value="30">−30%</option><option value="50">−50%</option></select></label></div>
-<div class="card"><div class="k">Створити акцію</div>
-<div class="row" style="margin-top:8px"><input id="an2" placeholder="Назва акції" maxlength="40" style="flex:1;min-width:150px"><label>Знижка <input id="ad" type="number" min="1" max="90" value="25" style="width:70px">%</label><select id="adu"><option value="1">1 день</option><option value="3">3 дні</option><option value="7" selected>7 днів</option><option value="0">Без кінця</option></select></div>
-<div class="k">Товари в акції</div><div style="margin:6px 0 10px"><button class="btn ax" id="aall" style="margin-right:12px">Вибрати всі</button><span id="aitems"></span></div>
-<button class="btn p ax" id="amk">Запустити акцію</button></div>
-<div class="card scroll"><div class="k">Акції</div><table><tr><th>Назва</th><th>Знижка</th><th>Товари</th><th>Закінчення</th><th>Статус</th><th></th></tr><tbody id="apb"></tbody></table></div>
-<div class="card scroll"><table><tr><th>Товар</th><th>Ціна $</th><th>Продано</th><th>Дохід</th><th>Ціна зараз</th><th>Акція</th><th>В магазині</th></tr><tbody id="stb"></tbody></table></div>
-</section>
 
-<section class="sec" id="news">
-<h1>Розсилки</h1><div class="sub">Оголошення в грі та push-сповіщення гравцям</div>
-<div class="two">
-<div class="card"><div class="k">Нове повідомлення</div>
-<div class="row" style="margin-top:8px"><input id="nt" placeholder="Заголовок" style="flex:1;min-width:140px" maxlength="40"></div>
-<textarea id="nb" rows="3" placeholder="Текст (до 140 символів)" maxlength="140" style="width:100%"></textarea>
-<div class="row" style="margin-top:8px"><select id="na"><option>Усім гравцям</option><option>Лише онлайн</option><option>Android</option><option>Windows</option><option>Неактивні 7+ днів</option></select><select id="nk"><option>У грі (вікно)</option><option>Push</option><option>Чат-банер</option></select><select id="nw"><option>Зараз</option><option>Через 1 годину</option><option>Завтра 12:00</option></select></div>
-<div class="row"><button class="btn p ax" id="ns">Надіслати</button></div></div>
-<div class="card"><div class="k">Попередній перегляд</div>
-<div style="margin-top:10px;border:2px solid var(--line);padding:12px;background:var(--bg)"><b id="npt">Заголовок</b><div id="npb" style="color:var(--mut)">Текст повідомлення…</div><div class="k" style="margin-top:8px" id="npm"></div></div></div>
-</div>
-<div class="card scroll"><div class="k">Історія</div><table><tr><th>Заголовок</th><th>Аудиторія</th><th>Тип</th><th>Коли</th><th>Статус</th></tr><tbody id="nh"></tbody></table></div>
-</section>
 
-<section class="sec" id="promo">
-<h1>Промокоди</h1><div class="sub">Нагороди за код: монети, предмети, преміум</div>
-<div class="card"><div class="k">Створити код</div>
-<div class="row" style="margin-top:8px"><input id="pc" placeholder="КОД" style="width:150px;text-transform:uppercase" maxlength="16"><button class="btn ax" id="pg">🎲 Згенерувати</button><select id="pr"><option>500 монет</option><option>Золота вудка</option><option>7 днів преміуму</option><option>Набір новачка</option></select><input id="pl" type="number" value="100" min="1" style="width:90px" title="Ліміт активацій"><select id="pe"><option>7 днів</option><option>30 днів</option><option>Безстроково</option></select><button class="btn p ax" id="pa">Створити</button></div></div>
-<div class="card scroll"><table><tr><th>Код</th><th>Нагорода</th><th>Використано</th><th>Діє</th><th>Статус</th><th></th></tr><tbody id="pt"></tbody></table></div>
-</section>
 
-<section class="sec" id="audit">
-<h1>Журнал дій</h1><div class="sub">Хто з адмінів що робив. Усі дії в цій сесії з'являються тут автоматично</div>
-<div class="row"><button class="btn">Експорт CSV</button></div>
-<div class="card scroll"><table><tr><th>Адмін</th><th>Дія</th><th>Час</th></tr><tbody id="al"><tr><td>mod_anna</td><td>Мут Noob42 на 24 год</td><td>11:52</td></tr><tr><td>dev_max</td><td>Опубліковано v0.4.2 (100%)</td><td>10:30</td></tr></tbody></table></div>
-</section>
 
 <section class="sec" id="set">
-<h1>Ролі й налаштування</h1><div class="sub">Додавайте адмінів, призначайте ролі й права. Вгорі зліва є «Переглянути як» — перевірте, що бачить кожна роль</div>
-<div class="row"><button class="btn p ax" id="addA">+ Додати адміна</button></div>
-<div class="card scroll"><table><tr><th>Адмін</th><th>Роль</th><th>Права</th><th>2FA</th><th></th></tr><tbody id="at"></tbody></table></div>
+<h1>Налаштування</h1><div class="sub">Тема та інші налаштування</div>
 <div class="card"><div class="k">Загальне</div>
-<div class="sw"><span>Тема адмінки</span><select id="th"><option value="auto">Авто</option><option value="light">Світла</option><option value="dark">Темна</option></select></div>
-<div class="sw"><span>Журнал дій адмінів (хто кого забанив, що видав)</span><button class="tg on"></button></div>
-<div class="sw"><span>Сповіщення в Telegram/Discord про збої та скарги</span><button class="tg"></button></div></div>
+<div class="sw"><span>Тема адмінки</span><select id="th"><option value="auto">Авто</option><option value="light">Світла</option><option value="dark">Темна</option></select></div></div>
 </section>
 
 </main>

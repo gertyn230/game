@@ -1,4 +1,6 @@
 //! Сервер Pixel Village: игроки, общий мир, рынок, рейтинги + страница «кто онлайн».
+mod db;
+
 use std::{
     collections::HashMap,
     net::SocketAddr,
@@ -13,7 +15,7 @@ use axum::{
     },
     http::StatusCode,
     response::{Html, IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
 use futures_util::{SinkExt, StreamExt};
@@ -21,6 +23,7 @@ use shared::{
     Ban, ClientMsg, DeviceInfo, Mute, Offer, PlayerState, ServerMsg, ITEM_COUNT, MAX_NAME_CHARS, NODE_COUNT_MAX, RESPAWN_SECS, WORLD_SIZE,
 };
 use tokio::sync::{broadcast, mpsc, Mutex};
+use sqlx::SqlitePool;
 
 const MAX_PLAYERS: usize = 200;
 const MAX_OFFERS: usize = 300;
@@ -51,6 +54,7 @@ struct App {
     world: Arc<Mutex<World>>,
     tx: broadcast::Sender<String>,
     admin_key: Option<String>,
+    db: SqlitePool,
 }
 
 fn enc(m: &ServerMsg) -> String {
@@ -59,11 +63,15 @@ fn enc(m: &ServerMsg) -> String {
 
 #[tokio::main]
 async fn main() {
+    // Ініціалізувати базу даних
+    let db = db::init_db().await.expect("Не вдалось підключитись до БД");
+
     let (tx, _) = broadcast::channel::<String>(32);
     let app = App {
         world: Arc::new(Mutex::new(World::default())),
         tx,
         admin_key: std::env::var("ADMIN_KEY").ok().filter(|k| !k.is_empty()),
+        db,
     };
 
     // Снимок мира ~15 раз/с, таблицы лидеров каждые ~5 с.
@@ -114,6 +122,12 @@ async fn main() {
         .route("/api/admin/mute", get(api_mute))
         .route("/api/admin/unmute", get(api_unmute))
         .route("/api/admin/bans", get(api_list_bans))
+        .route("/api/admin/logs", get(api_admin_logs))
+        .route("/api/admin/tickets", get(api_tickets))
+        .route("/api/admin/ticket/create", post(api_create_ticket))
+        .route("/api/admin/ticket/update", post(api_update_ticket))
+        .route("/api/admin/config", get(api_get_config))
+        .route("/api/admin/config/set", post(api_set_config))
         .route("/api/version", get(api_version))
         .route("/ws", get(ws_handler))
         .with_state(app);
@@ -664,5 +678,121 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
                 let _ = app.tx.send(enc(&ServerMsg::Market { offers: w.offers.clone() }));
             }
         }
+    }
+}
+
+// ============ Нові API endpoints для адмінки ============
+
+async fn api_admin_logs(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
+    // Перевірка ключа
+    match (&app.admin_key, q.get("key")) {
+        (Some(k), Some(given)) if k == given => {}
+        _ => return (StatusCode::UNAUTHORIZED, "Потрібен ключ").into_response()
+    }
+
+    let limit = q.get("limit").and_then(|s| s.parse().ok()).unwrap_or(50);
+
+    match db::get_logs(&app.db, limit).await {
+        Ok(logs) => Json(logs).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка БД: {}", e)).into_response()
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct TicketCreateReq {
+    key: String,
+    player: String,
+    ticket_type: String,
+    subject: String,
+    message: String,
+}
+
+async fn api_create_ticket(State(app): State<App>, Json(req): Json<TicketCreateReq>) -> Response {
+    // Перевірка ключа (для тестів можна створювати без ключа)
+    if let Some(k) = &app.admin_key {
+        if &req.key != k {
+            return (StatusCode::UNAUTHORIZED, "Потрібен ключ").into_response();
+        }
+    }
+
+    match db::create_ticket(&app.db, &req.player, &req.ticket_type, &req.subject, &req.message).await {
+        Ok(id) => Json(serde_json::json!({"id": id, "status": "created"})).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка: {}", e)).into_response()
+    }
+}
+
+async fn api_tickets(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
+    match (&app.admin_key, q.get("key")) {
+        (Some(k), Some(given)) if k == given => {}
+        _ => return (StatusCode::UNAUTHORIZED, "Потрібен ключ").into_response()
+    }
+
+    let status = q.get("status").map(|s| s.as_str());
+
+    match db::get_tickets(&app.db, status).await {
+        Ok(tickets) => Json(tickets).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка: {}", e)).into_response()
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct TicketUpdateReq {
+    key: String,
+    id: i64,
+    status: String,
+}
+
+async fn api_update_ticket(State(app): State<App>, Json(req): Json<TicketUpdateReq>) -> Response {
+    match (&app.admin_key, Some(&req.key)) {
+        (Some(k), Some(given)) if k == given => {}
+        _ => return (StatusCode::UNAUTHORIZED, "Потрібен ключ").into_response()
+    }
+
+    // Додати лог
+    let _ = db::add_log(&app.db, "admin", &format!("Тікет #{} -> {}", req.id, req.status)).await;
+
+    match db::update_ticket_status(&app.db, req.id, &req.status).await {
+        Ok(_) => Json(serde_json::json!({"status": "updated"})).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка: {}", e)).into_response()
+    }
+}
+
+async fn api_get_config(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
+    match (&app.admin_key, q.get("key")) {
+        (Some(k), Some(given)) if k == given => {}
+        _ => return (StatusCode::UNAUTHORIZED, "Потрібен ключ").into_response()
+    }
+
+    let config_key = match q.get("config_key") {
+        Some(k) => k,
+        None => return (StatusCode::BAD_REQUEST, "Потрібен параметр config_key").into_response()
+    };
+
+    match db::get_config(&app.db, config_key).await {
+        Ok(Some(value)) => Json(serde_json::json!({"key": config_key, "value": value})).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, "Налаштування не знайдено").into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка: {}", e)).into_response()
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct ConfigSetReq {
+    key: String,
+    config_key: String,
+    value: String,
+}
+
+async fn api_set_config(State(app): State<App>, Json(req): Json<ConfigSetReq>) -> Response {
+    match (&app.admin_key, Some(&req.key)) {
+        (Some(k), Some(given)) if k == given => {}
+        _ => return (StatusCode::UNAUTHORIZED, "Потрібен ключ").into_response()
+    }
+
+    // Додати лог
+    let _ = db::add_log(&app.db, "admin", &format!("Змінено налаштування: {} = {}", req.config_key, req.value)).await;
+
+    match db::set_config(&app.db, &req.config_key, &req.value).await {
+        Ok(_) => Json(serde_json::json!({"status": "updated"})).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка: {}", e)).into_response()
     }
 }

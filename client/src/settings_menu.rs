@@ -597,7 +597,7 @@ impl SettingsMenu {
 
         if (hovered && is_mouse_button_pressed(MouseButton::Left)) || is_key_pressed(KeyCode::Escape) {
             self.category = SettingsCategory::Main;
-            true
+            false  // Не закривати меню, просто повернутись до головного меню налаштувань
         } else {
             false
         }
