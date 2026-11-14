@@ -461,32 +461,131 @@ if(h){var m=document.querySelector('#nav button[data-t="'+h+'"]');if(m)m.click()
 var adminKey=new URLSearchParams(location.search).get('key');
 var gameData={};
 
+function esc(s){return (s||'').toString().replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+
 function loadRealData(){
 if(!adminKey)return;
 fetch('/api/admin/stats?key='+encodeURIComponent(adminKey))
 .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
 .then(function(data){
 gameData=data;
-// Оновлюємо дашборд
+
+// ДАШБОРД
 if(data.players){
 var onl=g('onl');if(onl)onl.textContent=(data.players.online||0).toLocaleString('uk-UA');
 }
-// Оновлюємо гравців
+if(data.moderation){
+var bansCard=document.querySelectorAll('.grid .card')[2];
+if(bansCard){
+var bv=bansCard.querySelector('.v');
+if(bv)bv.textContent=data.moderation.active_bans||0;
+}
+var mutesCard=document.querySelectorAll('.grid .card')[3];
+if(mutesCard){
+var mv=mutesCard.querySelector('.v');
+if(mv)mv.textContent=data.moderation.active_mutes||0;
+}
+}
+
+// ПЛАТФОРМИ
+if(data.stats&&data.stats.by_os){
+var platCard=document.querySelector('.two .card:last-child');
+if(platCard){
+var html='';
+var total=data.players.online||1;
+var entries=Object.entries(data.stats.by_os);
+var colors=['','background:var(--info)','background:var(--acc2)'];
+entries.forEach(function(e,i){
+var os=e[0],cnt=e[1],pct=Math.round(cnt/total*100);
+html+='<div style="margin-top:8px">'+esc(os)+' '+pct+'%<div class="bar"><i style="width:'+pct+'%'+(i>0?';'+colors[i]:'')+'"></i></div></div>';
+});
+var content=platCard.querySelector('div:last-child');
+if(content)content.innerHTML=html;
+}
+}
+
+// ГРАВЦІ
 if(data.players&&data.players.list){
 var tbody=document.querySelector('#players tbody');
 if(tbody){
 tbody.innerHTML='';
 data.players.list.forEach(function(p){
-var dev=p.device?(p.device.os+' '+p.device.version):'Невідомо';
+var dev=p.device?(esc(p.device.os)+' '+esc(p.device.version)):'Невідомо';
 var isMuted=data.moderation?.mutes?.some(function(m){return m.player_name===p.name});
 var isBanned=data.moderation?.bans?.some(function(b){return b.player_name===p.name});
-var status=isBanned?'<span class="tag bad">забанений</span>':isMuted?'<span class="tag warn">мут</span>':'<span class="tag ok">онлайн</span>';
+var status=isBanned?'<span class="tag bad">забанений</span>':isMuted?'<span class="tag warn">мут 24г</span>':'<span class="tag ok">онлайн</span>';
 var tr=document.createElement('tr');
-tr.innerHTML='<td>'+p.name+'</td><td>'+Math.round(p.score/100)+'</td><td>'+Math.round(p.score)+'</td><td>'+dev+'</td><td>'+status+'</td><td><button class="btn">Профіль</button> <button class="btn">Видати</button> <button class="btn d tb">Бан</button></td>';
+tr.innerHTML='<td>'+esc(p.name)+'</td><td>'+Math.round(p.score/100)+'</td><td>'+Math.round(p.score)+'</td><td>'+dev+'</td><td>'+status+'</td><td><button class="btn">Профіль</button> <button class="btn">Видати</button> <button class="btn d tb">Бан</button></td>';
 tbody.appendChild(tr);
 });
 }
 }
+
+// КАРТА СВІТУ - оновлюємо кількість гравців
+if(data.players){
+var mc=g('mc');
+if(mc)mc.textContent=(data.players.online||0)+' на карті';
+}
+
+// ТІКЕТИ - завантажуємо з API
+if(document.querySelector('#tickets.sec')){
+fetch('/api/admin/tickets?key='+encodeURIComponent(adminKey))
+.then(function(r){return r.json()})
+.then(function(tickets){
+var tt=g('tt');
+if(tt){
+tt.innerHTML='';
+if(tickets.length===0){
+tt.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut)">Немає тікетів</td></tr>';
+}else{
+tickets.slice(0,10).forEach(function(t){
+var statusClass=t.status==='нова'?'warn':(t.status==='закрита'?'ok':'');
+var tr=document.createElement('tr');
+tr.innerHTML='<td>#'+t.id+'</td><td>'+esc(t.player)+'</td><td>'+esc(t.ticket_type)+'</td><td>'+esc(t.subject)+'</td><td><span class="tag '+statusClass+'">'+esc(t.status)+'</span></td><td><button class="btn ax">Відкрити</button></td>';
+tt.appendChild(tr);
+});
+}
+var tc=document.querySelector('#tickets .tag.warn');
+if(tc){
+var newCount=tickets.filter(function(t){return t.status==='нова'}).length;
+tc.textContent='нових: '+newCount;
+}
+}
+}).catch(function(e){console.error('Tickets error:',e)});
+}
+
+// ЛОГИ - завантажуємо останні
+fetch('/api/admin/logs?key='+encodeURIComponent(adminKey)+'&limit=5')
+.then(function(r){return r.json()})
+.then(function(logs){
+var al=g('al');
+if(al&&logs.length>0){
+// Додаємо нові логи зверху
+logs.reverse().forEach(function(log){
+var exists=false;
+var rows=al.querySelectorAll('tr');
+rows.forEach(function(row){
+if(row.cells[1]&&row.cells[1].textContent===log.action)exists=true;
+});
+if(!exists){
+var d=new Date(log.timestamp*1000);
+var hh=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+var tr=document.createElement('tr');
+[esc(log.admin),esc(log.action),hh].forEach(function(x){
+var td=document.createElement('td');
+td.textContent=x;
+tr.appendChild(td);
+});
+al.insertBefore(tr,al.firstChild);
+// Лишаємо максимум 10 записів
+if(al.children.length>10){
+al.removeChild(al.lastChild);
+}
+}
+});
+}
+}).catch(function(e){console.error('Logs error:',e)});
+
 })
 .catch(function(e){console.error('API error:',e)})
 }
