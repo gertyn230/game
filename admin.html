@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pixel Village — Адмінка</title>
+<style>
+:root{--bg:#f3efe4;--panel:#fffdf6;--ink:#2b2a33;--mut:#7a7667;--line:#d9d2bd;--acc:#3f9b4b;--acc2:#d98a1f;--bad:#c8452f;--info:#2f7fc1;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1d27;--panel:#252836;--ink:#ecebf2;--mut:#9a98ab;--line:#383c50;--acc:#5fcf6e;--acc2:#f0a93a;--bad:#ef6a52;--info:#5aa8ec}}
+:root[data-theme="dark"]{--bg:#1b1d27;--panel:#252836;--ink:#ecebf2;--mut:#9a98ab;--line:#383c50;--acc:#5fcf6e;--acc2:#f0a93a;--bad:#ef6a52;--info:#5aa8ec}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.app{display:flex;min-height:100vh}
+nav{width:210px;flex:none;background:var(--panel);border-right:2px solid var(--line);padding:14px 10px;position:sticky;top:0;height:100vh;overflow:auto}
+.logo{font:700 16px/1 ui-monospace,Menlo,Consolas,monospace;padding:6px 8px 14px;color:var(--acc)}
+nav button{display:flex;gap:8px;width:100%;text-align:left;background:none;border:0;color:var(--ink);padding:9px 10px;border-radius:6px;cursor:pointer;font:inherit;margin-bottom:2px}
+nav button:hover{background:var(--bg)}
+nav button.on{background:var(--acc);color:#fff;font-weight:600}
+main{flex:1;min-width:0;padding:20px}
+h1{font:700 20px/1.2 ui-monospace,Menlo,Consolas,monospace;margin:0 0 4px}
+.sub{color:var(--mut);margin-bottom:16px}
+.sec{display:none}.sec.on{display:block}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:14px}
+.card{background:var(--panel);border:2px solid var(--line);border-radius:8px;padding:14px;margin-bottom:12px}
+.grid .card{margin:0}
+.k{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.v{font:700 26px/1.2 ui-monospace,Menlo,Consolas,monospace}
+.up{color:var(--acc);font-size:12px}.dn{color:var(--bad);font-size:12px}
+.two{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:520px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mut);font-size:12px;text-transform:uppercase}
+.btn{background:var(--panel);color:var(--ink);border:2px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer;font:inherit;font-size:13px}
+.btn:hover{border-color:var(--acc)}
+.btn.p{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.d{border-color:var(--bad);color:var(--bad)}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;background:var(--bg);border:1px solid var(--line)}
+.tag.ok{color:var(--acc)}.tag.bad{color:var(--bad)}.tag.warn{color:var(--acc2)}
+input,select,textarea{background:var(--bg);color:var(--ink);border:2px solid var(--line);border-radius:6px;padding:7px 9px;font:inherit;max-width:100%}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.sw{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);gap:10px}
+.sw:last-child{border:0}
+.tg{width:42px;height:22px;border-radius:11px;background:var(--line);position:relative;cursor:pointer;flex:none;border:0}
+.tg::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+.tg.on{background:var(--acc)}.tg.on::after{left:23px}
+.bar{height:10px;background:var(--bg);border-radius:5px;overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--acc)}
+.log{background:#14151c;color:#9fe3a8;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;padding:10px;border-radius:6px;max-height:190px;overflow:auto}
+.log .w{color:#f0c060}.log .e{color:#ff8a72}
+.rar{display:inline-block;width:10px;height:10px;margin-right:6px}
+.card,.btn,input,select,textarea,.tag,.log,.bar,nav button{border-radius:2px}.card{box-shadow:4px 4px 0 var(--line)}.btn{box-shadow:2px 2px 0 var(--line)}.btn:active{transform:translate(2px,2px);box-shadow:none}h1{text-shadow:2px 2px 0 var(--line)}
+.top{display:flex;gap:8px;align-items:center;margin-bottom:14px}.grp{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:12px 10px 4px}.pi{display:block;width:100%;text-align:left;background:none;border:0;color:var(--ink);padding:9px 10px;font:inherit;cursor:pointer}.pi:hover,.pi.on{background:var(--acc);color:#fff}th{cursor:pointer}th:hover{color:var(--acc)}@media(max-width:760px){.grp{display:none}}
+.md{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}.md.on{display:flex}.mb{background:var(--panel);border:2px solid var(--line);padding:18px;max-width:460px;width:100%;max-height:90vh;overflow:auto;box-shadow:6px 6px 0 var(--line)}.mb h2{font:700 18px ui-monospace,Menlo,Consolas,monospace;margin:0 0 10px}.st{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.st div{background:var(--bg);padding:8px;border:1px solid var(--line)}.inv{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:2px;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:90%}#toast.on{opacity:1;transform:translateX(-50%)}
+@media(max-width:760px){.app{flex-direction:column}nav{width:100%;height:auto;position:static;display:flex;overflow-x:auto;border-right:0;border-bottom:2px solid var(--line);padding:8px}.logo{display:none}nav button{width:auto;white-space:nowrap;margin:0}main{padding:14px}}
+</style>
+</head>
+<body>
+<div class="app">
+<nav id="nav">
+<div class="logo">▣ PIXEL VILLAGE</div>
+<button data-t="dash" class="on">📊 Дашборд</button>
+<button data-t="players">👥 Гравці</button>
+<button data-t="world">🌍 Світ</button>
+<button data-t="items">🎒 Предмети й крафт</button>
+<button data-t="rating">🏆 Рейтинг і турніри</button>
+<button data-t="econ">🐟 Торгівля</button>
+<button data-t="mod">🛡 Модерація</button>
+<button data-t="rel">🚀 Оновлення</button>
+<button data-t="srv">🖥 Сервер</button>
+<button data-t="stats">📈 Аналітика</button>
+<button data-t="map">🗺 Карта світу</button>
+<button data-t="tickets">🎫 Підтримка</button>
+<button data-t="shop">🛒 Магазин</button>
+<button data-t="news">📣 Розсилки</button>
+<button data-t="promo">🎁 Промокоди</button>
+<button data-t="audit">📜 Журнал дій</button>
+<button data-t="set">⚙ Ролі й налаштування</button>
+<div style="padding:12px 4px 0"><div class="k">Переглянути як</div><select id="va" style="width:100%;margin-top:4px"></select></div>
+</nav>
+<main>
+
+<section class="sec on" id="dash">
+<h1>Дашборд</h1><div class="sub">Стан гри в реальному часі</div>
+<div class="grid">
+<div class="card"><div class="k">Онлайн зараз</div><div class="v" id="onl">1 284</div><div class="up">▲ 12% за годину</div></div>
+<div class="card"><div class="k">DAU</div><div class="v">8 910</div><div class="up">▲ 4%</div></div>
+<div class="card"><div class="k">Нові сьогодні</div><div class="v">342</div><div class="dn">▼ 3%</div></div>
+<div class="card"><div class="k">Утримання D7</div><div class="v">27%</div><div class="up">▲ 1.5%</div></div>
+<div class="card"><div class="k">Дохід (реклама + покупки)</div><div class="v">$214</div><div class="up">▲ 8%</div></div>
+<div class="card"><div class="k">Скарги в черзі</div><div class="v">17</div><div class="dn">потрібна увага</div></div>
+</div>
+<div class="two">
+<div class="card"><div class="k">Онлайн за 24 години</div>
+<svg viewBox="0 0 300 110" width="100%" role="img" aria-label="графік онлайну"><polyline fill="none" stroke="var(--acc)" stroke-width="3" points="0,90 25,85 50,95 75,80 100,70 125,60 150,55 175,40 200,30 225,38 250,22 275,28 300,15"/><line x1="0" y1="105" x2="300" y2="105" stroke="var(--line)"/></svg></div>
+<div class="card"><div class="k">Платформи</div>
+<div style="margin-top:8px">Android 61%<div class="bar"><i style="width:61%"></i></div></div>
+<div style="margin-top:8px">Windows 36%<div class="bar"><i style="width:36%;background:var(--info)"></i></div></div>
+<div style="margin-top:8px">Інше 3%<div class="bar"><i style="width:3%;background:var(--acc2)"></i></div></div></div>
+</div>
+<div class="card"><div class="k">Остання активність</div>
+<div class="log" style="margin-top:8px"><div>12:01 Steve_99 побудував Майстерню (ур. 3)</div><div>12:03 WolfTamer приручив вовка</div><div class="w">12:05 Скарга: гравець Noob42 → "спам у чаті"</div><div>12:07 Новий рекорд риби: 14.2 кг (FishKing)</div><div class="e">12:08 Помилка синхронізації світу, шард #2 (автовідновлено)</div></div></div>
+</section>
+
+<section class="sec" id="players">
+<h1>Гравці</h1><div class="sub">Пошук, профілі, покарання, видача предметів</div>
+<div class="row"><input id="ps" placeholder="Нік або ID…" style="flex:1;min-width:160px"><select id="pf"><option>Усі</option><option>Онлайн</option><option>Забанені</option><option>Підозрілі (чіти)</option></select><button class="btn p">Знайти</button></div>
+<div class="card scroll"><table>
+<tr><th>Нік</th><th>Рівень</th><th>Рейтинг</th><th>Платформа</th><th>Статус</th><th>Дії</th></tr>
+<tr><td>Steve_99</td><td>24</td><td>1840</td><td>Android</td><td><span class="tag ok">онлайн</span></td><td><button class="btn">Профіль</button> <button class="btn">Видати</button> <button class="btn d tb">Бан</button></td></tr>
+<tr><td>WolfTamer</td><td>31</td><td>2210</td><td>Windows</td><td><span class="tag ok">онлайн</span></td><td><button class="btn">Профіль</button> <button class="btn">Видати</button> <button class="btn d tb">Бан</button></td></tr>
+<tr><td>Noob42</td><td>5</td><td>980</td><td>Android</td><td><span class="tag warn">мут 24г</span></td><td><button class="btn">Профіль</button> <button class="btn">Видати</button> <button class="btn d tb">Бан</button></td></tr>
+<tr><td>SpeedHax</td><td>12</td><td>1500</td><td>Windows</td><td><span class="tag bad">підозра: швидкість</span></td><td><button class="btn">Профіль</button> <button class="btn">Видати</button> <button class="btn d tb">Бан</button></td></tr>
+</table></div>
+<div class="card"><div class="k">Профіль гравця (відкривається по кнопці)</div>
+<div style="margin-top:6px">Інвентар · Прогрес дослідження · Село (карта) · Історія торгів · Журнал входів/IP · Прикручені улюбленці · Нотатки адміна · Скинути прогрес / відновити з бекапу</div></div>
+</section>
+
+<section class="sec" id="world">
+<h1>Світ</h1><div class="sub">Ресурси, погода, біоми, події, спавн мобів</div>
+<div class="two">
+<div class="card"><div class="k">Керування</div>
+<div class="row" style="margin-top:8px"><label>Час доби <select><option>Авто</option><option>День</option><option>Ніч</option></select></label>
+<label>Погода <select><option>Авто</option><option>Ясно</option><option>Дощ</option><option>Шторм</option></select></label></div>
+<div class="row"><button class="btn p">Застосувати</button><button class="btn">Подія: Ніч вовків 🐺</button><button class="btn">Подія: Рибний фестиваль 🎣</button></div></div>
+<div class="card"><div class="k">Відновлення ресурсів</div>
+<div class="sw"><span>Дерева</span><span><input type="number" value="30" style="width:70px"> хв</span></div>
+<div class="sw"><span>Руда</span><span><input type="number" value="120" style="width:70px"> хв</span></div>
+<div class="sw"><span>Риба в річках</span><span><input type="number" value="15" style="width:70px"> хв</span></div></div>
+</div>
+<div class="card"><div class="k">Моби й біоми</div>
+<div class="scroll"><table><tr><th>Біом</th><th>Моби</th><th>Ліміт</th><th>Нічна небезпека</th><th></th></tr>
+<tr><td>Ліс</td><td>Олень, Вовк</td><td>40</td><td>Середня</td><td><button class="btn">Ред.</button></td></tr>
+<tr><td>Річка</td><td>Риба, Жаба</td><td>80</td><td>Низька</td><td><button class="btn">Ред.</button></td></tr>
+<tr><td>Гори</td><td>Козел, Павук</td><td>25</td><td>Висока</td><td><button class="btn">Ред.</button></td></tr></table></div>
+<div class="row" style="margin-top:10px"><button class="btn">Редактор карти</button><button class="btn">Мінікарта / теплова карта гравців</button><button class="btn d">Скинути світ…</button></div></div>
+</section>
+
+<section class="sec" id="items">
+<h1>Предмети й крафт</h1><div class="sub">Додавайте предмети та рецепти без оновлення гри</div>
+<div class="row"><input placeholder="Пошук предмета…" style="flex:1;min-width:160px"><button class="btn p">+ Новий предмет</button><button class="btn">+ Рецепт</button><button class="btn">Завантажити текстуру</button></div>
+<div class="card scroll"><table>
+<tr><th>Предмет</th><th>Тип</th><th>Рідкість</th><th>Міцність</th><th>Рецепт</th><th></th></tr>
+<tr><td>Кам'яна кирка</td><td>Інструмент</td><td><span class="rar" style="background:#8a8a8a"></span>Звичайний</td><td>60</td><td>Палиця 1 + Мотузка 1 + Камінь 2</td><td><button class="btn">Ред.</button></td></tr>
+<tr><td>Вудка</td><td>Інструмент</td><td><span class="rar" style="background:#3f9b4b"></span>Незвичайний</td><td>80</td><td>Палиця 1 + Волокно 3</td><td><button class="btn">Ред.</button></td></tr>
+<tr><td>Залізна лопата</td><td>Інструмент</td><td><span class="rar" style="background:#2f7fc1"></span>Рідкісний</td><td>200</td><td>Залізо 3 + Палиця 2</td><td><button class="btn">Ред.</button></td></tr>
+<tr><td>Вогнище</td><td>Будівля</td><td><span class="rar" style="background:#8a8a8a"></span>Звичайний</td><td>—</td><td>Дрова 5 + Камінь 4</td><td><button class="btn">Ред.</button></td></tr>
+</table></div>
+<div class="card"><div class="k">Дерево досліджень</div><div style="margin-top:6px">Візуальний редактор: що відкриває що, вартість дослідження, час. Баланс-симулятор показує, скільки ресурсів потрібно новачку до кожного рівня.</div></div>
+</section>
+
+<section class="sec" id="rating">
+<h1>Рейтинг і турніри</h1><div class="sub">Таблиця лідерів, змагання з риболовлі, сезони</div>
+<div class="two">
+<div class="card"><div class="k">Топ сезону</div><div class="scroll"><table style="min-width:260px"><tr><th>#</th><th>Гравець</th><th>Очки</th></tr><tr><td>1</td><td>WolfTamer</td><td>2210</td></tr><tr><td>2</td><td>FishKing</td><td>2105</td></tr><tr><td>3</td><td>Steve_99</td><td>1840</td></tr></table></div>
+<div class="row" style="margin-top:10px"><button class="btn">Перерахувати</button><button class="btn d">Завершити сезон</button></div></div>
+<div class="card"><div class="k">Рибний турнір</div>
+<div style="margin:8px 0">Статус: <span class="tag ok">триває</span> · залишилось 2д 5г</div>
+<div class="row"><label>Нагорода за 1 місце <input value="Золота вудка + 500 монет"></label></div>
+<div class="row"><button class="btn p">Створити турнір</button><button class="btn">Достроково завершити</button></div></div>
+</div>
+<div class="card"><div class="k">Антифрод рейтингу</div><div style="margin-top:6px">Автоматичні позначки: підозріле зростання очок, ботоферми, один IP з багатьох акаунтів. Дія: зняти очки / обнулити / бан.</div></div>
+</section>
+
+<section class="sec" id="econ">
+<h1>Торгівля</h1><div class="sub">Ринок між гравцями (риба, ресурси, предмети)</div>
+<div class="grid">
+<div class="card"><div class="k">Угод за добу</div><div class="v">3 420</div></div>
+<div class="card"><div class="k">Середня ціна риби</div><div class="v">18🪙</div></div>
+<div class="card"><div class="k">Монет в обігу</div><div class="v">4.2M</div><div class="dn">інфляція +2%</div></div>
+</div>
+<div class="card"><div class="k">Керування ринком</div>
+<div class="sw"><span>Ліміт ціни (мін / макс) для кожного предмета</span><button class="btn">Налаштувати</button></div>
+<div class="sw"><span>Податок на торгівлю (антиінфляція)</span><span><input type="number" value="5" style="width:60px">%</span></div>
+<div class="sw"><span>Підозрілі угоди (передача ресурсів між мультиакаунтами)</span><button class="btn">Дивитись (6)</button></div>
+<div class="sw"><span>Скасувати угоду / повернути предмети</span><button class="btn d">Відкат…</button></div></div>
+</section>
+
+<section class="sec" id="mod">
+<h1>Модерація</h1><div class="sub">Скарги, чат, автофільтри</div>
+<div class="card scroll"><table>
+<tr><th>Від</th><th>На</th><th>Причина</th><th>Час</th><th>Дії</th></tr>
+<tr><td>Steve_99</td><td>Noob42</td><td>Спам у чаті</td><td>2 хв тому</td><td><button class="btn">Чат</button> <button class="btn">Мут</button> <button class="btn d">Бан</button> <button class="btn">Закрити</button></td></tr>
+<tr><td>FishKing</td><td>SpeedHax</td><td>Чіти (швидкість)</td><td>9 хв тому</td><td><button class="btn">Чат</button> <button class="btn">Мут</button> <button class="btn d">Бан</button> <button class="btn">Закрити</button></td></tr>
+</table></div>
+<div class="card"><div class="k">Автомодерація</div>
+<div class="sw"><span>Фільтр лайки в чаті</span><button class="tg on"></button></div>
+<div class="sw"><span>Автомут за спам (5 повідомлень / 5 с)</span><button class="tg on"></button></div>
+<div class="sw"><span>Авто-позначка читерів за швидкістю/телепортом</span><button class="tg on"></button></div>
+<div class="sw"><span>Глобальний чат увімкнено</span><button class="tg on"></button></div></div>
+</section>
+
+<section class="sec" id="rel">
+<h1>Оновлення</h1><div class="sub">Версії, автооновлення в грі, GitHub Actions збірки</div>
+<div class="two">
+<div class="card"><div class="k">Поточні версії</div>
+<div class="sw"><span>Android (APK)</span><span class="tag ok">v0.4.2</span></div>
+<div class="sw"><span>Windows (exe)</span><span class="tag ok">v0.4.2</span></div>
+<div class="sw"><span>Мін. підтримувана версія</span><span class="tag warn">v0.4.0</span></div></div>
+<div class="card"><div class="k">Випустити оновлення</div>
+<div class="row" style="margin-top:8px"><input placeholder="Версія, напр. 0.4.3" style="width:150px"><select><option>Android + Windows</option><option>Лише Android</option><option>Лише Windows</option></select></div>
+<textarea rows="3" placeholder="Що нового (бачать гравці в вікні оновлення)…" style="width:100%"></textarea>
+<div class="row" style="margin-top:8px"><label>Розкатка <select><option>10%</option><option>50%</option><option selected>100%</option></select></label>
+<label class="row" style="margin:0"><button class="tg tb2"></button> Примусове</label></div>
+<div class="row"><button class="btn p">Опублікувати</button><button class="btn d">Відкликати версію</button></div></div>
+</div>
+<div class="card"><div class="k">Збірки (GitHub Actions)</div><div class="scroll"><table><tr><th>Збірка</th><th>Гілка</th><th>Статус</th><th></th></tr>
+<tr><td>#128 Android APK</td><td>main</td><td><span class="tag ok">успішно</span></td><td><button class="btn">Лог</button></td></tr>
+<tr><td>#127 Windows exe</td><td>main</td><td><span class="tag bad">помилка</span></td><td><button class="btn">Лог</button> <button class="btn">Перезапустити</button></td></tr></table></div></div>
+</section>
+
+<section class="sec" id="srv">
+<h1>Сервер</h1><div class="sub">Стан, логи, обслуговування, бекапи</div>
+<div class="grid">
+<div class="card"><div class="k">CPU</div><div class="v">38%</div><div class="bar"><i style="width:38%"></i></div></div>
+<div class="card"><div class="k">RAM</div><div class="v">61%</div><div class="bar"><i style="width:61%;background:var(--acc2)"></i></div></div>
+<div class="card"><div class="k">Пінг</div><div class="v">42 мс</div></div>
+<div class="card"><div class="k">Шарди світу</div><div class="v">4 / 4</div></div>
+</div>
+<div class="two">
+<div class="card"><div class="k">Дії</div>
+<div class="sw"><span>Режим обслуговування (гравців не пускає)</span><button class="tg"></button></div>
+<div class="row" style="margin-top:10px"><input placeholder="Повідомлення всім гравцям…" style="flex:1;min-width:160px"><button class="btn p">Надіслати</button></div>
+<div class="row"><button class="btn">Створити бекап</button><button class="btn">Відновити бекап…</button><button class="btn d">Перезапустити шард</button></div></div>
+<div class="card"><div class="k">Логи</div><div class="log" id="slog" style="margin-top:8px"><div>[12:10] shard#1 tick ok 16ms</div><div class="w">[12:11] shard#3 high latency 180ms</div><div>[12:12] autosave done (4.1s)</div><div class="e">[12:13] shard#2 desync, restarted</div></div><input id="cin" placeholder="Консоль: help, online, say привіт, kick нік" style="width:100%;margin-top:8px;font-family:ui-monospace,Menlo,Consolas,monospace"></div>
+</div>
+</section>
+
+<section class="sec" id="stats">
+<h1>Аналітика</h1><div class="sub">Активність гравців і утримання (демо-дані)</div>
+<div class="row"><select id="sp"><option value="7">7 днів</option><option value="30" selected>30 днів</option><option value="90">90 днів</option></select><span class="tag" id="sav"></span></div>
+<div class="card"><div class="k">DAU</div><svg id="sg" viewBox="0 0 400 120" width="100%" role="img" aria-label="графік DAU"></svg></div>
+<div class="card scroll"><div class="k">Утримання по когортах</div><table id="co"></table></div>
+</section>
+
+<section class="sec" id="map">
+<h1>Карта світу</h1><div class="sub">Гравці в реальному часі (демо): ліс, річка, озеро, гори. Клік по точці показує гравця</div>
+<div class="row"><label><input type="checkbox" id="hm"> Теплова карта</label><span class="tag" id="mc"></span></div>
+<div class="card"><svg id="wm" viewBox="0 0 320 200" width="100%" style="display:block;max-height:70vh" role="img" aria-label="карта світу"></svg></div>
+</section>
+
+<section class="sec" id="tickets">
+<h1>Підтримка</h1><div class="sub">Баг-репорти, питання та пропозиції від гравців</div>
+<div class="row"><select id="tf"><option>Усі</option><option>нова</option><option>в роботі</option><option>закрита</option></select><span class="tag warn" id="tc"></span></div>
+<div class="card scroll"><table><tr><th>#</th><th>Гравець</th><th>Тип</th><th>Тема</th><th>Статус</th><th></th></tr><tbody id="tt"></tbody></table></div>
+</section>
+
+<section class="sec" id="shop">
+<h1>Магазин</h1><div class="sub">Ціни, акції й продажі (внутрішньоігрові покупки)</div>
+<div class="grid"><div class="card"><div class="k">Дохід від покупок</div><div class="v" id="sr"></div></div><div class="card"><div class="k">Покупок</div><div class="v" id="sn"></div></div><div class="card"><div class="k">Активні акції</div><div class="v" id="sa"></div></div></div>
+<div class="row"><label>Розмір знижки для акцій <select id="sd"><option value="20">−20%</option><option value="30">−30%</option><option value="50">−50%</option></select></label></div>
+<div class="card"><div class="k">Створити акцію</div>
+<div class="row" style="margin-top:8px"><input id="an2" placeholder="Назва акції" maxlength="40" style="flex:1;min-width:150px"><label>Знижка <input id="ad" type="number" min="1" max="90" value="25" style="width:70px">%</label><select id="adu"><option value="1">1 день</option><option value="3">3 дні</option><option value="7" selected>7 днів</option><option value="0">Без кінця</option></select></div>
+<div class="k">Товари в акції</div><div style="margin:6px 0 10px"><button class="btn ax" id="aall" style="margin-right:12px">Вибрати всі</button><span id="aitems"></span></div>
+<button class="btn p ax" id="amk">Запустити акцію</button></div>
+<div class="card scroll"><div class="k">Акції</div><table><tr><th>Назва</th><th>Знижка</th><th>Товари</th><th>Закінчення</th><th>Статус</th><th></th></tr><tbody id="apb"></tbody></table></div>
+<div class="card scroll"><table><tr><th>Товар</th><th>Ціна $</th><th>Продано</th><th>Дохід</th><th>Ціна зараз</th><th>Акція</th><th>В магазині</th></tr><tbody id="stb"></tbody></table></div>
+</section>
+
+<section class="sec" id="news">
+<h1>Розсилки</h1><div class="sub">Оголошення в грі та push-сповіщення гравцям</div>
+<div class="two">
+<div class="card"><div class="k">Нове повідомлення</div>
+<div class="row" style="margin-top:8px"><input id="nt" placeholder="Заголовок" style="flex:1;min-width:140px" maxlength="40"></div>
+<textarea id="nb" rows="3" placeholder="Текст (до 140 символів)" maxlength="140" style="width:100%"></textarea>
+<div class="row" style="margin-top:8px"><select id="na"><option>Усім гравцям</option><option>Лише онлайн</option><option>Android</option><option>Windows</option><option>Неактивні 7+ днів</option></select><select id="nk"><option>У грі (вікно)</option><option>Push</option><option>Чат-банер</option></select><select id="nw"><option>Зараз</option><option>Через 1 годину</option><option>Завтра 12:00</option></select></div>
+<div class="row"><button class="btn p ax" id="ns">Надіслати</button></div></div>
+<div class="card"><div class="k">Попередній перегляд</div>
+<div style="margin-top:10px;border:2px solid var(--line);padding:12px;background:var(--bg)"><b id="npt">Заголовок</b><div id="npb" style="color:var(--mut)">Текст повідомлення…</div><div class="k" style="margin-top:8px" id="npm"></div></div></div>
+</div>
+<div class="card scroll"><div class="k">Історія</div><table><tr><th>Заголовок</th><th>Аудиторія</th><th>Тип</th><th>Коли</th><th>Статус</th></tr><tbody id="nh"></tbody></table></div>
+</section>
+
+<section class="sec" id="promo">
+<h1>Промокоди</h1><div class="sub">Нагороди за код: монети, предмети, преміум</div>
+<div class="card"><div class="k">Створити код</div>
+<div class="row" style="margin-top:8px"><input id="pc" placeholder="КОД" style="width:150px;text-transform:uppercase" maxlength="16"><button class="btn ax" id="pg">🎲 Згенерувати</button><select id="pr"><option>500 монет</option><option>Золота вудка</option><option>7 днів преміуму</option><option>Набір новачка</option></select><input id="pl" type="number" value="100" min="1" style="width:90px" title="Ліміт активацій"><select id="pe"><option>7 днів</option><option>30 днів</option><option>Безстроково</option></select><button class="btn p ax" id="pa">Створити</button></div></div>
+<div class="card scroll"><table><tr><th>Код</th><th>Нагорода</th><th>Використано</th><th>Діє</th><th>Статус</th><th></th></tr><tbody id="pt"></tbody></table></div>
+</section>
+
+<section class="sec" id="audit">
+<h1>Журнал дій</h1><div class="sub">Хто з адмінів що робив. Усі дії в цій сесії з'являються тут автоматично</div>
+<div class="row"><button class="btn">Експорт CSV</button></div>
+<div class="card scroll"><table><tr><th>Адмін</th><th>Дія</th><th>Час</th></tr><tbody id="al"><tr><td>mod_anna</td><td>Мут Noob42 на 24 год</td><td>11:52</td></tr><tr><td>dev_max</td><td>Опубліковано v0.4.2 (100%)</td><td>10:30</td></tr></tbody></table></div>
+</section>
+
+<section class="sec" id="set">
+<h1>Ролі й налаштування</h1><div class="sub">Додавайте адмінів, призначайте ролі й права. Вгорі зліва є «Переглянути як» — перевірте, що бачить кожна роль</div>
+<div class="row"><button class="btn p ax" id="addA">+ Додати адміна</button></div>
+<div class="card scroll"><table><tr><th>Адмін</th><th>Роль</th><th>Права</th><th>2FA</th><th></th></tr><tbody id="at"></tbody></table></div>
+<div class="card"><div class="k">Загальне</div>
+<div class="sw"><span>Тема адмінки</span><select id="th"><option value="auto">Авто</option><option value="light">Світла</option><option value="dark">Темна</option></select></div>
+<div class="sw"><span>Журнал дій адмінів (хто кого забанив, що видав)</span><button class="tg on"></button></div>
+<div class="sw"><span>Сповіщення в Telegram/Discord про збої та скарги</span><button class="tg"></button></div></div>
+</section>
+
+</main>
+</div>
+<div class="md" id="md"><div class="mb" id="mb"></div></div>
+<div id="toast"></div>
+<script>
+var navBtns=document.querySelectorAll('#nav button'),secs=document.querySelectorAll('.sec');
+navBtns.forEach(function(b){b.onclick=function(){
+navBtns.forEach(function(x){x.classList.toggle('on',x===b)});
+secs.forEach(function(s){s.classList.toggle('on',s.id===b.dataset.t)});
+try{history.replaceState(null,'','#'+b.dataset.t)}catch(e){}
+window.scrollTo(0,0)}});
+document.querySelectorAll('.tg').forEach(function(t){t.onclick=function(){t.classList.toggle('on')}});
+document.querySelectorAll('.tb').forEach(function(b){b.onclick=function(){
+var td=b.closest('tr').children[4];var banned=b.dataset.b==='1';
+b.dataset.b=banned?'':'1';b.textContent=banned?'Бан':'Розбан';
+td.innerHTML=banned?'<span class="tag ok">активний</span>':'<span class="tag bad">забанений</span>'}});
+document.getElementById('th').onchange=function(e){
+var v=e.target.value,r=document.documentElement;
+if(v==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',v)};
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(function(){t.classList.remove('on')},2400)}
+function logA(a){var tb=document.getElementById('al'),d=new Date(),hh=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2),tr=document.createElement('tr');['gertyn230',a,hh].forEach(function(x){var td=document.createElement('td');td.textContent=x;tr.appendChild(td)});tb.insertBefore(tr,tb.firstChild)}
+function closeM(){document.getElementById('md').classList.remove('on')}
+document.getElementById('md').onclick=function(e){if(e.target.id==='md')closeM()};
+function openP(nick,give){var r=[].filter.call(document.querySelectorAll('#players tr'),function(x){return x.children[0]&&x.children[0].textContent===nick})[0],c=r.children;
+var mb=document.getElementById('mb');mb.innerHTML='<h2></h2><div class="st"><div><div class="k">Рівень</div><b></b></div><div><div class="k">Рейтинг</div><b></b></div><div><div class="k">Платформа</div><b></b></div></div><div class="k">Інвентар</div><div class="inv"><span class="tag">Камінь ×12</span><span class="tag">Палиця ×4</span><span class="tag">Вудка</span><span class="tag">Вовк (улюбленець)</span></div><div class="k">Видати предмет</div><div class="row"><select id="gi"><option>Кам\'яна кирка</option><option>Вудка</option><option>Залізна лопата</option><option>Монети</option></select><input id="gq" type="number" value="1" min="1" style="width:70px"><button class="btn p" id="gb">Видати</button></div><div class="k">Нотатка адміна</div><textarea rows="2" style="width:100%;margin-bottom:10px"></textarea><div class="row"><button class="btn" id="cl">Закрити</button></div>';
+mb.querySelector('h2').textContent=nick;var b=mb.querySelectorAll('.st b');b[0].textContent=c[1].textContent;b[1].textContent=c[2].textContent;b[2].textContent=c[3].textContent;
+document.getElementById('cl').onclick=closeM;
+document.getElementById('gb').onclick=function(){var s=document.getElementById('gi').value,q=document.getElementById('gq').value;toast('Видано: '+s+' ×'+q+' → '+nick);logA('Видано '+s+' ×'+q+' гравцю '+nick);closeM()};
+document.getElementById('md').classList.add('on');if(give)document.getElementById('gq').focus()}
+function filt(){var q=document.getElementById('ps').value.toLowerCase(),f=document.getElementById('pf').value,k={'Онлайн':'онлайн','Забанені':'забанений','Підозрілі (чіти)':'підозра'}[f];
+document.querySelectorAll('#players tr').forEach(function(r,i){if(!i)return;var ok=r.children[0].textContent.toLowerCase().indexOf(q)>-1&&(!k||r.children[4].textContent.indexOf(k)>-1);r.style.display=ok?'':'none'})}
+document.getElementById('ps').oninput=filt;document.getElementById('pf').onchange=filt;
+document.querySelectorAll('.tb').forEach(function(b){b.addEventListener('click',function(){var n=b.closest('tr').children[0].textContent,on=b.dataset.b==='1';toast((on?'Забанено: ':'Розбанено: ')+n);logA((on?'Бан ':'Розбан ')+n)})});
+document.querySelectorAll('.tg').forEach(function(t){t.addEventListener('click',function(){var l=t.closest('.sw');if(l)logA((t.classList.contains('on')?'Увімкнено: ':'Вимкнено: ')+l.firstElementChild.textContent.slice(0,50))})});
+var LG=['Опублікувати','Створити бекап','Надіслати','Перезапустити шард','Застосувати','Створити турнір','Завершити сезон','Відкликати версію'];
+document.addEventListener('click',function(e){var b=e.target.closest('.btn');if(!b||b.closest('#mb')||b.classList.contains('tb')||b.classList.contains('ax'))return;var tx=b.textContent.trim(),tr=b.closest('#players tr');
+if(tr&&(tx==='Профіль'||tx==='Видати'))return openP(tr.children[0].textContent,tx==='Видати');
+if(LG.indexOf(tx)>-1)logA(tx);toast('«'+tx+'» — демо. Тут буде запит до API гри')});
+var sl=document.getElementById('slog'),ci=document.getElementById('cin');
+ci.onkeydown=function(e){if(e.key!=='Enter'||!ci.value.trim())return;var v=ci.value.trim(),p=v.split(' '),o,cls='';
+if(p[0]==='help')o='команди: help, online, say <текст>, kick <нік>';else if(p[0]==='online')o='онлайн: '+document.getElementById('onl').textContent;else if(p[0]==='say'&&p[1])o='повідомлення надіслано всім';else if(p[0]==='kick'&&p[1])o='гравця '+p[1]+' відключено';else{o='невідома команда';cls='e'}
+var a=document.createElement('div');a.textContent='> '+v;var b=document.createElement('div');b.textContent=o;if(cls)b.className=cls;sl.appendChild(a);sl.appendChild(b);sl.scrollTop=sl.scrollHeight;if(!cls&&p[0]!=='help'&&p[0]!=='online')logA('Консоль: '+v);ci.value=''};
+setInterval(function(){var e=document.getElementById('onl'),n=parseInt(e.textContent.replace(/\s/g,''))+Math.round((Math.random()-.45)*14);e.textContent=n.toLocaleString('uk-UA').replace(/\u00a0/g,' ')},3000);
+var PL={players:'Гравці',ban:'Бани/муті',items:'Предмети',world:'Світ',econ:'Торгівля',mod:'Модерація',rel:'Оновлення',srv:'Сервер',roles:'Ролі й журнал'};
+var RP={'Власник':Object.keys(PL),'Адмін':['players','ban','items','world','econ','mod','rel','srv'],'Модератор':['players','ban','mod'],'Розробник':['rel','srv','items'],'Підтримка':['players']};
+var AD=[{n:'gertyn230',r:'Власник',p:RP['Власник'].slice(),t:1},{n:'mod_anna',r:'Модератор',p:RP['Модератор'].slice(),t:1},{n:'dev_max',r:'Розробник',p:RP['Розробник'].slice(),t:0}];
+var NP={dash:null,players:'players',world:'world',items:'items',rating:'world',econ:'econ',mod:'mod',rel:'rel',srv:'srv',audit:'roles',map:'world',tickets:'mod',shop:'econ',news:'mod',promo:'econ',set:'roles'};
+function applyV(){var v=document.getElementById('va').value,a=AD.filter(function(x){return x.n===v})[0]||AD[0],hide=false;
+navBtns.forEach(function(b){var k=NP[b.dataset.t],ok=!k||a.p.indexOf(k)>-1;b.style.display=ok?'':'none';if(b.classList.contains('on')&&!ok)hide=true});if(hide)navBtns[0].click()}
+document.getElementById('va').onchange=function(){applyV();toast('Перегляд як: '+this.value)};
+function tagc(r){return r==='Власник'?'ok':(r==='Модератор'?'warn':'')}
+function renderA(){var tb=document.getElementById('at');tb.innerHTML='';
+AD.forEach(function(a,i){var tr=document.createElement('tr'),pr=a.r==='Власник'?'Усе':(a.p.map(function(k){return PL[k]}).join(', ')||'—');
+[a.n,null,pr,a.t?'✓':'✗'].forEach(function(x,j){var td=document.createElement('td');if(j===1){var s=document.createElement('span');s.className='tag '+tagc(a.r);s.textContent=a.r;td.appendChild(s)}else td.textContent=x;if(j===2)td.style.whiteSpace='normal';tr.appendChild(td)});
+var td=document.createElement('td'),e=document.createElement('button');e.className='btn ax';e.textContent='Ред.';e.onclick=function(){openA(i)};td.appendChild(e);
+if(a.r!=='Власник'){var d=document.createElement('button');d.className='btn d ax';d.textContent='Видалити';d.style.marginLeft='6px';d.onclick=function(){if(!d.dataset.s){d.dataset.s=1;d.textContent='Точно?';return}AD.splice(i,1);logA('Видалено адміна '+a.n);toast('Видалено: '+a.n);renderA()};td.appendChild(d)}
+tr.appendChild(td);tb.appendChild(tr)});
+var va=document.getElementById('va'),cur=va.value;va.innerHTML='';AD.forEach(function(a){var o=document.createElement('option');o.textContent=a.n;va.appendChild(o)});if(AD.some(function(a){return a.n===cur}))va.value=cur;applyV()}
+function openA(i){var a=i<0?{n:'',r:'Модератор',p:RP['Модератор'].slice(),t:1}:AD[i],mb=document.getElementById('mb');
+mb.innerHTML='<h2></h2><div class="k">Нік</div><input id="an" style="width:100%;margin-bottom:10px"><div class="k">Роль</div><select id="ar" style="width:100%;margin-bottom:10px"></select><div class="k">Права (можна підкрутити під людину)</div><div id="ap" style="margin:6px 0 10px"></div><label><input type="checkbox" id="a2f"> Вимагати 2FA</label><div class="row" style="margin-top:12px"><button class="btn p" id="as"></button><button class="btn" id="ac">Скасувати</button></div>';
+mb.querySelector('h2').textContent=i<0?'Новий адмін':'Редагувати: '+a.n;document.getElementById('an').value=a.n;document.getElementById('a2f').checked=!!a.t;document.getElementById('as').textContent=i<0?'Додати':'Зберегти';
+var ap=document.getElementById('ap'),sr=document.getElementById('ar');
+Object.keys(PL).forEach(function(k){var l=document.createElement('label'),c=document.createElement('input');l.style.cssText='display:inline-block;width:50%;margin-bottom:4px';c.type='checkbox';c.dataset.k=k;c.checked=a.p.indexOf(k)>-1;c.disabled=a.r==='Власник';l.appendChild(c);l.appendChild(document.createTextNode(' '+PL[k]));ap.appendChild(l)});
+Object.keys(RP).forEach(function(r){if(r==='Власник'&&a.r!=='Власник')return;var o=document.createElement('option');o.textContent=r;sr.appendChild(o)});sr.value=a.r;sr.disabled=a.r==='Власник';
+sr.onchange=function(){ap.querySelectorAll('input').forEach(function(c){c.checked=RP[sr.value].indexOf(c.dataset.k)>-1})};
+document.getElementById('ac').onclick=closeM;
+document.getElementById('as').onclick=function(){var n=document.getElementById('an').value.trim();
+if(!/^[\w.-]{3,20}$/.test(n)){toast('Нік: 3–20 символів, латиниця, цифри, . _ -');return}
+if(AD.some(function(x,j){return j!==i&&x.n.toLowerCase()===n.toLowerCase()})){toast('Такий адмін уже є');return}
+var p=[].filter.call(ap.querySelectorAll('input'),function(c){return c.checked}).map(function(c){return c.dataset.k}),r=sr.value,t=document.getElementById('a2f').checked?1:0;
+if(i<0){AD.push({n:n,r:r,p:p,t:t});logA('Додано адміна '+n+' ('+r+')');toast('Додано: '+n)}else{var o=AD[i];logA('Змінено '+o.n+': '+o.r+' → '+r);o.n=n;o.r=r;o.p=p;o.t=t;toast('Збережено: '+n)}
+closeM();renderA()};
+document.getElementById('md').classList.add('on')}
+document.getElementById('addA').onclick=function(){openA(-1)};
+function g(i){return document.getElementById(i)}
+function mkr(cs){var tr=document.createElement('tr');cs.forEach(function(x){var td=document.createElement('td');if(x&&x.nodeType)td.appendChild(x);else if(Array.isArray(x)){var s=document.createElement('span');s.className='tag '+x[1];s.textContent=x[0];td.appendChild(s)}else td.textContent=x;tr.appendChild(td)});return tr}
+var NH=[['Нічний вовк: новий івент','Усім гравцям','У грі (вікно)','Вчора 18:00',['Надіслано','ok']],['Оновлення v0.4.2','Android','Push','Вчора 10:30',['Надіслано','ok']]];
+function rN(){var tb=g('nh');tb.innerHTML='';NH.forEach(function(r){tb.appendChild(mkr(r))})}
+function pv(){g('npt').textContent=g('nt').value||'Заголовок';g('npb').textContent=g('nb').value||'Текст повідомлення…';g('npm').textContent=g('nk').value+' · '+g('na').value+' · '+g('nw').value}
+['nt','nb','na','nk','nw'].forEach(function(i){g(i).oninput=pv;g(i).onchange=pv});
+g('ns').onclick=function(){var t=g('nt').value.trim(),b=g('nb').value.trim();if(!t||!b){toast('Заповніть заголовок і текст');return}
+var w=g('nw').value;NH.unshift([t,g('na').value,g('nk').value,w==='Зараз'?'Щойно':w,w==='Зараз'?['Надіслано','ok']:['Заплановано','warn']]);rN();logA('Розсилка «'+t+'» → '+g('na').value+' ('+w+')');toast(w==='Зараз'?'Надіслано':'Заплановано');g('nt').value='';g('nb').value='';pv()};
+var PR=[{c:'WELCOME',r:'Набір новачка',u:412,l:1000,e:'30 днів',on:1},{c:'FISH2026',r:'Золота вудка',u:95,l:100,e:'7 днів',on:1},{c:'OLD10',r:'500 монет',u:50,l:50,e:'Минув',on:0}];
+function rP(){var tb=g('pt');tb.innerHTML='';PR.forEach(function(p){var cell=document.createElement('div'),bar=document.createElement('div'),bi=document.createElement('i');cell.textContent=p.u+' / '+p.l;bar.className='bar';bi.style.width=Math.min(100,p.u/p.l*100)+'%';bar.appendChild(bi);cell.appendChild(bar);
+var ac=document.createElement('div'),b1=document.createElement('button'),b2=document.createElement('button');b1.className='btn ax';b1.textContent='Копіювати';b1.onclick=function(){try{navigator.clipboard.writeText(p.c)}catch(e){}toast('Код '+p.c+' скопійовано')};
+b2.className='btn ax';b2.style.marginLeft='6px';b2.textContent=p.on?'Вимкнути':'Увімкнути';b2.onclick=function(){p.on=p.on?0:1;logA((p.on?'Увімкнено':'Вимкнено')+' промокод '+p.c);rP()};ac.appendChild(b1);ac.appendChild(b2);
+tb.appendChild(mkr([p.c,p.r,cell,p.e,p.on?['активний','ok']:['вимкнений','bad'],ac]))})}
+g('pg').onclick=function(){var s='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',c='';for(var i=0;i<8;i++)c+=s[Math.floor(Math.random()*s.length)];g('pc').value=c};
+g('pa').onclick=function(){var c=g('pc').value.trim().toUpperCase();if(!/^[A-Z0-9_-]{4,16}$/.test(c)){toast('Код: 4–16 символів, A–Z, 0–9, _ -');return}
+if(PR.some(function(p){return p.c===c})){toast('Такий код уже є');return}
+PR.unshift({c:c,r:g('pr').value,u:0,l:+g('pl').value||1,e:g('pe').value,on:1});rP();logA('Створено промокод '+c+' ('+g('pr').value+')');toast('Створено: '+c);g('pc').value=''};
+var NS='http://www.w3.org/2000/svg';
+function se(t,a,p){var e=document.createElementNS(NS,t);for(var k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e}
+var wm=g('wm');se('rect',{width:320,height:200,fill:'#4f9a4a'},wm);se('rect',{width:110,height:90,fill:'#3f8a3f'},wm);se('polygon',{points:'210,0 320,0 320,90 250,70',fill:'#8d8d94'},wm);se('path',{d:'M130 0 Q150 60 120 110 T150 200',stroke:'#3d8fd1',fill:'none','stroke-width':12},wm);se('ellipse',{cx:260,cy:150,rx:42,ry:26,fill:'#3d8fd1'},wm);
+var PN=['Steve_99','WolfTamer','FishKing','Noob42','Anna_P','Max','Kolya','Oksana','Dima','Lesya','Taras','Ira','Bohdan','Vika'],PD=PN.map(function(n){var c=se('circle',{r:3,fill:'#fff',stroke:'#222','stroke-width':1},wm),o={n:n,x:Math.random()*300+10,y:Math.random()*180+10,c:c};c.style.cursor='pointer';c.onclick=function(){toast(n+' · x:'+Math.round(o.x)+' y:'+Math.round(o.y))};return o});
+function mv(){PD.forEach(function(o){o.x=Math.max(5,Math.min(315,o.x+(Math.random()-.5)*14));o.y=Math.max(5,Math.min(195,o.y+(Math.random()-.5)*14));o.c.setAttribute('cx',o.x);o.c.setAttribute('cy',o.y)})}
+function hmu(){var h=g('hm').checked;PD.forEach(function(o){o.c.setAttribute('r',h?16:3);o.c.setAttribute('fill',h?'#ff3b30':'#fff');o.c.setAttribute('fill-opacity',h?.18:1);o.c.setAttribute('stroke-width',h?0:1)})}
+g('hm').onchange=hmu;mv();setInterval(mv,1500);g('mc').textContent=PN.length+' на карті';
+var TK=[{id:104,p:'Steve_99',t:'Баг',s:'Зникає риба з інвентарю',m:'Після рибалки риба пропадає, якщо швидко відкрити крафт.',st:'нова'},{id:103,p:'Anna_P',t:'Питання',s:'Як приручити вовка?',m:'Скільки їжі потрібно, щоб вовк став ручним?',st:'нова'},{id:102,p:'Kolya',t:'Пропозиція',s:'Додайте човни для двох',m:'Було б круто плавати разом.',st:'в роботі'},{id:101,p:'Oksana',t:'Баг',s:'Гра вилітає на Android 9',m:'Вилітає при вході у воду.',st:'закрита'}];
+function rT(){var tb=g('tt'),f=g('tf').value;tb.innerHTML='';g('tc').textContent='нових: '+TK.filter(function(x){return x.st==='нова'}).length;
+TK.forEach(function(x){if(f!=='Усі'&&x.st!==f)return;var b=document.createElement('button');b.className='btn ax';b.textContent='Відкрити';b.onclick=function(){oT(x)};tb.appendChild(mkr(['#'+x.id,x.p,x.t,x.s,[x.st,x.st==='нова'?'warn':(x.st==='закрита'?'ok':'')],b]))})}
+g('tf').onchange=rT;
+function oT(x){var mb=g('mb');mb.innerHTML='<h2></h2><div class="k" id="tm1"></div><p id="tm2"></p><textarea id="tr" rows="3" placeholder="Відповідь гравцю…" style="width:100%"></textarea><div class="row" style="margin-top:10px"><button class="btn p" id="tb1">Відповісти й закрити</button><button class="btn" id="tb2">Взяти в роботу</button><button class="btn" id="tb3">Закрити вікно</button></div>';
+mb.querySelector('h2').textContent='#'+x.id+' '+x.s;g('tm1').textContent=x.p+' · '+x.t;g('tm2').textContent=x.m;
+g('tb3').onclick=closeM;g('tb2').onclick=function(){x.st='в роботі';logA('Тікет #'+x.id+' в роботі');rT();closeM()};
+g('tb1').onclick=function(){if(!g('tr').value.trim()){toast('Напишіть відповідь');return}x.st='закрита';logA('Відповідь на тікет #'+x.id+' ('+x.p+')');toast('Відповідь надіслано');rT();closeM()};g('md').classList.add('on')}
+var SH=[{n:'Набір новачка',p:0.99,s:1240,sale:0,on:1},{n:'7 днів преміуму',p:1.99,s:530,sale:0,on:1},{n:'Золота вудка',p:2.99,s:210,sale:0,on:1},{n:'1000 монет',p:0.99,s:960,sale:0,on:1},{n:'Без реклами',p:4.99,s:380,sale:0,on:1}];
+function rS(){var tb=g('stb'),rev=0,cnt=0,sa=0,d=+g('sd').value;tb.innerHTML='';
+SH.forEach(function(x){rev+=x.s*x.p;cnt+=x.s;if(eff(x)>0&&x.on)sa++;
+var pi=document.createElement('input');pi.type='number';pi.step='0.01';pi.min='0';pi.value=x.p;pi.style.width='80px';pi.onchange=function(){var v=parseFloat(pi.value);if(!(v>=0)){pi.value=x.p;return}logA('Ціна '+x.n+': $'+x.p+' → $'+v);x.p=v;rS()};
+var bs=document.createElement('button');bs.className='btn ax';bs.textContent=x.sale?'−'+d+'% (зняти)':'Запустити';bs.onclick=function(){x.sale=x.sale?0:1;logA((x.sale?'Акція −'+d+'%: ':'Акцію знято: ')+x.n);rS()};
+var tg=document.createElement('button');tg.className='tg'+(x.on?' on':'');tg.onclick=function(){x.on=x.on?0:1;logA((x.on?'Додано в магазин: ':'Прибрано з магазину: ')+x.n);rS()};
+tb.appendChild(mkr([x.n,pi,x.s,'$'+(x.s*x.p).toFixed(2),'$'+(x.p*(1-eff(x)/100)).toFixed(2),bs,tg]))});
+g('sr').textContent='$'+rev.toFixed(0);g('sn').textContent=cnt;g('sa').textContent=sa}
+var AP=[{n:'Зимовий розпродаж',d:30,it:['Набір новачка','1000 монет'],end:Date.now()+3*864e5,on:1}];
+function act(p){return p.on&&(!p.end||p.end>Date.now())}
+function eff(x){var m=x.sale?+g('sd').value:0;AP.forEach(function(p){if(act(p)&&p.it.indexOf(x.n)>-1&&p.d>m)m=p.d});return m}
+SH.forEach(function(x){var l=document.createElement('label'),c=document.createElement('input');l.style.cssText='display:inline-block;margin-right:14px;margin-bottom:4px';c.type='checkbox';c.value=x.n;l.appendChild(c);l.appendChild(document.createTextNode(' '+x.n));g('aitems').appendChild(l)});
+function rAP(){var tb=g('apb');tb.innerHTML='';AP.forEach(function(p,i){var ac=document.createElement('div'),b1=document.createElement('button'),b2=document.createElement('button'),live=act(p),ended=p.end&&p.end<=Date.now();
+b1.className='btn ax';b1.textContent=p.on?'Зупинити':'Відновити';b1.disabled=!!ended;b1.onclick=function(){p.on=p.on?0:1;logA((p.on?'Відновлено акцію: ':'Зупинено акцію: ')+p.n);rAP();rS()};
+b2.className='btn d ax';b2.style.marginLeft='6px';b2.textContent='Видалити';b2.onclick=function(){if(!b2.dataset.s){b2.dataset.s=1;b2.textContent='Точно?';return}AP.splice(i,1);logA('Видалено акцію: '+p.n);rAP();rS()};ac.appendChild(b1);ac.appendChild(b2);
+var dt=p.end?new Date(p.end):null,left=!p.end?'Без кінця':(ended?'Завершилась':dt.toLocaleDateString('uk-UA')+' '+dt.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'}));
+tb.appendChild(mkr([p.n,'−'+p.d+'%',p.it.join(', '),left,live?['триває','ok']:(ended?['завершена','']:['зупинена','bad']),ac]))})}
+g('aall').onclick=function(){var cs=g('aitems').querySelectorAll('input'),all=[].every.call(cs,function(c){return c.checked});cs.forEach(function(c){c.checked=!all})};
+g('amk').onclick=function(){var n=g('an2').value.trim(),d=parseInt(g('ad').value),days=+g('adu').value,it=[].filter.call(g('aitems').querySelectorAll('input'),function(c){return c.checked}).map(function(c){return c.value});
+if(!n){toast('Введіть назву акції');return}if(!(d>=1&&d<=90)){toast('Знижка від 1 до 90%');return}if(!it.length){toast('Виберіть товари');return}
+AP.unshift({n:n,d:d,it:it,end:days?Date.now()+days*864e5:0,on:1});logA('Нова акція «'+n+'» −'+d+'% ('+it.length+' тов.)');toast('Акцію запущено');g('an2').value='';rAP();rS()};
+rAP();
+g('sd').onchange=rS;rT();rS();
+var nv=g('nav'),vd=g('va').parentNode;
+[['Огляд',['dash','stats']],['Гра',['players','map','world','items','rating']],['Економіка',['econ','shop','promo']],['Спільнота',['mod','tickets','news']],['Технічне',['rel','srv']],['Адмін',['audit','set']]].forEach(function(gr){var d=document.createElement('div');d.className='grp';d.textContent=gr[0];nv.insertBefore(d,vd);gr[1].forEach(function(id){nv.insertBefore([].filter.call(navBtns,function(b){return b.dataset.t===id})[0],vd)})});
+function go(id){closeM();var b=[].filter.call(navBtns,function(x){return x.dataset.t===id})[0];if(b)b.click()}
+var mn=document.querySelector('main'),tp=document.createElement('div');tp.className='top';tp.innerHTML='<button class="btn ax" id="sb">🔍 Пошук <span class="k">Ctrl+K</span></button><span style="flex:1"></span><button class="btn ax" id="bell">🔔 <b id="bc">0</b></button>';mn.insertBefore(tp,mn.firstChild);
+function alr(){var n=TK.filter(function(x){return x.st==='нова'}).length;return [[n+' нових тікетів','tickets',n],['2 нові скарги на гравців','mod',2],['Збірка #127 (Windows) завершилась помилкою','rel',1],['Шард #2 перезапущено автоматично','srv',1]].filter(function(x){return x[2]>0})}
+function updBell(){g('bc').textContent=alr().reduce(function(s,x){return s+x[2]},0)}updBell();setInterval(updBell,2000);
+g('bell').onclick=function(){var mb=g('mb');mb.innerHTML='<h2>Сповіщення</h2><div id="bl"></div>';var l=alr();if(!l.length)g('bl').textContent='Нічого нового';l.forEach(function(x){var b=document.createElement('button');b.className='pi';b.textContent=x[0];b.onclick=function(){go(x[1])};g('bl').appendChild(b)});g('md').classList.add('on')};
+function kitems(){var a=[];navBtns.forEach(function(b){if(b.style.display!=='none')a.push({l:b.textContent.trim(),h:'розділ',f:function(){go(b.dataset.t)}})});
+document.querySelectorAll('#players tr').forEach(function(r,i){if(i)a.push({l:r.children[0].textContent,h:'гравець',f:function(){openP(r.children[0].textContent)}})});
+AD.forEach(function(x){a.push({l:x.n,h:'адмін · '+x.r,f:function(){go('set')}})});PR.forEach(function(p){a.push({l:p.c,h:'промокод',f:function(){go('promo')}})});TK.forEach(function(x){a.push({l:'#'+x.id+' '+x.s,h:'тікет',f:function(){oT(x)}})});return a}
+function openK(){var mb=g('mb');mb.innerHTML='<input id="ki" placeholder="Шукати розділ, гравця, тікет, промокод…" style="width:100%;margin-bottom:8px"><div id="kl"></div>';var all=kitems(),sel=0,cur=[];
+function rk(){var q=g('ki').value.toLowerCase(),kl=g('kl');cur=all.filter(function(x){return x.l.toLowerCase().indexOf(q)>-1}).slice(0,8);kl.innerHTML='';cur.forEach(function(x,i){var b=document.createElement('button');b.className='pi'+(i===sel?' on':'');b.textContent=x.l+' — '+x.h;b.onclick=function(){closeM();x.f()};kl.appendChild(b)})}
+g('ki').oninput=function(){sel=0;rk()};
+g('ki').onkeydown=function(e){if(e.key==='ArrowDown'){sel=Math.min(sel+1,cur.length-1);rk();e.preventDefault()}else if(e.key==='ArrowUp'){sel=Math.max(sel-1,0);rk();e.preventDefault()}else if(e.key==='Enter'&&cur[sel]){closeM();cur[sel].f()}};
+rk();g('md').classList.add('on');g('ki').focus()}
+g('sb').onclick=openK;
+document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openK()}else if(e.key==='Escape')closeM();else if(e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){e.preventDefault();openK()}});
+document.addEventListener('click',function(e){var th=e.target.closest('th');if(!th)return;var t=th.closest('table');if(!t||t.id==='co')return;var ix=[].indexOf.call(th.parentNode.children,th),rows=[].slice.call(t.rows,1);if(!rows.length)return;var d=th.dataset.d==='1'?-1:1;th.dataset.d=d===1?'1':'';
+rows.sort(function(a,b){var x=a.cells[ix]?a.cells[ix].textContent.trim():'',y=b.cells[ix]?b.cells[ix].textContent.trim():'',nx=parseFloat(x.replace(/[^\d.-]/g,'')),ny=parseFloat(y.replace(/[^\d.-]/g,''));return(isNaN(nx)||isNaN(ny)?x.localeCompare(y,'uk'):nx-ny)*d});rows.forEach(function(r){r.parentNode.appendChild(r)})});
+function rSt(){var n=+g('sp').value,a=[],v=7000;for(var i=0;i<n;i++){v+=Math.sin(i*1.7)*350+(i/n)*180+((i*37)%11-5)*40;a.push(v)}
+var mx=Math.max.apply(null,a),mi=Math.min.apply(null,a),pts=a.map(function(y,i){return (i/(n-1)*400).toFixed(1)+','+(110-(y-mi)/(mx-mi)*95).toFixed(1)}).join(' ');
+g('sg').innerHTML='<polyline fill="none" stroke="var(--acc)" stroke-width="2.5" points="'+pts+'"/><line x1="0" y1="115" x2="400" y2="115" stroke="var(--line)"/>';g('sav').textContent='середній DAU: '+Math.round(a.reduce(function(s,x){return s+x},0)/n).toLocaleString('uk-UA')}
+g('sp').onchange=rSt;rSt();
+var CO=[['Тиждень 1',100,41,29,24,21],['Тиждень 2',100,44,31,26,0],['Тиждень 3',100,39,27,0,0],['Тиждень 4',100,46,0,0,0]],ch='<tr><th>Когорта</th><th>День 0</th><th>День 1</th><th>День 7</th><th>День 14</th><th>День 30</th></tr>';
+CO.forEach(function(r){ch+='<tr><td>'+r[0]+'</td>';for(var i=1;i<6;i++)ch+=r[i]?'<td style="background:rgba(63,155,75,'+(r[i]/130).toFixed(2)+')">'+r[i]+'%</td>':'<td>—</td>';ch+='</tr>'});g('co').innerHTML=ch;
+g('th').addEventListener('change',function(){try{localStorage.setItem('pvt',this.value)}catch(e){}});
+try{var sv=localStorage.getItem('pvt');if(sv){g('th').value=sv;g('th').dispatchEvent(new Event('change'))}}catch(e){}
+rN();rP();pv();
+renderA();
+var h=location.hash.slice(1);
+if(h){var m=document.querySelector('#nav button[data-t="'+h+'"]');if(m)m.click()}
+</script>
+</body>
+</html>
