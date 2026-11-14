@@ -148,17 +148,204 @@ async fn index(State(app): State<App>) -> Html<String> {
     page("Pixel Village: онлайн", &format!("<h1>Онлайн: {}</h1><ul>{rows}</ul>", names.len()))
 }
 
-async fn admin(State(_app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
-    match (&_app.admin_key, q.get("key")) {
+async fn admin(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
+    match (&app.admin_key, q.get("key")) {
         (Some(k), Some(given)) if k == given => {}
         _ => {
-            return (StatusCode::UNAUTHORIZED, "Потрібен ключ: /admin?key=ВАШ_КЛЮЧ")
+            return (StatusCode::UNAUTHORIZED, "Нужен ключ: /admin?key=ВАШ_КЛЮЧ (задаётся переменной ADMIN_KEY)")
                 .into_response()
         }
     }
+    let w = app.world.lock().await;
+    let mut list: Vec<&Conn> = w.players.values().collect();
+    list.sort_by_key(|c| c.state.id);
 
-    // Нова адмінка - статичний HTML з демо-даними
-    Html(include_str!("../../admin.html")).into_response()
+    // Статистика по платформам
+    let mut os_stats: HashMap<String, usize> = HashMap::new();
+    for conn in &list {
+        if let Some(dev) = &conn.device {
+            *os_stats.entry(dev.os.clone()).or_insert(0) += 1;
+        }
+    }
+
+    let os_rows: String = os_stats
+        .iter()
+        .map(|(os, count)| format!("<tr><td>{}</td><td>{}</td></tr>", esc(os), count))
+        .collect();
+
+    let offers: String = w
+        .offers
+        .iter()
+        .map(|o| format!("<tr><td>{}</td><td>{}</td><td>{} ×{}</td><td>{}</td></tr>", o.id, esc(&o.seller_name), o.item, o.qty, o.price))
+        .collect();
+
+    // Статистика банів та мутів
+    let now = chrono::Utc::now().timestamp();
+    let active_bans: Vec<&Ban> = w.bans.iter()
+        .filter(|b| b.expires_at.is_none() || b.expires_at.unwrap() > now)
+        .collect();
+    let active_mutes: Vec<&Mute> = w.mutes.iter()
+        .filter(|m| m.expires_at.is_none() || m.expires_at.unwrap() > now)
+        .collect();
+
+    let ban_rows: String = active_bans.iter().map(|b| {
+        let expires = match b.expires_at {
+            Some(ts) => {
+                let hours_left = (ts - now) / 3600;
+                format!("{} год", hours_left)
+            }
+            None => "Постійно".to_string()
+        };
+        format!(
+            "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+            esc(&b.player_name), esc(&b.reason), esc(&b.banned_by), expires
+        )
+    }).collect();
+
+    let mute_rows: String = active_mutes.iter().map(|m| {
+        let expires = match m.expires_at {
+            Some(ts) => {
+                let hours_left = (ts - now) / 3600;
+                format!("{} год", hours_left)
+            }
+            None => "Постійно".to_string()
+        };
+        format!(
+            "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+            esc(&m.player_name), esc(&m.reason), esc(&m.muted_by), expires
+        )
+    }).collect();
+
+    let admin_key = q.get("key").unwrap();
+
+    Html(format!(
+        "<!doctype html><html lang=\"uk\"><head><meta charset=\"utf-8\">\
+         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
+         <meta http-equiv=\"refresh\" content=\"5\"><title>Pixel Village: Адмінка</title>\
+         <style>\
+         body{{font:14px system-ui;background:#0a0e14;color:#d9d7ce;margin:0;padding:20px}}\
+         .container{{max-width:1400px;margin:0 auto}}\
+         h1{{color:#ffb454;margin:0 0 20px 0;font-size:28px}}\
+         h2{{color:#59c2ff;margin:30px 0 10px 0;font-size:20px}}\
+         .stats{{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin:20px 0}}\
+         .stat-card{{background:#151a21;padding:20px;border-radius:8px;border:1px solid #2d3640}}\
+         .stat-value{{font-size:32px;font-weight:bold;color:#ffb454;margin:10px 0}}\
+         .stat-label{{color:#7d8590;font-size:12px;text-transform:uppercase}}\
+         table{{border-collapse:collapse;width:100%;background:#151a21;margin:10px 0;border-radius:8px;overflow:hidden}}\
+         td,th{{border-bottom:1px solid #2d3640;padding:12px;text-align:left}}\
+         th{{background:#1c2128;color:#59c2ff;font-weight:600}}\
+         tr:hover{{background:#1c2128}}\
+         .online{{color:#3fb950}}\
+         .platform{{display:inline-block;padding:4px 8px;background:#2d3640;border-radius:4px;font-size:11px;color:#7d8590}}\
+         .action-btn{{padding:6px 12px;background:#238636;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;margin:2px}}\
+         .action-btn:hover{{background:#2ea043}}\
+         .ban-btn{{background:#da3633}}\
+         .ban-btn:hover{{background:#f85149}}\
+         .mute-btn{{background:#ff922b}}\
+         .mute-btn:hover{{background:#ffa94d}}\
+         .form-section{{background:#151a21;padding:20px;border-radius:8px;margin:20px 0;border:1px solid #2d3640}}\
+         input,select{{background:#0d1117;border:1px solid #30363d;color:#d9d7ce;padding:8px;border-radius:6px;margin:5px}}\
+         .banned{{color:#f85149}}\
+         .muted{{color:#ffa94d}}\
+         </style>\
+         </head><body><div class=\"container\">\
+         <h1>🎮 Pixel Village — Адмінка</h1>\
+         <div class=\"stats\">\
+         <div class=\"stat-card\"><div class=\"stat-label\">Гравців онлайн</div><div class=\"stat-value online\">{}</div></div>\
+         <div class=\"stat-card\"><div class=\"stat-label\">Активних оголошень</div><div class=\"stat-value\">{}</div></div>\
+         <div class=\"stat-card\"><div class=\"stat-label\">Платформ</div><div class=\"stat-value\">{}</div></div>\
+         <div class=\"stat-card\"><div class=\"stat-label banned\">Активних банів</div><div class=\"stat-value banned\">{}</div></div>\
+         <div class=\"stat-card\"><div class=\"stat-label muted\">Активних мутів</div><div class=\"stat-value muted\">{}</div></div>\
+         </div>\
+         \
+         <h2>🔨 Модерація</h2>\
+         <div class=\"form-section\">\
+         <h3>Забанити гравця</h3>\
+         <form action=\"/api/admin/ban\" method=\"get\" target=\"_blank\">\
+         <input type=\"hidden\" name=\"key\" value=\"{}\">\
+         <input type=\"text\" name=\"player\" placeholder=\"Ім'я гравця\" required>\
+         <input type=\"text\" name=\"reason\" placeholder=\"Причина\" value=\"Порушення правил\">\
+         <input type=\"number\" name=\"hours\" placeholder=\"Годин (пусто = назавжди)\">\
+         <input type=\"text\" name=\"admin\" placeholder=\"Ваше ім'я\" value=\"Адмін\">\
+         <button type=\"submit\" class=\"action-btn ban-btn\">Забанити</button>\
+         </form>\
+         <h3 style=\"margin-top:20px\">Видати мут</h3>\
+         <form action=\"/api/admin/mute\" method=\"get\" target=\"_blank\">\
+         <input type=\"hidden\" name=\"key\" value=\"{}\">\
+         <input type=\"text\" name=\"player\" placeholder=\"Ім'я гравця\" required>\
+         <input type=\"text\" name=\"reason\" placeholder=\"Причина\" value=\"Спам/образи\">\
+         <input type=\"number\" name=\"hours\" placeholder=\"Годин (пусто = назавжди)\">\
+         <input type=\"text\" name=\"admin\" placeholder=\"Ваше ім'я\" value=\"Адмін\">\
+         <button type=\"submit\" class=\"action-btn mute-btn\">Замутити</button>\
+         </form>\
+         </div>\
+         \
+         <h2>🚫 Активні бани ({})</h2>\
+         <table><tr><th>Гравець</th><th>Причина</th><th>Забанив</th><th>Закінчується</th><th>Дії</th></tr>{}</table>\
+         \
+         <h2>🔇 Активні мути ({})</h2>\
+         <table><tr><th>Гравець</th><th>Причина</th><th>Видав</th><th>Закінчується</th><th>Дії</th></tr>{}</table>\
+         \
+         <h2>👥 Гравці онлайн</h2>\
+         <table><tr><th>ID</th><th>Ім'я</th><th>Позиція</th><th>Очки</th><th>Рекорд риби</th><th>В грі</th><th>Пристрій</th><th>Дії</th></tr>{}</table>\
+         <h2>📊 Статистика по платформах</h2>\
+         <table><tr><th>Платформа</th><th>Гравців</th></tr>{}</table>\
+         <h2>🛒 Ринок</h2>\
+         <table><tr><th>№</th><th>Продавець</th><th>Предмет</th><th>Ціна</th></tr>{}</table>\
+         </div></body></html>",
+        list.len(),
+        w.offers.len(),
+        os_stats.len(),
+        active_bans.len(),
+        active_mutes.len(),
+        admin_key,
+        admin_key,
+        active_bans.len(),
+        if ban_rows.is_empty() {
+            "<tr><td colspan=\"5\" style=\"text-align:center;color:#7d8590\">Немає активних банів</td></tr>".to_string()
+        } else {
+            ban_rows.clone() + &active_bans.iter().map(|b| {
+                format!("<td><a href=\"/api/admin/unban?key={}&player={}\" target=\"_blank\" class=\"action-btn\">Розбанити</a></td></tr>",
+                    admin_key, urlencoding::encode(&b.player_name))
+            }).collect::<String>()
+        },
+        active_mutes.len(),
+        if mute_rows.is_empty() {
+            "<tr><td colspan=\"5\" style=\"text-align:center;color:#7d8590\">Немає активних мутів</td></tr>".to_string()
+        } else {
+            mute_rows.clone() + &active_mutes.iter().map(|m| {
+                format!("<td><a href=\"/api/admin/unmute?key={}&player={}\" target=\"_blank\" class=\"action-btn\">Зняти мут</a></td></tr>",
+                    admin_key, urlencoding::encode(&m.player_name))
+            }).collect::<String>()
+        },
+        list.iter().map(|c| {
+            let device = if let Some(d) = &c.device {
+                format!("{} {} ({})", esc(&d.os), esc(&d.version), esc(&d.arch))
+            } else {
+                "Невідомо".to_string()
+            };
+            format!(
+                "<tr><td>{}</td><td>{}</td><td>{:.1}, {:.1}</td><td>{}</td><td>{:.2} кг</td><td>{} с</td><td>{}</td>\
+                <td>\
+                <a href=\"/api/admin/ban?key={}&player={}&reason=Порушення&hours=24&admin=Адмін\" target=\"_blank\" class=\"action-btn ban-btn\">Бан 24г</a>\
+                <a href=\"/api/admin/mute?key={}&player={}&reason=Спам&hours=1&admin=Адмін\" target=\"_blank\" class=\"action-btn mute-btn\">Мут 1г</a>\
+                </td></tr>",
+                c.state.id,
+                esc(&c.state.name),
+                c.state.x,
+                c.state.y,
+                c.score,
+                c.big,
+                c.joined.elapsed().as_secs(),
+                device,
+                admin_key, urlencoding::encode(&c.state.name),
+                admin_key, urlencoding::encode(&c.state.name)
+            )
+        }).collect::<String>(),
+        os_rows,
+        offers
+    ))
+    .into_response()
 }
 
 async fn api_version() -> Json<serde_json::Value> {
