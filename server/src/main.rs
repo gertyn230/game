@@ -393,6 +393,41 @@ async fn api_admin_stats(State(app): State<App>, Query(q): Query<HashMap<String,
         })
     }).collect();
 
+    // Активні бани та мути
+    let now = chrono::Utc::now().timestamp();
+    let active_bans: Vec<serde_json::Value> = w.bans.iter()
+        .filter(|b| b.expires_at.is_none() || b.expires_at.unwrap() > now)
+        .map(|b| serde_json::json!({
+            "player_name": b.player_name,
+            "reason": b.reason,
+            "banned_by": b.banned_by,
+            "banned_at": b.banned_at,
+            "expires_at": b.expires_at,
+        }))
+        .collect();
+
+    let active_mutes: Vec<serde_json::Value> = w.mutes.iter()
+        .filter(|m| m.expires_at.is_none() || m.expires_at.unwrap() > now)
+        .map(|m| serde_json::json!({
+            "player_name": m.player_name,
+            "reason": m.reason,
+            "muted_by": m.muted_by,
+            "muted_at": m.muted_at,
+            "expires_at": m.expires_at,
+        }))
+        .collect();
+
+    // Торгові пропозиції
+    let offers: Vec<serde_json::Value> = w.offers.iter()
+        .map(|o| serde_json::json!({
+            "id": o.id,
+            "seller_name": o.seller_name,
+            "item": o.item,
+            "qty": o.qty,
+            "price": o.price,
+        }))
+        .collect();
+
     Json(serde_json::json!({
         "timestamp": chrono::Utc::now().to_rfc3339(),
         "players": {
@@ -400,7 +435,14 @@ async fn api_admin_stats(State(app): State<App>, Query(q): Query<HashMap<String,
             "list": players,
         },
         "market": {
-            "offers": w.offers.len(),
+            "offers_count": w.offers.len(),
+            "offers": offers,
+        },
+        "moderation": {
+            "active_bans": active_bans.len(),
+            "bans": active_bans,
+            "active_mutes": active_mutes.len(),
+            "mutes": active_mutes,
         },
         "stats": {
             "by_os": os_stats,

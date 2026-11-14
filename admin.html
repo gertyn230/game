@@ -456,6 +456,79 @@ rN();rP();pv();
 renderA();
 var h=location.hash.slice(1);
 if(h){var m=document.querySelector('#nav button[data-t="'+h+'"]');if(m)m.click()}
+
+// Завантаження реальних даних з сервера
+var adminKey=new URLSearchParams(location.search).get('key');
+function loadRealData(){
+if(!adminKey)return;
+fetch('/api/admin/stats?key='+encodeURIComponent(adminKey))
+.then(function(r){return r.json()})
+.then(function(data){
+// Оновити онлайн гравців
+if(data.players){
+g('onl').textContent=data.players.online;
+// Оновити таблицю гравців
+var tb=document.querySelector('#players tbody');
+if(!tb){tb=document.querySelector('#players table');if(tb){var t=document.createElement('tbody');tb.appendChild(t);tb=t}}
+if(tb&&data.players.list){
+tb.innerHTML='';
+data.players.list.forEach(function(p){
+var dev=p.device?(p.device.os+' '+p.device.version+' ('+p.device.arch+')'):'Невідомо';
+var tr=document.createElement('tr');
+tr.innerHTML='<td>'+p.name+'</td><td>'+Math.round(p.score)+'</td><td>'+p.position.x.toFixed(1)+','+p.position.y.toFixed(1)+'</td><td>'+dev+'</td><td><span class="tag ok">онлайн</span></td><td><button class="btn">Профіль</button> <button class="btn d tb">Бан</button></td>';
+tb.appendChild(tr)
+})
+}
+}
+// Оновити статистику модерації
+if(data.moderation){
+var bansCard=document.querySelectorAll('.stat-card')[3];
+if(bansCard){
+var v=bansCard.querySelector('.v');
+if(v)v.textContent=data.moderation.active_bans
+}
+var mutesCard=document.querySelectorAll('.stat-card')[4];
+if(mutesCard){
+var v=mutesCard.querySelector('.v');
+if(v)v.textContent=data.moderation.active_mutes
+}
+}
+// Оновити ринок
+if(data.market){
+var offersCard=document.querySelectorAll('.stat-card')[1];
+if(offersCard){
+var v=offersCard.querySelector('.v');
+if(v)v.textContent=data.market.offers_count
+}
+}
+// Оновити статистику платформ
+if(data.stats&&data.stats.by_os){
+var osCard=document.querySelectorAll('.stat-card')[2];
+if(osCard){
+var v=osCard.querySelector('.v');
+if(v)v.textContent=Object.keys(data.stats.by_os).length
+}
+// Оновити діаграму платформ
+var total=data.players.online||1;
+var cardPlatforms=document.querySelector('.card .k');
+if(cardPlatforms&&cardPlatforms.textContent==='Платформи'){
+var parent=cardPlatforms.parentElement;
+var html='';
+Object.entries(data.stats.by_os).forEach(function(e){
+var os=e[0],cnt=e[1],pct=Math.round(cnt/total*100);
+html+='<div style="margin-top:8px">'+os+' '+pct+'%<div class="bar"><i style="width:'+pct+'%"></i></div></div>'
+});
+parent.innerHTML='<div class="k">Платформи</div>'+html
+}
+}
+})
+.catch(function(e){console.error('Помилка завантаження даних:',e)})
+}
+// Завантажити дані зараз і кожні 5 секунд
+if(adminKey){
+loadRealData();
+setInterval(loadRealData,5000)
+}
 </script>
 </body>
 </html>
