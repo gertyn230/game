@@ -17,7 +17,12 @@ pub struct ServerConfig {
 }
 
 pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
-    let pool = SqlitePool::connect("sqlite:game.db").await?;
+    // На Render.com використовуємо in-memory базу даних
+    // або можна використати /tmp/game.db для тимчасового файлу
+    let db_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "sqlite::memory:".to_string());
+
+    let pool = SqlitePool::connect(&db_url).await?;
 
     // Створити таблиці
     sqlx::query(
