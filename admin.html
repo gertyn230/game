@@ -73,13 +73,11 @@ input,select,textarea{background:var(--bg);color:var(--ink);border:2px solid var
 <h1>Дашборд</h1><div class="sub">Стан гри в реальному часі</div>
 <div class="grid">
 <div class="card"><div class="k">Онлайн зараз</div><div class="v" id="onl">—</div></div>
-<div class="card"><div class="k">Активних банів</div><div class="v" id="bans">—</div></div>
-<div class="card"><div class="k">Активних мутів</div><div class="v" id="mutes">—</div></div>
-<div class="card"><div class="k">Торгових пропозицій</div><div class="v" id="offers">—</div></div>
+<div class="card"><div class="k">Активних банів</div><div class="v" id="bans-count">—</div></div>
+<div class="card"><div class="k">Активних мутів</div><div class="v" id="mutes-count">—</div></div>
+<div class="card"><div class="k">Торгових пропозицій</div><div class="v" id="offers-count">—</div></div>
 </div>
-<div class="two">
-<div class="card" id="platforms-card"><div class="k">Платформи</div><div style="margin-top:8px;color:var(--mut)">Завантаження...</div></div>
-</div>
+<div class="card" id="platforms-card"><div class="k">Платформи</div><div id="platforms-content" style="margin-top:8px;color:var(--mut)">Завантаження...</div></div>
 </section>
 
 <section class="sec" id="players">
@@ -97,14 +95,14 @@ input,select,textarea{background:var(--bg);color:var(--ink);border:2px solid var
 <section class="sec" id="econ">
 <h1>Торгівля</h1><div class="sub">Ринок між гравцями</div>
 <div class="grid">
-<div class="card"><div class="k">Активних пропозицій</div><div class="v" id="offers-count">—</div></div>
+<div class="card"><div class="k">Активних пропозицій</div><div class="v" id="market-offers-count">—</div></div>
 </div>
-<div class="card" id="market-section"><div class="k">Завантаження...</div></div>
+<div class="card" id="market-section"><div class="k">Торгові пропозиції</div><div id="market-content" style="margin-top:8px;color:var(--mut)">Завантаження...</div></div>
 </section>
 
 <section class="sec" id="mod">
 <h1>Модерація</h1><div class="sub">Бани, мути</div>
-<div id="moderation-section"><div class="k">Завантаження...</div></div>
+<div id="moderation-content"><div class="k">Завантаження...</div></div>
 </section>
 
 
@@ -301,29 +299,37 @@ updateMarket(data);
 
 function updateDashboard(data){
 // Оновити онлайн гравців
-g('onl').textContent=(data.players?.online||0).toLocaleString('uk-UA');
+var onlEl=g('onl');
+if(onlEl)onlEl.textContent=(data.players?.online||0).toLocaleString('uk-UA');
+
 // Оновити статистику
-var cards=document.querySelectorAll('.stat-card .v');
-if(cards[1])cards[1].textContent=data.market?.offers_count||0;
-if(cards[2])cards[2].textContent=Object.keys(data.stats?.by_os||{}).length;
-if(cards[3])cards[3].textContent=data.moderation?.active_bans||0;
-if(cards[4])cards[4].textContent=data.moderation?.active_mutes||0;
+var bansEl=g('bans-count');
+if(bansEl)bansEl.textContent=data.moderation?.active_bans||0;
+
+var mutesEl=g('mutes-count');
+if(mutesEl)mutesEl.textContent=data.moderation?.active_mutes||0;
+
+var offersEl=g('offers-count');
+if(offersEl)offersEl.textContent=data.market?.offers_count||0;
 
 // Оновити діаграму платформ
-if(data.stats&&data.stats.by_os){
+var platformsContent=g('platforms-content');
+if(platformsContent&&data.stats&&data.stats.by_os){
 var total=data.players.online||1;
-var platformsCard=document.querySelectorAll('.card')[1];
-if(platformsCard){
-var html='<div class="k">Платформи</div>';
+var html='';
 var colors=['var(--acc)','var(--info)','var(--acc2)'];
 var i=0;
-Object.entries(data.stats.by_os).forEach(function(e){
+var entries=Object.entries(data.stats.by_os);
+if(entries.length===0){
+html='<div style="color:var(--mut)">Немає даних</div>';
+}else{
+entries.forEach(function(e){
 var os=e[0],cnt=e[1],pct=Math.round(cnt/total*100);
-html+='<div style="margin-top:8px">'+os+' '+pct+'%<div class="bar"><i style="width:'+pct+'%;background:'+colors[i%3]+'"></i></div></div>';
+html+='<div style="margin-top:8px">'+esc(os)+' '+pct+'% ('+cnt+')<div class="bar"><i style="width:'+pct+'%;background:'+colors[i%3]+'"></i></div></div>';
 i++
 });
-platformsCard.innerHTML=html
 }
+platformsContent.innerHTML=html
 }
 }
 
@@ -356,14 +362,14 @@ table.appendChild(tr)
 
 function updateModeration(data){
 if(!data.moderation)return;
-// Оновити таблицю банів
-var bansSection=document.querySelector('#mod');
-if(bansSection&&data.moderation.bans){
-var html='<h1>Модерація</h1><div class="sub">Бани, мути, скарги</div>';
-html+='<div class="card"><h3>🚫 Активні бани ('+data.moderation.active_bans+')</h3>';
+
+var contentEl=g('moderation-content');
+if(!contentEl)return;
+
+var html='<div class="card"><h3>🚫 Активні бани ('+data.moderation.active_bans+')</h3>';
 html+='<div class="scroll"><table><tr><th>Гравець</th><th>Причина</th><th>Забанив</th><th>Закінчується</th><th>Дії</th></tr>';
-if(data.moderation.bans.length===0){
-html+='<tr><td colspan="5" style="text-align:center;color:var(--mut)">Немає активних банів</td></tr>'
+if(!data.moderation.bans||data.moderation.bans.length===0){
+html+='<tr><td colspan="5" style="text-align:center;color:var(--mut)">Немає активних банів</td></tr>';
 }else{
 data.moderation.bans.forEach(function(b){
 var expires=b.expires_at?new Date(b.expires_at*1000).toLocaleString('uk-UA'):'Назавжди';
@@ -371,15 +377,15 @@ html+='<tr><td>'+esc(b.player_name)+'</td>'
 +'<td>'+esc(b.reason)+'</td>'
 +'<td>'+esc(b.banned_by)+'</td>'
 +'<td>'+expires+'</td>'
-+'<td><a href="/api/admin/unban?key='+encodeURIComponent(adminKey)+'&player='+encodeURIComponent(b.player_name)+'" target="_blank" class="btn">Розбанити</a></td></tr>'
-})
++'<td><a href="/api/admin/unban?key='+encodeURIComponent(adminKey)+'&player='+encodeURIComponent(b.player_name)+'" target="_blank" class="btn">Розбанити</a></td></tr>';
+});
 }
 html+='</table></div></div>';
 
 html+='<div class="card"><h3>🔇 Активні мути ('+data.moderation.active_mutes+')</h3>';
 html+='<div class="scroll"><table><tr><th>Гравець</th><th>Причина</th><th>Видав</th><th>Закінчується</th><th>Дії</th></tr>';
-if(data.moderation.mutes.length===0){
-html+='<tr><td colspan="5" style="text-align:center;color:var(--mut)">Немає активних мутів</td></tr>'
+if(!data.moderation.mutes||data.moderation.mutes.length===0){
+html+='<tr><td colspan="5" style="text-align:center;color:var(--mut)">Немає активних мутів</td></tr>';
 }else{
 data.moderation.mutes.forEach(function(m){
 var expires=m.expires_at?new Date(m.expires_at*1000).toLocaleString('uk-UA'):'Назавжди';
@@ -387,12 +393,11 @@ html+='<tr><td>'+esc(m.player_name)+'</td>'
 +'<td>'+esc(m.reason)+'</td>'
 +'<td>'+esc(m.muted_by)+'</td>'
 +'<td>'+expires+'</td>'
-+'<td><a href="/api/admin/unmute?key='+encodeURIComponent(adminKey)+'&player='+encodeURIComponent(m.player_name)+'" target="_blank" class="btn">Зняти мут</a></td></tr>'
-})
++'<td><a href="/api/admin/unmute?key='+encodeURIComponent(adminKey)+'&player='+encodeURIComponent(m.player_name)+'" target="_blank" class="btn">Зняти мут</a></td></tr>';
+});
 }
 html+='</table></div></div>';
 
-// Форми модерації
 html+='<div class="card"><h3>Забанити гравця</h3>';
 html+='<form action="/api/admin/ban" method="get" target="_blank">';
 html+='<input type="hidden" name="key" value="'+esc(adminKey)+'">';
@@ -411,35 +416,32 @@ html+='<input type="number" name="hours" placeholder="Годин (пусто = �
 html+='<input type="text" name="admin" placeholder="Ваше ім\'я" value="Адмін">';
 html+='<button type="submit" class="btn p">Замутити</button></div></form></div>';
 
-var modContent=bansSection.querySelector('.sec');
-if(!modContent)modContent=bansSection;
-modContent.innerHTML=html
-}
+contentEl.innerHTML=html;
 }
 
 function updateMarket(data){
-if(!data.market||!data.market.offers)return;
-var econSection=document.querySelector('#econ');
-if(!econSection)return;
-var html='<h1>Торгівля</h1><div class="sub">Ринок між гравцями</div>';
-html+='<div class="grid">';
-html+='<div class="card"><div class="k">Активних пропозицій</div><div class="v">'+data.market.offers_count+'</div></div>';
-html+='</div>';
-html+='<div class="card"><h3>🛒 Торгові пропозиції</h3>';
-html+='<div class="scroll"><table><tr><th>ID</th><th>Продавець</th><th>Предмет</th><th>Кількість</th><th>Ціна</th></tr>';
-if(data.market.offers.length===0){
-html+='<tr><td colspan="5" style="text-align:center;color:var(--mut)">Немає активних пропозицій</td></tr>'
+if(!data.market)return;
+
+var countEl=g('market-offers-count');
+if(countEl)countEl.textContent=data.market.offers_count||0;
+
+var contentEl=g('market-content');
+if(!contentEl)return;
+
+var html='<div class="scroll"><table><tr><th>ID</th><th>Продавець</th><th>Предмет</th><th>Кількість</th><th>Ціна</th></tr>';
+if(!data.market.offers||data.market.offers.length===0){
+html+='<tr><td colspan="5" style="text-align:center;color:var(--mut)">Немає активних пропозицій</td></tr>';
 }else{
 data.market.offers.forEach(function(o){
 html+='<tr><td>'+o.id+'</td>'
 +'<td>'+esc(o.seller_name)+'</td>'
 +'<td>'+esc(o.item)+'</td>'
 +'<td>'+o.qty+'</td>'
-+'<td>'+o.price+' 🪙</td></tr>'
-})
++'<td>'+o.price+' 🪙</td></tr>';
+});
 }
-html+='</table></div></div>';
-econSection.innerHTML=html
+html+='</table></div>';
+contentEl.innerHTML=html;
 }
 
 window.openPlayerProfile=function(name){
