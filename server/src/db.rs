@@ -17,10 +17,9 @@ pub struct ServerConfig {
 }
 
 pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
-    // На Render.com використовуємо in-memory базу даних
-    // або можна використати /tmp/game.db для тимчасового файлу
+    // Use persistent file database by default for production
     let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite::memory:".to_string());
+        .unwrap_or_else(|_| "sqlite:///data/game.db?mode=rwc".to_string());
 
     let pool = SqlitePool::connect(&db_url).await?;
 

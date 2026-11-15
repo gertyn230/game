@@ -13,7 +13,7 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         Query, State,
     },
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Response},
     routing::{get, post},
     Json, Router,
@@ -27,6 +27,33 @@ use sqlx::SqlitePool;
 
 const MAX_PLAYERS: usize = 200;
 const MAX_OFFERS: usize = 300;
+
+// Admin API request structures
+#[derive(serde::Deserialize)]
+struct BanRequest {
+    player: String,
+    reason: Option<String>,
+    hours: Option<i64>,
+    admin: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+struct UnbanRequest {
+    player: String,
+}
+
+#[derive(serde::Deserialize)]
+struct MuteRequest {
+    player: String,
+    reason: Option<String>,
+    hours: Option<i64>,
+    admin: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+struct UnmuteRequest {
+    player: String,
+}
 
 struct Conn {
     state: PlayerState,
@@ -47,6 +74,7 @@ struct World {
     next_offer: u32,
     bans: Vec<Ban>,
     mutes: Vec<Mute>,
+    failed_auth_attempts: HashMap<String, (u32, Instant)>, // IP -> (count, last_attempt)
 }
 
 #[derive(Clone)]
@@ -59,6 +87,70 @@ struct App {
 
 fn enc(m: &ServerMsg) -> String {
     serde_json::to_string(m).unwrap_or_default()
+}
+
+// Constant-time comparison for admin key
+fn constant_time_compare(a: &str, b: &str) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut result = 0u8;
+    for (x, y) in a.bytes().zip(b.bytes()) {
+        result |= x ^ y;
+    }
+    result == 0
+}
+
+// Check admin authorization from headers
+async fn check_admin_auth(app: &App, headers: &HeaderMap, client_ip: &str) -> Result<(), StatusCode> {
+    let admin_key = match &app.admin_key {
+        Some(key) => key,
+        None => return Err(StatusCode::SERVICE_UNAVAILABLE), // Admin not configured
+    };
+
+    // Extract key from X-Admin-Key or Authorization header
+    let provided_key = headers
+        .get("X-Admin-Key")
+        .or_else(|| headers.get("Authorization"))
+        .and_then(|h| h.to_str().ok())
+        .map(|s| s.trim_start_matches("Bearer ").trim());
+
+    let provided_key = match provided_key {
+        Some(key) => key,
+        None => {
+            record_failed_auth(app, client_ip).await;
+            return Err(StatusCode::UNAUTHORIZED);
+        }
+    };
+
+    if !constant_time_compare(admin_key, provided_key) {
+        record_failed_auth(app, client_ip).await;
+        // Add delay on failed attempt to slow down brute force
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    // Check rate limiting
+    let mut w = app.world.lock().await;
+    if let Some((count, last)) = w.failed_auth_attempts.get(client_ip) {
+        if *count >= 5 && last.elapsed().as_secs() < 300 {
+            return Err(StatusCode::TOO_MANY_REQUESTS);
+        }
+    }
+    // Clear failed attempts on successful auth
+    w.failed_auth_attempts.remove(client_ip);
+
+    Ok(())
+}
+
+async fn record_failed_auth(app: &App, client_ip: &str) {
+    let mut w = app.world.lock().await;
+    let entry = w.failed_auth_attempts.entry(client_ip.to_string()).or_insert((0, Instant::now()));
+    entry.0 += 1;
+    entry.1 = Instant::now();
+
+    // Cleanup old entries (>1 hour)
+    w.failed_auth_attempts.retain(|_, (_, time)| time.elapsed().as_secs() < 3600);
 }
 
 #[tokio::main]
@@ -117,10 +209,10 @@ async fn main() {
         .route("/admin", get(admin))
         .route("/api/players", get(api_players))
         .route("/api/admin/stats", get(api_admin_stats))
-        .route("/api/admin/ban", get(api_ban))
-        .route("/api/admin/unban", get(api_unban))
-        .route("/api/admin/mute", get(api_mute))
-        .route("/api/admin/unmute", get(api_unmute))
+        .route("/api/admin/ban", post(api_ban))
+        .route("/api/admin/unban", post(api_unban))
+        .route("/api/admin/mute", post(api_mute))
+        .route("/api/admin/unmute", post(api_unmute))
         .route("/api/admin/bans", get(api_list_bans))
         .route("/api/admin/logs", get(api_admin_logs))
         .route("/api/admin/tickets", get(api_tickets))
@@ -162,16 +254,9 @@ async fn index(State(app): State<App>) -> Html<String> {
     page("Pixel Village: онлайн", &format!("<h1>Онлайн: {}</h1><ul>{rows}</ul>", names.len()))
 }
 
-async fn admin(State(_app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
-    match (&_app.admin_key, q.get("key")) {
-        (Some(k), Some(given)) if k == given => {}
-        _ => {
-            return (StatusCode::UNAUTHORIZED, "Потрібен ключ: /admin?key=ВАШ_КЛЮЧ")
-                .into_response()
-        }
-    }
-
-    // Нова адмінка - статичний HTML з демо-даними
+async fn admin(State(_app): State<App>, _headers: HeaderMap) -> Response {
+    // For /admin page, we'll allow access and let JavaScript handle auth via API calls
+    // This way we can serve the login page without authentication
     Html(include_str!("../../admin.html")).into_response()
 }
 
@@ -195,20 +280,15 @@ async fn api_version() -> Json<serde_json::Value> {
     }))
 }
 
-async fn api_ban(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
-    match (&app.admin_key, q.get("key")) {
-        (Some(k), Some(given)) if k == given => {}
-        _ => return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response(),
+async fn api_ban(State(app): State<App>, headers: HeaderMap, Json(req): Json<BanRequest>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
     }
 
-    let player_name = match q.get("player") {
-        Some(n) => n.clone(),
-        None => return (StatusCode::BAD_REQUEST, "Missing player name").into_response(),
-    };
-
-    let reason = q.get("reason").cloned().unwrap_or_else(|| "Порушення правил".to_string());
-    let duration_hours = q.get("hours").and_then(|h| h.parse::<i64>().ok());
-    let banned_by = q.get("admin").cloned().unwrap_or_else(|| "Адміністратор".to_string());
+    let player_name = req.player;
+    let reason = req.reason.unwrap_or_else(|| "Порушення правил".to_string());
+    let duration_hours = req.hours;
+    let banned_by = req.admin.unwrap_or_else(|| "Адміністратор".to_string());
 
     let now = chrono::Utc::now().timestamp();
     let expires_at = duration_hours.map(|h| now + h * 3600);
@@ -244,16 +324,12 @@ async fn api_ban(State(app): State<App>, Query(q): Query<HashMap<String, String>
     })).into_response()
 }
 
-async fn api_unban(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
-    match (&app.admin_key, q.get("key")) {
-        (Some(k), Some(given)) if k == given => {}
-        _ => return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response(),
+async fn api_unban(State(app): State<App>, headers: HeaderMap, Json(req): Json<UnbanRequest>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
     }
 
-    let player_name = match q.get("player") {
-        Some(n) => n.clone(),
-        None => return (StatusCode::BAD_REQUEST, "Missing player name").into_response(),
-    };
+    let player_name = req.player;
 
     let mut w = app.world.lock().await;
     let before = w.bans.len();
@@ -270,20 +346,15 @@ async fn api_unban(State(app): State<App>, Query(q): Query<HashMap<String, Strin
     })).into_response()
 }
 
-async fn api_mute(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
-    match (&app.admin_key, q.get("key")) {
-        (Some(k), Some(given)) if k == given => {}
-        _ => return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response(),
+async fn api_mute(State(app): State<App>, headers: HeaderMap, Json(req): Json<MuteRequest>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
     }
 
-    let player_name = match q.get("player") {
-        Some(n) => n.clone(),
-        None => return (StatusCode::BAD_REQUEST, "Missing player name").into_response(),
-    };
-
-    let reason = q.get("reason").cloned().unwrap_or_else(|| "Порушення правил спілкування".to_string());
-    let duration_hours = q.get("hours").and_then(|h| h.parse::<i64>().ok());
-    let muted_by = q.get("admin").cloned().unwrap_or_else(|| "Адміністратор".to_string());
+    let player_name = req.player;
+    let reason = req.reason.unwrap_or_else(|| "Порушення правил спілкування".to_string());
+    let duration_hours = req.hours;
+    let muted_by = req.admin.unwrap_or_else(|| "Адміністратор".to_string());
 
     let now = chrono::Utc::now().timestamp();
     let expires_at = duration_hours.map(|h| now + h * 3600);
@@ -315,16 +386,12 @@ async fn api_mute(State(app): State<App>, Query(q): Query<HashMap<String, String
     })).into_response()
 }
 
-async fn api_unmute(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
-    match (&app.admin_key, q.get("key")) {
-        (Some(k), Some(given)) if k == given => {}
-        _ => return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response(),
+async fn api_unmute(State(app): State<App>, headers: HeaderMap, Json(req): Json<UnmuteRequest>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
     }
 
-    let player_name = match q.get("player") {
-        Some(n) => n.clone(),
-        None => return (StatusCode::BAD_REQUEST, "Missing player name").into_response(),
-    };
+    let player_name = req.player;
 
     let mut w = app.world.lock().await;
     let before = w.mutes.len();
@@ -341,10 +408,9 @@ async fn api_unmute(State(app): State<App>, Query(q): Query<HashMap<String, Stri
     })).into_response()
 }
 
-async fn api_list_bans(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
-    match (&app.admin_key, q.get("key")) {
-        (Some(k), Some(given)) if k == given => {}
-        _ => return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response(),
+async fn api_list_bans(State(app): State<App>, headers: HeaderMap) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
     }
 
     let w = app.world.lock().await;
@@ -373,10 +439,9 @@ async fn api_players(State(app): State<App>) -> Json<serde_json::Value> {
     Json(serde_json::json!({ "count": names.len(), "players": names }))
 }
 
-async fn api_admin_stats(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
-    match (&app.admin_key, q.get("key")) {
-        (Some(k), Some(given)) if k == given => {}
-        _ => return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response(),
+async fn api_admin_stats(State(app): State<App>, headers: HeaderMap) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
     }
 
     let w = app.world.lock().await;
@@ -683,11 +748,9 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
 
 // ============ Нові API endpoints для адмінки ============
 
-async fn api_admin_logs(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
-    // Перевірка ключа
-    match (&app.admin_key, q.get("key")) {
-        (Some(k), Some(given)) if k == given => {}
-        _ => return (StatusCode::UNAUTHORIZED, "Потрібен ключ").into_response()
+async fn api_admin_logs(State(app): State<App>, headers: HeaderMap, Query(q): Query<HashMap<String, String>>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
     }
 
     let limit = q.get("limit").and_then(|s| s.parse().ok()).unwrap_or(50);
@@ -721,10 +784,9 @@ async fn api_create_ticket(State(app): State<App>, Json(req): Json<TicketCreateR
     }
 }
 
-async fn api_tickets(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
-    match (&app.admin_key, q.get("key")) {
-        (Some(k), Some(given)) if k == given => {}
-        _ => return (StatusCode::UNAUTHORIZED, "Потрібен ключ").into_response()
+async fn api_tickets(State(app): State<App>, headers: HeaderMap, Query(q): Query<HashMap<String, String>>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
     }
 
     let status = q.get("status").map(|s| s.as_str());
@@ -757,10 +819,9 @@ async fn api_update_ticket(State(app): State<App>, Json(req): Json<TicketUpdateR
     }
 }
 
-async fn api_get_config(State(app): State<App>, Query(q): Query<HashMap<String, String>>) -> Response {
-    match (&app.admin_key, q.get("key")) {
-        (Some(k), Some(given)) if k == given => {}
-        _ => return (StatusCode::UNAUTHORIZED, "Потрібен ключ").into_response()
+async fn api_get_config(State(app): State<App>, headers: HeaderMap, Query(q): Query<HashMap<String, String>>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
     }
 
     let config_key = match q.get("config_key") {

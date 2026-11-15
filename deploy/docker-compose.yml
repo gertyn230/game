@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  game-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms:
+        - linux/arm64
+    image: pixel-village-server:latest
+    container_name: pixel-village-server
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"  # Only accessible via localhost (Caddy will proxy)
+    env_file:
+      - .env
+    volumes:
+      - game-data:/data
+    healthcheck:
+      test: ["CMD", "/bin/sh", "-c", "wget --no-verbose --tries=1 --spider http://localhost:8080/api/version || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - pixel-village-network
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: pixel-village-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - pixel-village-network
+    depends_on:
+      game-server:
+        condition: service_healthy
+
+volumes:
+  game-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
+    driver: local
+
+networks:
+  pixel-village-network:
+    driver: bridge
