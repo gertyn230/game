@@ -456,6 +456,166 @@ rN();rP();pv();
 renderA();
 var h=location.hash.slice(1);
 if(h){var m=document.querySelector('#nav button[data-t="'+h+'"]');if(m)m.click()}
+
+// Real API Integration
+(function(){
+var ADMIN_KEY = localStorage.getItem('pv_admin_key') || '';
+
+// Check if admin key is set on load
+if(!ADMIN_KEY){
+  setTimeout(function(){
+    var key = prompt('Введіть ADMIN_KEY для доступу до API:');
+    if(key){
+      ADMIN_KEY = key.trim();
+      localStorage.setItem('pv_admin_key', ADMIN_KEY);
+      toast('Ключ збережено. Перезавантажте сторінку.');
+    }
+  }, 500);
+}
+
+// API helper function
+function api(method, endpoint, body){
+  var opts = {
+    method: method,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Admin-Key': ADMIN_KEY
+    }
+  };
+  if(body) opts.body = JSON.stringify(body);
+
+  return fetch(endpoint, opts)
+    .then(function(r){
+      if(r.status === 401){
+        toast('Помилка авторизації. Перевірте ADMIN_KEY');
+        localStorage.removeItem('pv_admin_key');
+        throw new Error('Unauthorized');
+      }
+      if(r.status === 429){
+        toast('Забагато спроб. Зачекайте.');
+        throw new Error('Rate limited');
+      }
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .catch(function(e){
+      console.error('API error:', e);
+      throw e;
+    });
+}
+
+// Real ban function
+window.realBan = function(player, reason, hours){
+  return api('POST', '/api/admin/ban', {
+    player: player,
+    reason: reason || 'Порушення правил',
+    hours: hours || null,
+    admin: 'Admin'
+  }).then(function(r){
+    toast('Забанено: ' + player);
+    logA('Бан ' + player + ' (' + reason + ')');
+    return r;
+  });
+};
+
+// Real unban function
+window.realUnban = function(player){
+  return api('POST', '/api/admin/unban', {
+    player: player
+  }).then(function(r){
+    toast('Розбанено: ' + player);
+    logA('Розбан ' + player);
+    return r;
+  });
+};
+
+// Real mute function
+window.realMute = function(player, reason, hours){
+  return api('POST', '/api/admin/mute', {
+    player: player,
+    reason: reason || 'Порушення правил спілкування',
+    hours: hours || null,
+    admin: 'Admin'
+  }).then(function(r){
+    toast('Видано мут: ' + player);
+    logA('Мут ' + player + ' (' + reason + ')');
+    return r;
+  });
+};
+
+// Real unmute function
+window.realUnmute = function(player){
+  return api('POST', '/api/admin/unmute', {
+    player: player
+  }).then(function(r){
+    toast('Знято мут: ' + player);
+    logA('Розмут ' + player);
+    return r;
+  });
+};
+
+// Load real stats
+window.loadStats = function(){
+  api('GET', '/api/admin/stats').then(function(data){
+    if(data.online !== undefined){
+      g('onl').textContent = data.online.toLocaleString('uk-UA');
+    }
+    toast('Статистика оновлена');
+  }).catch(function(e){
+    console.error('Failed to load stats:', e);
+  });
+};
+
+// Load real bans
+window.loadBans = function(){
+  api('GET', '/api/admin/bans').then(function(data){
+    console.log('Bans:', data);
+    toast('Список банів завантажено');
+  }).catch(function(e){
+    console.error('Failed to load bans:', e);
+  });
+};
+
+// Load real logs
+window.loadLogs = function(limit){
+  api('GET', '/api/admin/logs?limit=' + (limit || 50)).then(function(data){
+    console.log('Logs:', data);
+    toast('Логи завантажено');
+  }).catch(function(e){
+    console.error('Failed to load logs:', e);
+  });
+};
+
+// Load version info (public endpoint, no auth)
+fetch('/api/version')
+  .then(function(r){return r.json()})
+  .then(function(v){
+    console.log('Server version:', v.version);
+  })
+  .catch(function(e){
+    console.warn('Server API not available:', e);
+  });
+
+// Add "Змінити ключ" button to settings
+setTimeout(function(){
+  var setBtn = document.createElement('button');
+  setBtn.className = 'btn';
+  setBtn.textContent = '🔑 Змінити ADMIN_KEY';
+  setBtn.style.cssText = 'margin-top:12px';
+  setBtn.onclick = function(){
+    var newKey = prompt('Введіть новий ADMIN_KEY:', ADMIN_KEY);
+    if(newKey){
+      ADMIN_KEY = newKey.trim();
+      localStorage.setItem('pv_admin_key', ADMIN_KEY);
+      toast('Ключ оновлено');
+    }
+  };
+  var setSection = document.getElementById('set');
+  if(setSection) setSection.appendChild(setBtn);
+}, 1000);
+
+console.log('Admin panel with real API integration loaded');
+})();
 </script>
 </body>
 </html>
