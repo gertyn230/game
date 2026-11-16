@@ -613,7 +613,17 @@ function loadDashboard(){
       if(onlineEl) onlineEl.textContent = data.count || 0;
     })
     .catch(function(e){console.error('Failed to load players:', e);});
+
+  // Load admin stats
+  window.loadStats();
 }
+
+// Auto-refresh dashboard every 30 seconds
+setInterval(function(){
+  if(document.getElementById('dash').classList.contains('on')){
+    loadDashboard();
+  }
+}, 30000);
 
 // Add "Змінити ключ" button to settings
 setTimeout(function(){
