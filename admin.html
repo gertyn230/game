@@ -473,6 +473,11 @@ if(!ADMIN_KEY){
   }, 500);
 }
 
+// API Base URL - production server
+var API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? ''
+  : 'https://api.pixel-village.online';
+
 // API helper function
 function api(method, endpoint, body){
   var opts = {
@@ -484,7 +489,7 @@ function api(method, endpoint, body){
   };
   if(body) opts.body = JSON.stringify(body);
 
-  return fetch(endpoint, opts)
+  return fetch(API_BASE + endpoint, opts)
     .then(function(r){
       if(r.status === 401){
         toast('Помилка авторизації. Перевірте ADMIN_KEY');
@@ -587,14 +592,28 @@ window.loadLogs = function(limit){
 };
 
 // Load version info (public endpoint, no auth)
-fetch('/api/version')
+fetch(API_BASE + '/api/version')
   .then(function(r){return r.json()})
   .then(function(v){
     console.log('Server version:', v.version);
+    // Load real dashboard data
+    loadDashboard();
   })
   .catch(function(e){
     console.warn('Server API not available:', e);
   });
+
+// Load real dashboard data
+function loadDashboard(){
+  // Get players count
+  fetch(API_BASE + '/api/players')
+    .then(function(r){return r.json()})
+    .then(function(data){
+      var onlineEl = document.getElementById('onl');
+      if(onlineEl) onlineEl.textContent = data.count || 0;
+    })
+    .catch(function(e){console.error('Failed to load players:', e);});
+}
 
 // Add "Змінити ключ" button to settings
 setTimeout(function(){
