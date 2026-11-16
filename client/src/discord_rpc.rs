@@ -13,7 +13,7 @@ impl DiscordRpc {
             .unwrap()
             .as_secs() as i64;
 
-        let mut client = match DiscordIpcClient::new("1234567890123456789") {
+        let mut client = match DiscordIpcClient::new("1571930178194645043") {
             Ok(c) => Some(c),
             Err(e) => {
                 eprintln!("Failed to create Discord RPC client: {}", e);
