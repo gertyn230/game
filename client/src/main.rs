@@ -12,6 +12,7 @@ mod settings;
 mod ui;
 mod world;
 mod updater;
+mod discord_rpc;
 
 // Ігрові модулі (розширення для game)
 mod game_survival;
@@ -139,6 +140,9 @@ async fn main() {
     audio.load_all().await;
     audio.update_settings(settings.music_enabled, settings.sounds_enabled, settings.music_volume, settings.sound_volume);
 
+    // Ініціалізуємо Discord Rich Presence
+    let mut discord_rpc = discord_rpc::DiscordRpc::new();
+
     for i in 20..40 {
         let progress = 0.3 + ((i - 20) as f32 / 20.0) * 0.4;
         let texts = get_texts(&settings.language);
@@ -263,6 +267,12 @@ async fn main() {
                     }
                     ServerMsg::Snapshot { players } => {
                         online = players.len();
+                        // Update Discord RPC with online count
+                        discord_rpc.update(
+                            &format!("Online: {}", online),
+                            "Playing Pixel Village",
+                            Some(online)
+                        );
                         let mut seen = Vec::new();
                         for p in players {
                             if Some(p.id) == my_id {
