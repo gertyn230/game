@@ -725,10 +725,8 @@ function renderOnlinePlayers(players) {
         <tr>
           <th>ID</th>
           <th>Ім'я</th>
-          <th>X</th>
-          <th>Y</th>
-          <th>HP</th>
-          <th>Рівень</th>
+          <th>Позиція</th>
+          <th>Статус</th>
         </tr>
       </thead>
       <tbody>
@@ -736,10 +734,8 @@ function renderOnlinePlayers(players) {
           <tr>
             <td>${p.id}</td>
             <td><strong>${p.name}</strong></td>
-            <td>${Math.round(p.x)}</td>
-            <td>${Math.round(p.y)}</td>
-            <td>${p.hp}%</td>
-            <td>${p.level || 1}</td>
+            <td>${Math.round(p.position?.x || 0)}, ${Math.round(p.position?.y || 0)}</td>
+            <td><span class="badge badge-success">${p.status || 'Онлайн'}</span></td>
           </tr>
         `).join('')}
       </tbody>
@@ -766,7 +762,6 @@ async function loadAllPlayers() {
             <th>ID</th>
             <th>Ім'я</th>
             <th>Позиція</th>
-            <th>HP</th>
             <th>Статус</th>
           </tr>
         </thead>
@@ -775,9 +770,8 @@ async function loadAllPlayers() {
             <tr>
               <td>${p.id}</td>
               <td><strong>${p.name}</strong></td>
-              <td>${Math.round(p.x)}, ${Math.round(p.y)}</td>
-              <td>${p.hp}%</td>
-              <td><span class="badge badge-success">Онлайн</span></td>
+              <td>${Math.round(p.position?.x || 0)}, ${Math.round(p.position?.y || 0)}</td>
+              <td><span class="badge badge-success">${p.status || 'Онлайн'}</span></td>
             </tr>
           `).join('')}
         </tbody>
