@@ -4,10 +4,12 @@
 {
     # Disable automatic HTTPS (Cloudflare handles SSL)
     auto_https off
+    # Listen only on HTTP
+    http_port 80
 }
 
 # Game server and API
-api.pixel-village.online {
+http://api.pixel-village.online {
     # WebSocket and HTTP API
     reverse_proxy game-server:8080 {
         # WebSocket support
@@ -36,7 +38,7 @@ api.pixel-village.online {
 }
 
 # Admin panel
-admin.pixel-village.online {
+http://admin.pixel-village.online {
     # Proxy to game server admin routes
     reverse_proxy game-server:8080 {
         header_up X-Real-IP {remote_host}
@@ -71,7 +73,7 @@ admin.pixel-village.online {
 }
 
 # Main website (placeholder - will be configured later)
-pixel-village.online, www.pixel-village.online {
+http://pixel-village.online, http://www.pixel-village.online {
     # Redirect to game site when ready
     # For now, show a simple message
     respond "Pixel Village - Coming Soon" 200
