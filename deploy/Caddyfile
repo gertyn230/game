@@ -7,6 +7,18 @@
 # Game server and API
 api.pixel-village.online {
     # Automatic HTTPS via Let's Encrypt
+
+    # Handle CORS preflight requests
+    @options {
+        method OPTIONS
+    }
+    respond @options 204 {
+        Access-Control-Allow-Origin "*"
+        Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, X-Admin-Key, Authorization"
+        Access-Control-Max-Age "86400"
+    }
+
     # WebSocket and HTTP API
     reverse_proxy game-server:8080 {
         # WebSocket support
