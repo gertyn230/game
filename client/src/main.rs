@@ -109,7 +109,7 @@ async fn main() {
     // Видалити старі backup файли з попередніх оновлень
     updater::Updater::cleanup_old_version();
 
-    simulate_mouse_with_touch(false);
+    simulate_mouse_with_touch(true);
     rand::srand(macroquad::miniquad::date::now() as u64);
     let font = load_ttf_font_from_bytes(include_bytes!("../assets/DejaVuSans.ttf")).expect("шрифт");
 
