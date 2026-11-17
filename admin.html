@@ -699,7 +699,8 @@ async function loadDashboard() {
     document.getElementById('total-players').textContent = players.count || 0;
 
     // Load bans
-    const bans = await apiCall('/api/admin/bans');
+    const bansData = await apiCall('/api/admin/bans');
+    const bans = bansData.bans || [];
     const activeBans = bans.filter(b => !b.expired).length;
     document.getElementById('active-bans').textContent = activeBans || 0;
 
@@ -789,7 +790,8 @@ async function loadAllPlayers() {
 
 async function loadBans() {
   try {
-    const bans = await apiCall('/api/admin/bans');
+    const bansData = await apiCall('/api/admin/bans');
+    const bans = bansData.bans || [];
     const container = document.getElementById('bans-container');
 
     if (bans.length === 0) {
