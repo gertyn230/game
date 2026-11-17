@@ -39,7 +39,7 @@ impl Game {
         }
         self.last_hit = now;
         self.energy -= 2.0;
-        self.use_tool(Tl::Shovel, now);
+        self.use_tool(Tl::Shovel, now, texts);
         self.fx = Some(Fx { x: self.x, y: self.y + 0.4, t: now, tool: 4, col: 0x6b4a2b });
         let ch = (if bm == 1 { 0.7 } else if t == SAND { 0.25 } else { 0.55 }) + if self.rain() { 0.2 } else { 0.0 };
         if rnd() < ch {

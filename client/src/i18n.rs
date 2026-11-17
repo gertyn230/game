@@ -63,14 +63,42 @@ pub struct Texts {
     pub ok: &'static str,
     pub cancel: &'static str,
 
+    // UI крафту та інвентаря
+    pub at_campfire: &'static str,        // "у костра" / "at campfire"
+    pub at_furnace: &'static str,         // "у печи" / "at furnace"
+    pub already_have: &'static str,       // "уже есть" / "already have"
+    pub make: &'static str,               // "Сделать" / "Make"
+    pub sell_item: &'static str,          // "Выставить на продажу" / "Sell item"
+    pub quantity: &'static str,           // "Кол-во" / "Quantity"
+    pub price: &'static str,              // "Цена" / "Price"
+    pub you_have: &'static str,           // "У тебя" / "You have"
+    pub for_gold: &'static str,           // "за {} зол." / "for {} gold"
+    pub bought: &'static str,             // "Куплено" / "Bought"
+    pub post_offer: &'static str,         // "Выставить" / "Post"
+    pub gold_label: &'static str,         // "Золото" / "Gold"
+    pub withdraw: &'static str,           // "Снять" / "Withdraw"
+    pub buy: &'static str,                // "Купить" / "Buy"
+    pub player_offers: &'static str,      // "Предложения игроков" / "Player offers"
+    pub leaderboard_pending: &'static str, // "Рейтинг появится..." / "Leaderboard will appear..."
+    pub market_online_only: &'static str, // "Рынок доступен только онлайн" / "Market available online only"
+    pub not_enough_items: &'static str,   // "Не хватает предметов" / "Not enough items"
+    pub not_enough_gold: &'static str,    // "Не хватает золота" / "Not enough gold"
+    pub tool_broken: &'static str,        // "сломан(а)" / "broken"
+
+    // Діалоги оновлення
+    pub install: &'static str,            // "Встановити" / "Install"
+    pub later: &'static str,              // "Пізніше" / "Later"
+    pub retry: &'static str,              // "Повторити" / "Retry"
+    pub update_error: &'static str,       // "Помилка оновлення" / "Update error"
+
     // Предмети (Items)
-    pub item_names: [&'static str; 19],
+    pub item_names: [&'static str; 26],
 
     // Інструменти (Tools)
     pub tool_names: [&'static str; 14],
 
     // Рецепти
-    pub recipe_names: [&'static str; 23],
+    pub recipe_names: [&'static str; 28],
 
     // Ігрові повідомлення
     pub need_spear: &'static str,
@@ -88,7 +116,6 @@ pub struct Texts {
     pub already_dug: &'static str,
     pub found_worm: &'static str,
     pub nothing_found: &'static str,
-    pub tool_broken: &'static str,
     pub cant_build_from_boat: &'static str,
     pub face_water: &'static str,
     pub need_planks: &'static str,
@@ -174,10 +201,37 @@ const UA: Texts = Texts {
     ok: "Гаразд",
     cancel: "Скасувати",
 
+    at_campfire: "біля вогнища",
+    at_furnace: "у печі",
+    already_have: "вже є",
+    make: "Створити",
+    sell_item: "Виставити на продаж",
+    quantity: "Кількість",
+    price: "Ціна",
+    you_have: "У тебе",
+    for_gold: "за",
+    bought: "Куплено",
+    post_offer: "Виставити",
+    gold_label: "Золото",
+    withdraw: "Зняти",
+    buy: "Купити",
+    player_offers: "Пропозиції гравців",
+    leaderboard_pending: "Рейтинг з'явиться, коли сервер надішле дані",
+    market_online_only: "Ринок доступний лише онлайн",
+    not_enough_items: "Недостатньо предметів",
+    not_enough_gold: "Недостатньо золота",
+    tool_broken: "зламався",
+
+    install: "Встановити",
+    later: "Пізніше",
+    retry: "Повторити",
+    update_error: "Помилка оновлення",
+
     item_names: [
         "Дерево", "Камінь", "Їжа", "Палиця", "Камінчик", "Нитка", "Дошки", "Пайок",
         "М'ясо", "Смажене", "Шкіра", "Черв'як", "Риба", "Смажена риба", "Вугілля",
         "Мідна руда", "Залізна руда", "Мідь", "Залізо",
+        "Ягоди", "Гриби", "Трава", "Срібна руда", "Золота руда", "Срібло", "Золото",
     ],
 
     tool_names: [
@@ -188,8 +242,10 @@ const UA: Texts = Texts {
 
     recipe_names: [
         "Вогнище", "Списа", "Смажене м'ясо", "Смажена риба", "Пайок",
+        "Ягідний пиріг", "Грибний суп", "Цілебний відвар",
         "Кам'яний ніж", "Кам'яна сокира", "Кам'яна кирка", "Лопата", "Вудка",
         "Кошик", "Дошки", "Піч", "Виплавити мідь", "Виплавити залізо",
+        "Виплавити срібло", "Виплавити золото",
         "Мідна сокира", "Мідна кирка", "Залізна сокира", "Залізна кирка",
         "Хутряний одяг", "Кольчуга", "Човен", "Будинок",
     ],
@@ -209,7 +265,6 @@ const UA: Texts = Texts {
     already_dug: "Тут вже перекопано",
     found_worm: "Знайшов черв'яка",
     nothing_found: "Порожньо, спробуй в іншому місці",
-    tool_broken: "зламаний(а)",
     cant_build_from_boat: "З човна міст не побудувати",
     face_water: "Стань обличчям до води",
     need_planks: "Потрібно 2 дошки",
@@ -295,10 +350,37 @@ const EN: Texts = Texts {
     ok: "OK",
     cancel: "Cancel",
 
+    at_campfire: "at campfire",
+    at_furnace: "at furnace",
+    already_have: "already have",
+    make: "Make",
+    sell_item: "Sell item",
+    quantity: "Quantity",
+    price: "Price",
+    you_have: "You have",
+    for_gold: "for",
+    bought: "Bought",
+    post_offer: "Post",
+    gold_label: "Gold",
+    withdraw: "Withdraw",
+    buy: "Buy",
+    player_offers: "Player offers",
+    leaderboard_pending: "Leaderboard will appear when the server sends data",
+    market_online_only: "Market available online only",
+    not_enough_items: "Not enough items",
+    not_enough_gold: "Not enough gold",
+    tool_broken: "broken",
+
+    install: "Install",
+    later: "Later",
+    retry: "Retry",
+    update_error: "Update error",
+
     item_names: [
         "Wood", "Stone", "Food", "Stick", "Pebble", "Fiber", "Plank", "Ration",
         "Meat", "Roast", "Hide", "Worm", "Fish", "Roasted Fish", "Coal",
         "Copper Ore", "Iron Ore", "Copper", "Iron",
+        "Berry", "Mushroom", "Herb", "Silver Ore", "Gold Ore", "Silver", "Gold",
     ],
 
     tool_names: [
@@ -309,8 +391,10 @@ const EN: Texts = Texts {
 
     recipe_names: [
         "Campfire", "Spear", "Roasted Meat", "Roasted Fish", "Ration",
+        "Berry Pie", "Mushroom Soup", "Healing Brew",
         "Stone Knife", "Stone Axe", "Stone Pickaxe", "Shovel", "Fishing Rod",
         "Basket", "Planks", "Furnace", "Smelt Copper", "Smelt Iron",
+        "Smelt Silver", "Smelt Gold",
         "Copper Axe", "Copper Pickaxe", "Iron Axe", "Iron Pickaxe",
         "Fur Coat", "Chainmail", "Boat", "House",
     ],
@@ -330,7 +414,6 @@ const EN: Texts = Texts {
     already_dug: "Already dug here",
     found_worm: "Found a worm",
     nothing_found: "Empty, try another place",
-    tool_broken: "broken",
     cant_build_from_boat: "Can't build a bridge from boat",
     face_water: "Face the water",
     need_planks: "Need 2 planks",
@@ -416,10 +499,37 @@ const RU: Texts = Texts {
     ok: "OK",
     cancel: "Отмена",
 
+    at_campfire: "у костра",
+    at_furnace: "у печи",
+    already_have: "уже есть",
+    make: "Сделать",
+    sell_item: "Выставить на продажу",
+    quantity: "Кол-во",
+    price: "Цена",
+    you_have: "У тебя",
+    for_gold: "за",
+    bought: "Куплено",
+    post_offer: "Выставить",
+    gold_label: "Золото",
+    withdraw: "Снять",
+    buy: "Купить",
+    player_offers: "Предложения игроков",
+    leaderboard_pending: "Рейтинг появится, когда сервер пришлёт данные",
+    market_online_only: "Рынок доступен только онлайн",
+    not_enough_items: "Не хватает предметов",
+    not_enough_gold: "Не хватает золота",
+    tool_broken: "сломан(а)",
+
+    install: "Установить",
+    later: "Позже",
+    retry: "Повторить",
+    update_error: "Ошибка обновления",
+
     item_names: [
         "Дерево", "Камень", "Еда", "Палка", "Камешек", "Нить", "Доски", "Паёк",
         "Мясо", "Жаркое", "Шкура", "Червь", "Рыба", "Жареная рыба", "Уголь",
         "Медная руда", "Железная руда", "Медь", "Железо",
+        "Ягоды", "Грибы", "Трава", "Серебряная руда", "Золотая руда", "Серебро", "Золото",
     ],
 
     tool_names: [
@@ -430,8 +540,10 @@ const RU: Texts = Texts {
 
     recipe_names: [
         "Костёр", "Копьё", "Жаркое из мяса", "Жареная рыба", "Паёк",
+        "Ягодный пирог", "Грибной суп", "Целебный отвар",
         "Каменный нож", "Каменный топор", "Каменная кирка", "Лопата", "Удочка",
         "Корзина", "Доски", "Печь", "Выплавить медь", "Выплавить железо",
+        "Выплавить серебро", "Выплавить золото",
         "Медный топор", "Медная кирка", "Железный топор", "Железная кирка",
         "Меховая одежда", "Кольчуга", "Лодка", "Дом",
     ],
@@ -451,7 +563,6 @@ const RU: Texts = Texts {
     already_dug: "Здесь уже перекопано",
     found_worm: "Нашёл червя",
     nothing_found: "Пусто, попробуй в другом месте",
-    tool_broken: "сломан(а)",
     cant_build_from_boat: "Из лодки мост не построить",
     face_water: "Встань лицом к воде",
     need_planks: "Нужно 2 доски",

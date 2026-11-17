@@ -13,7 +13,7 @@ impl Game {
     /// Закинути вудку
     pub fn cast(&mut self, wx: f32, wy: f32, now: f64, texts: &Texts) {
         self.inv[It::Worm as usize] -= 1;
-        self.use_tool(Tl::Rod, now);
+        self.use_tool(Tl::Rod, now, texts);
         self.fish.ph = 1;
         self.fish.armed = false;
         self.fish.wx = wx;

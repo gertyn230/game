@@ -56,8 +56,8 @@ impl SettingsMenu {
         }
 
         // Головна панель
-        let panel_width = (sw * 0.6).min(700.0).max(500.0);
-        let panel_height = (sh * 0.7).min(600.0).max(450.0);
+        let panel_width = (sw * 0.6).clamp(500.0, 700.0);
+        let panel_height = (sh * 0.7).clamp(450.0, 600.0);
         let panel_x = (sw - panel_width) / 2.0;
         let panel_y = (sh - panel_height) / 2.0;
 
@@ -251,8 +251,8 @@ impl SettingsMenu {
         draw_rectangle(0.0, 0.0, sw, sh, Color::from_rgba(10 + backdrop_pulse, 10, 20 + backdrop_pulse, 235));
 
         // Панель
-        let panel_width = (sw * 0.5).min(600.0).max(450.0);
-        let panel_height = (sh * 0.6).min(500.0).max(400.0);
+        let panel_width = (sw * 0.5).clamp(450.0, 600.0);
+        let panel_height = (sh * 0.6).clamp(400.0, 500.0);
         let panel_x = (sw - panel_width) / 2.0;
         let panel_y = (sh - panel_height) / 2.0;
 
@@ -349,8 +349,8 @@ impl SettingsMenu {
         draw_rectangle(0.0, 0.0, sw, sh, Color::from_rgba(10 + backdrop_pulse, 10, 20 + backdrop_pulse, 235));
 
         // Панель
-        let panel_width = (sw * 0.6).min(700.0).max(500.0);
-        let panel_height = (sh * 0.7).min(600.0).max(450.0);
+        let panel_width = (sw * 0.6).clamp(500.0, 700.0);
+        let panel_height = (sh * 0.7).clamp(450.0, 600.0);
         let panel_x = (sw - panel_width) / 2.0;
         let panel_y = (sh - panel_height) / 2.0;
 
@@ -414,8 +414,8 @@ impl SettingsMenu {
         draw_rectangle(0.0, 0.0, sw, sh, Color::from_rgba(10 + backdrop_pulse, 10, 20 + backdrop_pulse, 235));
 
         // Панель
-        let panel_width = (sw * 0.6).min(700.0).max(500.0);
-        let panel_height = (sh * 0.7).min(600.0).max(450.0);
+        let panel_width = (sw * 0.6).clamp(500.0, 700.0);
+        let panel_height = (sh * 0.7).clamp(450.0, 600.0);
         let panel_x = (sw - panel_width) / 2.0;
         let panel_y = (sh - panel_height) / 2.0;
 
@@ -503,8 +503,8 @@ impl SettingsMenu {
         draw_rectangle(0.0, 0.0, sw, sh, Color::from_rgba(10 + backdrop_pulse, 10, 20 + backdrop_pulse, 235));
 
         // Панель
-        let panel_width = (sw * 0.6).min(700.0).max(500.0);
-        let panel_height = (sh * 0.7).min(600.0).max(450.0);
+        let panel_width = (sw * 0.6).clamp(500.0, 700.0);
+        let panel_height = (sh * 0.7).clamp(450.0, 600.0);
         let panel_x = (sw - panel_width) / 2.0;
         let panel_y = (sh - panel_height) / 2.0;
 

@@ -138,8 +138,8 @@ impl Game {
                 }
             }
 
-            m.x = m.x.max(1.0).min(39.0);
-            m.y = m.y.max(1.0).min(39.0);
+            m.x = m.x.clamp(1.0, 39.0);
+            m.y = m.y.clamp(1.0, 39.0);
         }
 
         // Атака вовків і ведмедів
@@ -163,13 +163,11 @@ impl Game {
         }
 
         // Видалити мертвих тварин (після 120 секунд)
-        let mut k = 0;
         let mut remove = vec![false; self.mobs.len()];
-        for m in &self.mobs {
+        for (k, m) in self.mobs.iter().enumerate() {
             if m.dead > 0.0 && now - m.dead > 120.0 {
                 remove[k] = true;
             }
-            k += 1;
         }
         let mut k = 0;
         self.mobs.retain(|_| {

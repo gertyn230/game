@@ -92,8 +92,8 @@ struct Other {
     dy: f32,
 }
 
-fn cost_text(r: &Recipe) -> String {
-    r.cost.iter().map(|(it, n)| format!("{} ×{}", IT_NAMES[*it as usize], n)).collect::<Vec<_>>().join(", ")
+fn cost_text(r: &Recipe, texts: &Texts) -> String {
+    r.cost.iter().map(|(it, n)| format!("{} ×{}", texts.item_names[*it as usize], n)).collect::<Vec<_>>().join(", ")
 }
 
 #[macroquad::main(window_conf)]
@@ -316,7 +316,7 @@ async fn main() {
                     ServerMsg::Bought { offer } => {
                         g.gold = g.gold.saturating_sub(offer.price);
                         g.inv[(offer.item as usize).min(NI - 1)] += offer.qty;
-                        g.say(&format!("Куплено: {} ×{}", IT_NAMES[(offer.item as usize).min(NI - 1)], offer.qty), now);
+                        g.say(&format!("{}: {} ×{}", texts.bought, texts.item_names[(offer.item as usize).min(NI - 1)], offer.qty), now);
                     }
                     ServerMsg::Err { text } => g.say(&text, now),
                 },
@@ -406,6 +406,12 @@ async fn main() {
         if !typing && is_key_pressed(KeyCode::M) || is_key_pressed(KeyCode::Tab) {
             cmds.push(if ui.menu { Cmd::Close } else { Cmd::Menu });
         }
+        if !typing && is_key_pressed(KeyCode::I) {
+            cmds.push(Cmd::Inventory);
+        }
+        if !typing && is_key_pressed(KeyCode::Escape) {
+            cmds.push(Cmd::Settings);
+        }
         // ---------- ввод ----------
         let typing = name_edit.is_some() || ui.menu;
         for c in cmds {
@@ -427,6 +433,16 @@ async fn main() {
                 Cmd::Bridge => g.bridge(now, texts),
                 Cmd::Menu => {
                     ui.menu = true;
+                    ui.scroll = 0.0;
+                }
+                Cmd::Inventory => {
+                    ui.menu = true;
+                    ui.tab = 0; // Відкрити вкладку "Інвентар"
+                    ui.scroll = 0.0;
+                }
+                Cmd::Settings => {
+                    ui.menu = true;
+                    ui.tab = 3; // Відкрити вкладку "Налаштування"
                     ui.scroll = 0.0;
                 }
                 Cmd::Close => ui.menu = false,
@@ -476,9 +492,9 @@ async fn main() {
                 }
                 Cmd::MktPost => {
                     if !connected || my_id.is_none() {
-                        g.say("Рынок доступен только онлайн", now);
+                        g.say(texts.market_online_only, now);
                     } else if g.inv[ui.mk_item] < ui.mk_qty {
-                        g.say("Не хватает предметов", now);
+                        g.say(texts.not_enough_items, now);
                     } else {
                         g.inv[ui.mk_item] -= ui.mk_qty;
                         out.push(ClientMsg::Post { item: ui.mk_item as u8, qty: ui.mk_qty, price: ui.mk_price });
@@ -487,7 +503,7 @@ async fn main() {
                 Cmd::MktBuy(id) => {
                     if let Some(o) = market.iter().find(|o| o.id == id) {
                         if g.gold < o.price {
-                            g.say("Не хватает золота", now);
+                            g.say(texts.not_enough_gold, now);
                         } else {
                             out.push(ClientMsg::Buy { id });
                         }
@@ -793,14 +809,14 @@ async fn main() {
             let max_w = sw * 0.46;
             let (mut x, mut y) = (pad, sh - pad - fs * 1.6);
             let mut chips: Vec<(u32, String)> = vec![];
-            for i in 0..NI {
-                if g.inv[i] > 0 {
-                    chips.push((IT_COLOR[i], format!("{} {}", IT_NAMES[i], g.inv[i])));
+            for (i, &count) in g.inv.iter().enumerate() {
+                if count > 0 {
+                    chips.push((IT_COLOR[i], format!("{} {}", texts.item_names[i], count)));
                 }
             }
-            for t in 0..NT {
-                if g.tools[t] > 0 {
-                    let d = if TL_DUR[t] > 1 { format!("{} ({})", TL_NAMES[t], g.tools[t]) } else { TL_NAMES[t].to_string() };
+            for (t, &dur) in g.tools.iter().enumerate() {
+                if dur > 0 {
+                    let d = if TL_DUR[t] > 1 { format!("{} ({})", texts.tool_names[t], dur) } else { texts.tool_names[t].to_string() };
                     chips.push((0xffffff, d));
                 }
             }
@@ -855,7 +871,7 @@ async fn main() {
             }
             for (j, &ri) in ql.iter().take(5).enumerate() {
                 let r = Rect::new(cx - total / 2.0 + j as f32 * (qw + 6.0), sh - pad - qh, qw, qh);
-                ui.button(&font, r, &format!("{} {}", j + 1, RECIPES[ri].name), Cmd::Quick(j), true, 0x2f7d36, fs * 0.95);
+                ui.button(&font, r, &format!("{} {}", j + 1, texts.recipe_names[ri]), Cmd::Quick(j), true, 0x2f7d36, fs * 0.95);
             }
             // кнопки действий справа
             let ab = base * 0.2;
@@ -886,7 +902,7 @@ async fn main() {
         ui.finish();
 
         // Показати вікно оновлення (якщо є)
-        game_state.draw_update_window(&font);
+        game_state.draw_update_window(&font, texts);
 
         next_frame().await;
     }
@@ -943,47 +959,47 @@ fn draw_menu(
                 let r = &RECIPES[ri];
                 let can = g.can_craft(r, now);
                 draw_rectangle(body.x, y, body.w, rh - 4.0, ha(if can { 0x2f4a30 } else { 0x2a2d27 }, 0.9));
-                text(font, r.name, body.x + pad, y + fs * 1.15, fs * 1.05, if can { WHITE } else { ha(0xffffff, 0.55) });
-                let mut extra = cost_text(r);
+                text(font, texts.recipe_names[ri], body.x + pad, y + fs * 1.15, fs * 1.05, if can { WHITE } else { ha(0xffffff, 0.55) });
+                let mut extra = cost_text(r, texts);
                 if r.fire {
-                    extra.push_str(" · у костра");
+                    extra.push_str(&format!(" · {}", texts.at_campfire));
                 }
                 if r.furnace {
-                    extra.push_str(" · у печи");
+                    extra.push_str(&format!(" · {}", texts.at_furnace));
                 }
                 if matches!(r.out, Out::Tool(t) if g.tool(t)) {
-                    extra = "уже есть".into();
+                    extra = texts.already_have.into();
                 }
                 text(font, &extra, body.x + pad, y + fs * 2.35, fs * 0.8, ha(0xffffff, if can { 0.8 } else { 0.45 }));
-                ui.button(font, Rect::new(body.x + body.w - fs * 7.0, y + 4.0, fs * 6.6, rh - 12.0), "Сделать", Cmd::Craft(ri), can, 0x2f7d36, fs);
+                ui.button(font, Rect::new(body.x + body.w - fs * 7.0, y + 4.0, fs * 6.6, rh - 12.0), texts.make, Cmd::Craft(ri), can, 0x2f7d36, fs);
             }
         }
         1 => {
-            // форма выставления
+            // форма виставлення на продаж
             let y = body.y;
             let bh = fs * 2.3;
             let sq = fs * 2.3;
-            text(font, "Выставить на продажу:", body.x, y + fs * 1.0, fs * 0.9, ha(0xffffff, 0.85));
+            text(font, &format!("{}:", texts.sell_item), body.x, y + fs * 1.0, fs * 0.9, ha(0xffffff, 0.85));
             let y2 = y + fs * 1.5;
             ui.button(font, Rect::new(body.x, y2, sq, bh), "<", Cmd::MktItem(-1), true, 0x4a4f44, fs);
-            text_c(font, IT_NAMES[ui.mk_item], body.x + sq + fs * 4.5, y2 + bh * 0.65, fs, WHITE);
+            text_c(font, texts.item_names[ui.mk_item], body.x + sq + fs * 4.5, y2 + bh * 0.65, fs, WHITE);
             ui.button(font, Rect::new(body.x + sq + fs * 9.0, y2, sq, bh), ">", Cmd::MktItem(1), true, 0x4a4f44, fs);
             let y3 = y2 + bh + 6.0;
-            text(font, "Кол-во", body.x, y3 + bh * 0.65, fs * 0.9, WHITE);
+            text(font, texts.quantity, body.x, y3 + bh * 0.65, fs * 0.9, WHITE);
             ui.button(font, Rect::new(body.x + fs * 4.0, y3, sq, bh), "-", Cmd::MktQty(-1), true, 0x4a4f44, fs);
             text_c(font, &format!("{}", ui.mk_qty), body.x + fs * 4.0 + sq + fs * 1.5, y3 + bh * 0.65, fs, WHITE);
             ui.button(font, Rect::new(body.x + fs * 4.0 + sq + fs * 3.0, y3, sq, bh), "+", Cmd::MktQty(1), true, 0x4a4f44, fs);
             let y4 = y3 + bh + 6.0;
-            text(font, "Цена", body.x, y4 + bh * 0.65, fs * 0.9, WHITE);
+            text(font, texts.price, body.x, y4 + bh * 0.65, fs * 0.9, WHITE);
             ui.button(font, Rect::new(body.x + fs * 4.0, y4, sq, bh), "-", Cmd::MktPrice(-1), true, 0x4a4f44, fs);
             text_c(font, &format!("{}", ui.mk_price), body.x + fs * 4.0 + sq + fs * 1.5, y4 + bh * 0.65, fs, WHITE);
             ui.button(font, Rect::new(body.x + fs * 4.0 + sq + fs * 3.0, y4, sq, bh), "+", Cmd::MktPrice(1), true, 0x4a4f44, fs);
             let can_post = g.inv[ui.mk_item] >= ui.mk_qty;
-            ui.button(font, Rect::new(body.x + fs * 12.0, y3, fs * 8.0, bh * 2.0 + 6.0), "Выставить", Cmd::MktPost, can_post, 0x2f7d36, fs);
-            text(font, &format!("Золото: {}   У тебя: {}", g.gold, g.inv[ui.mk_item]), body.x + fs * 22.0, y2 + bh * 0.65, fs * 0.9, hx(0xe0c060));
+            ui.button(font, Rect::new(body.x + fs * 12.0, y3, fs * 8.0, bh * 2.0 + 6.0), texts.post_offer, Cmd::MktPost, can_post, 0x2f7d36, fs);
+            text(font, &format!("{}: {}   {}: {}", texts.gold_label, g.gold, texts.you_have, g.inv[ui.mk_item]), body.x + fs * 22.0, y2 + bh * 0.65, fs * 0.9, hx(0xe0c060));
             // список предложений (прокручивается)
             let top = y4 + bh + fs * 1.2;
-            text(font, "Предложения игроков:", body.x, top - fs * 0.3, fs * 0.9, ha(0xffffff, 0.85));
+            text(font, &format!("{}:", texts.player_offers), body.x, top - fs * 0.3, fs * 0.9, ha(0xffffff, 0.85));
             let list = Rect::new(body.x, top, body.w, body.y + body.h - top);
             let rh2 = fs * 2.6;
             let content = market.len() as f32 * rh2;
@@ -998,9 +1014,9 @@ fn draw_menu(
                 }
                 let mine = Some(o.seller) == my_id || posted.contains_key(&o.id);
                 draw_rectangle(list.x, yy, list.w, rh2 - 4.0, ha(0x2a2d27, 0.9));
-                text(font, &format!("{}: {} ×{} за {} зол.", o.seller_name, IT_NAMES[(o.item as usize).min(NI - 1)], o.qty, o.price), list.x + pad, yy + rh2 * 0.62, fs * 0.9, WHITE);
+                text(font, &format!("{}: {} ×{} {} {} зол.", o.seller_name, texts.item_names[(o.item as usize).min(NI - 1)], o.qty, texts.for_gold, o.price), list.x + pad, yy + rh2 * 0.62, fs * 0.9, WHITE);
                 let can = mine || g.gold >= o.price;
-                ui.button(font, Rect::new(list.x + list.w - fs * 6.4, yy + 3.0, fs * 6.0, rh2 - 10.0), if mine { "Снять" } else { "Купить" }, if mine { Cmd::MktWithdraw(o.id) } else { Cmd::MktBuy(o.id) }, can, if mine { 0x8a3b2e } else { 0x2f7d36 }, fs * 0.9);
+                ui.button(font, Rect::new(list.x + list.w - fs * 6.4, yy + 3.0, fs * 6.0, rh2 - 10.0), if mine { texts.withdraw } else { texts.buy }, if mine { Cmd::MktWithdraw(o.id) } else { Cmd::MktBuy(o.id) }, can, if mine { 0x8a3b2e } else { 0x2f7d36 }, fs * 0.9);
             }
         }
         2 => {
@@ -1017,7 +1033,7 @@ fn draw_menu(
                 text(font, &format!("{}. {} — {:.2} кг ({} шт.)", i + 1, n, big, cnt), body.x + pad, y, fs, WHITE);
             }
             if board_score.is_empty() {
-                text(font, "Рейтинг появится, когда сервер пришлёт данные", body.x, y + fs * 2.0, fs * 0.9, ha(0xffffff, 0.6));
+                text(font, texts.leaderboard_pending, body.x, y + fs * 2.0, fs * 0.9, ha(0xffffff, 0.6));
             }
         }
         _ => {

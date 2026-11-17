@@ -1,7 +1,7 @@
 //! Обгортка для управління станами гри з меню
 use crate::menu::{Menu, MenuAction, MenuState};
 use crate::settings::{Settings, save_settings};
-use crate::i18n::get_texts;
+use crate::i18n::{get_texts, Texts};
 use crate::updater::{Updater, UpdateState, UpdateInfo};
 use macroquad::prelude::*;
 
@@ -30,12 +30,12 @@ impl GameStateManager {
     }
 
     /// Показати вікно оновлення з кнопками
-    pub fn draw_update_window(&mut self, font: &Font) {
+    pub fn draw_update_window(&mut self, font: &Font, texts: &Texts) {
         let state = self.updater.get_state();
 
         match state {
             UpdateState::Available(ref info) => {
-                self.draw_available_window(font, info);
+                self.draw_available_window(font, texts, info);
             }
             UpdateState::Downloading(progress) => {
                 self.draw_downloading_window(font, progress);
@@ -44,13 +44,13 @@ impl GameStateManager {
                 self.draw_installing_window(font);
             }
             UpdateState::Failed(ref err) => {
-                self.draw_failed_window(font, err);
+                self.draw_failed_window(font, texts, err);
             }
             _ => {}
         }
     }
 
-    fn draw_available_window(&mut self, font: &Font, info: &UpdateInfo) {
+    fn draw_available_window(&mut self, font: &Font, texts: &Texts, info: &UpdateInfo) {
         let (sw, sh) = (screen_width(), screen_height());
 
         // Напівпрозорий фон
@@ -131,7 +131,7 @@ impl GameStateManager {
         draw_rectangle(install_x, btn_y, btn_w, btn_h, install_color);
         draw_rectangle_lines(install_x, btn_y, btn_w, btn_h, 2.0, WHITE);
         draw_text_ex(
-            "Встановити",
+            texts.install,
             install_x + 45.0,
             btn_y + 33.0,
             TextParams {
@@ -159,7 +159,7 @@ impl GameStateManager {
         draw_rectangle(later_x, btn_y, btn_w, btn_h, later_color);
         draw_rectangle_lines(later_x, btn_y, btn_w, btn_h, 2.0, WHITE);
         draw_text_ex(
-            "Пізніше",
+            texts.later,
             later_x + 60.0,
             btn_y + 33.0,
             TextParams {
@@ -244,7 +244,7 @@ impl GameStateManager {
         );
     }
 
-    fn draw_failed_window(&mut self, font: &Font, error: &str) {
+    fn draw_failed_window(&mut self, font: &Font, texts: &Texts, error: &str) {
         let (sw, sh) = (screen_width(), screen_height());
         let w = 500.0;
         let h = 200.0;
@@ -256,7 +256,7 @@ impl GameStateManager {
         draw_rectangle_lines(x, y, w, h, 3.0, Color::from_rgba(200, 50, 50, 255));
 
         draw_text_ex(
-            "Помилка оновлення",
+            texts.update_error,
             x + 20.0,
             y + 40.0,
             TextParams {
@@ -308,7 +308,7 @@ impl GameStateManager {
         draw_rectangle(retry_x, btn_y, btn_w, btn_h, retry_color);
         draw_rectangle_lines(retry_x, btn_y, btn_w, btn_h, 2.0, WHITE);
         draw_text_ex(
-            "Повторити",
+            texts.retry,
             retry_x + 35.0,
             btn_y + 26.0,
             TextParams {
@@ -336,7 +336,7 @@ impl GameStateManager {
         draw_rectangle(cancel_x, btn_y, btn_w, btn_h, cancel_color);
         draw_rectangle_lines(cancel_x, btn_y, btn_w, btn_h, 2.0, WHITE);
         draw_text_ex(
-            "Пізніше",
+            texts.later,
             cancel_x + 45.0,
             btn_y + 26.0,
             TextParams {

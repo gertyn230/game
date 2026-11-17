@@ -35,6 +35,8 @@ pub enum Cmd {
     MusicVolume(f32),
     SoundVolume(f32),
     ChangeLanguage,
+    Inventory,  // Нова команда для відкриття інвентаря
+    Settings,   // Нова команда для відкриття налаштувань
 }
 
 pub struct Btn {

@@ -9,8 +9,6 @@ use crate::save::Save;
 use crate::world::*;
 use crate::i18n::Texts;
 
-pub const RABBITS: usize = 10;
-
 pub const ANIMALS: [(MobKind, usize, f32, f32, f32, f32); 5] = [
     (MobKind::Rabbit, 15, 10.0, 60.0, 10.0, 60.0),  // 15 кроликів на більшій карті
     (MobKind::Wolf, 5, 15.0, 50.0, 15.0, 50.0),     // 5 вовків
@@ -192,7 +190,7 @@ impl Game {
             return v;
         }
         let p = (epoch() % 240.0) / 240.0;
-        ((0.5 - 0.5 * (6.2832 * p).cos() - 0.55).max(0.0) * 1.45) as f32
+        ((0.5 - 0.5 * (std::f64::consts::TAU * p).cos() - 0.55).max(0.0) * 1.45) as f32
     }
     pub fn rain(&self) -> bool {
         ((epoch() * 1000.0 / 60000.0) as u64) % 5 == 3
@@ -292,12 +290,12 @@ impl Game {
         }
         n
     }
-    pub fn use_tool(&mut self, t: Tl, now: f64) {
+    pub fn use_tool(&mut self, t: Tl, now: f64, texts: &Texts) {
         let d = &mut self.tools[t as usize];
         *d -= 1;
         if *d <= 0 {
             *d = 0;
-            self.say(&format!("{} сломан(а)", TL_NAMES[t as usize]), now);
+            self.say(&format!("{} {}", texts.tool_names[t as usize], texts.tool_broken), now);
         }
     }
 
@@ -312,12 +310,12 @@ impl Game {
         // Підбір речей після смерті
         if let Some((dx, dy, dinv, dtools)) = self.death_drop {
             if (dx - self.x).abs() < 1.5 && (dy - self.y).abs() < 1.5 {
-                for i in 0..NI {
-                    self.inv[i] += dinv[i];
+                for (i, &count) in dinv.iter().enumerate() {
+                    self.inv[i] += count;
                 }
-                for i in 0..NT {
-                    if dtools[i] > 0 {
-                        self.tools[i] = dtools[i];
+                for (i, &dur) in dtools.iter().enumerate() {
+                    if dur > 0 {
+                        self.tools[i] = dur;
                     }
                 }
                 self.death_drop = None;
@@ -351,7 +349,7 @@ impl Game {
                 }
                 self.last_hit = now;
                 self.energy -= 1.0;
-                self.use_tool(Tl::Knife, now);
+                self.use_tool(Tl::Knife, now, texts);
                 let m = &mut self.mobs[i];
                 m.cut = true;
 
@@ -390,7 +388,7 @@ impl Game {
             let sp = self.tool(Tl::Spear);
             let dmg = if sp { 2.0 } else { 1.0 };
             if sp {
-                self.use_tool(Tl::Spear, now);
+                self.use_tool(Tl::Spear, now, texts);
             }
             let m = &mut self.mobs[i];
             m.hp -= dmg;
@@ -471,7 +469,7 @@ impl Game {
         };
         self.fx = Some(Fx { x: nx as f32 + 0.5, y: ny as f32 + 0.5, t: now, tool: ft, col });
         if let Some(t) = tool {
-            self.use_tool(t, now);
+            self.use_tool(t, now, texts);
         }
         let n = &mut self.map.nodes[i];
         if n.hp == 0 {
@@ -487,7 +485,7 @@ impl Game {
         } else if kind.is_ore() {
             1 + (tier as u32).div_ceil(2)
         } else if kind == Kind::Bush && self.tool(Tl::Basket) {
-            self.use_tool(Tl::Basket, now);
+            self.use_tool(Tl::Basket, now, texts);
             2
         } else {
             1
