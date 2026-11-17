@@ -2,7 +2,7 @@
 
 use macroquad::prelude::*;
 use crate::i18n::Texts;
-use crate::settings::{Language, Settings};
+use crate::settings::Settings;
 use crate::settings_menu::SettingsMenu;
 
 #[derive(Clone, Copy, PartialEq)]

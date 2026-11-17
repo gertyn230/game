@@ -203,7 +203,7 @@ impl Updater {
         if actual_size != info.size {
             let _ = fs::remove_file(&temp_path);
             *self.state.lock().unwrap() = UpdateState::Failed(format!("Size mismatch: {} != {}", actual_size, info.size));
-            return Err(format!("Size mismatch"));
+            return Err("Size mismatch".to_string());
         }
 
         // Перевірити SHA256

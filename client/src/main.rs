@@ -183,7 +183,7 @@ async fn main() {
     game_state.check_updates_once();
 
     // Первый запуск: спрашиваем имя экранной клавиатурой.
-    let mut name_edit: Option<String> = if env_name.is_none() && saved.as_ref().map_or(true, |s| s.name.is_empty()) { Some(name.clone()) } else { None };
+    let mut name_edit: Option<String> = if env_name.is_none() && saved.as_ref().is_none_or(|s| s.name.is_empty()) { Some(name.clone()) } else { None };
     let mut kb_lang = 0usize;
     let mut save_t = 0.0f32;
     prevent_quit();
@@ -411,20 +411,20 @@ async fn main() {
         for c in cmds {
             match c {
                 Cmd::Eat => {
-                    g.eat(now, &texts);
+                    g.eat(now, texts);
                     audio.play("eat");
                 }
                 Cmd::Drink => {
-                    g.drink(now, &texts);
+                    g.drink(now, texts);
                     audio.play("drink");
                 }
                 Cmd::Dig => {
-                    g.dig(now, &texts);
+                    g.dig(now, texts);
                     audio.play("hit");
                 }
-                Cmd::Tame => g.tame(now, &texts),
-                Cmd::Boat => g.boat_toggle(now, &texts),
-                Cmd::Bridge => g.bridge(now, &texts),
+                Cmd::Tame => g.tame(now, texts),
+                Cmd::Boat => g.boat_toggle(now, texts),
+                Cmd::Bridge => g.bridge(now, texts),
                 Cmd::Menu => {
                     ui.menu = true;
                     ui.scroll = 0.0;
@@ -566,7 +566,7 @@ async fn main() {
         }
 
         // ---------- логика ----------
-        g.tick(dt, now, &Input { dir, hold }, &mut out, &texts);
+        g.tick(dt, now, &Input { dir, hold }, &mut out, texts);
         let (px, py) = (g.x, g.y);
 
         // ---------- сеть: отправка ----------

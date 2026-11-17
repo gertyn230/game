@@ -1,7 +1,7 @@
 //! Тварини: приручення, бій, тік тварин
 
 use crate::game::{Game, MobKind};
-use crate::data::{It, Tl};
+use crate::data::It;
 use crate::i18n::Texts;
 use macroquad::prelude::rand;
 

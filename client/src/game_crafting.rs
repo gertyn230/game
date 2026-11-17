@@ -1,7 +1,7 @@
 //! Крафт та рецепти
 
 use crate::game::{Game, MobKind};
-use crate::data::{RECIPES, Recipe, Out, It, Tl, TL_DUR};
+use crate::data::{RECIPES, Recipe, Out, It, TL_DUR};
 
 impl Game {
     /// Створити предмет за рецептом

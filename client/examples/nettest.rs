@@ -23,7 +23,7 @@ fn pump(net: &Net, s: &mut Seen) {
     while let Ok(ev) = net.in_rx.try_recv() {
         if let NetEvent::Msg(m) = ev {
             match m {
-                ServerMsg::Welcome { id } => s.id = id,
+                ServerMsg::Welcome { id, version: _ } => s.id = id,
                 ServerMsg::Snapshot { players } => {
                     if players.len() == 2 {
                         s.both = true;

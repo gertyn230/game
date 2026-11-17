@@ -241,7 +241,7 @@ impl SettingsMenu {
     }
 
     /// Меню вибору мови
-    fn draw_language(&mut self, font: &Font, texts: &Texts, settings: &mut Settings) -> bool {
+    fn draw_language(&mut self, font: &Font, _texts: &Texts, settings: &mut Settings) -> bool {
         let (sw, sh) = (screen_width(), screen_height());
         let fs = (sw.min(sh) * 0.04).max(16.0);
         let time = get_time() as f32;
@@ -339,7 +339,7 @@ impl SettingsMenu {
     }
 
     /// Меню аудіо
-    fn draw_audio(&mut self, font: &Font, texts: &Texts, settings: &mut Settings) -> bool {
+    fn draw_audio(&mut self, font: &Font, _texts: &Texts, settings: &mut Settings) -> bool {
         let (sw, sh) = (screen_width(), screen_height());
         let fs = (sw.min(sh) * 0.04).max(16.0);
         let time = get_time() as f32;
@@ -404,7 +404,7 @@ impl SettingsMenu {
     }
 
     /// Меню керування
-    fn draw_controls(&mut self, font: &Font, texts: &Texts, settings: &mut Settings) -> bool {
+    fn draw_controls(&mut self, font: &Font, _texts: &Texts, _settings: &mut Settings) -> bool {
         let (sw, sh) = (screen_width(), screen_height());
         let fs = (sw.min(sh) * 0.04).max(16.0);
         let time = get_time() as f32;
@@ -493,7 +493,7 @@ impl SettingsMenu {
     }
 
     /// Меню графіки
-    fn draw_graphics(&mut self, font: &Font, texts: &Texts, settings: &mut Settings) -> bool {
+    fn draw_graphics(&mut self, font: &Font, _texts: &Texts, _settings: &mut Settings) -> bool {
         let (sw, sh) = (screen_width(), screen_height());
         let fs = (sw.min(sh) * 0.04).max(16.0);
         let time = get_time() as f32;

@@ -13,7 +13,7 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         Query, State,
     },
-    http::{HeaderMap, HeaderValue, Method, StatusCode},
+    http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Response},
     routing::{get, post},
     Json, Router,
@@ -181,7 +181,7 @@ async fn main() {
                 let (players, board) = {
                     let mut w = app.world.lock().await;
                     let players: Vec<PlayerState> = w.players.values().map(|c| c.state.clone()).collect();
-                    let board = if tick % 75 == 0 {
+                    let board = if tick.is_multiple_of(75) {
                         w.dead.retain(|_, t| t.elapsed().as_secs() < RESPAWN_SECS as u64);
                         let mut sc: Vec<(String, u32)> = w.players.values().map(|c| (c.state.name.clone(), c.score)).collect();
                         sc.sort_by(|a, b| b.1.cmp(&a.1));
@@ -264,17 +264,16 @@ async fn api_version() -> Json<serde_json::Value> {
     // Версія гри - змінюйте при кожному оновленні
     Json(serde_json::json!({
         "version": env!("CARGO_PKG_VERSION"),
-        "date": "2026-11-07",
+        "date": "2026-11-17",
         "changes": [
-            "Автоматичне оновлення через GitHub Releases",
-            "Карта збільшена до 80x80 (+300%)",
-            "Додано 2 нові біоми: болото та пустеля",
-            "3 нові тварини: олень, ведмідь, лисиця",
-            "Нові ресурси: ягоди, гриби, лікарські трави",
-            "Нові руди: срібло та золото",
-            "Нові рецепти: ягідний пирог, грибний суп, целебний отвар",
-            "+13 нових тварин на карті",
-            "+7 нових предметів"
+            "✅ Виправлено відображення координат гравців в Admin Dashboard",
+            "✅ Виправлено Android touch controls (simulate_mouse_with_touch)",
+            "✅ Налаштовано production сервер (wss://api.pixel-village.online/ws)",
+            "✅ Додано Discord Rich Presence",
+            "✅ Виправлено баги компіляції та warnings",
+            "🎮 Multiplayer працює стабільно",
+            "🔧 Admin панель з real-time статистикою",
+            "🚀 Автоматичне оновлення через GitHub Releases"
         ],
         "download": "https://github.com/gertyn230/game/releases/latest"
     }))

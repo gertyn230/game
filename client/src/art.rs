@@ -60,8 +60,8 @@ pub fn draw_tile(map: &Map, tx: i32, ty: i32, sx: f32, sy: f32, ts: f32, u: f32,
         return;
     }
     if t == SAND {
-        draw_rectangle(sx, sy, ts + 1.0, ts + 1.0, hx(if h % 2 == 0 { 0xe3d5a1 } else { 0xdccb94 }));
-        if h % 7 == 0 {
+        draw_rectangle(sx, sy, ts + 1.0, ts + 1.0, hx(if h.is_multiple_of(2) { 0xe3d5a1 } else { 0xdccb94 }));
+        if h.is_multiple_of(7) {
             rc(sx, sy, u, ((h >> 3) % 12) as f32, ((h >> 5) % 12) as f32, 2.0, 1.0, hx(0xc9b982));
         }
         return;
@@ -72,14 +72,14 @@ pub fn draw_tile(map: &Map, tx: i32, ty: i32, sx: f32, sy: f32, ts: f32, u: f32,
         1 => (0x5b9a50, 0x508c47),
         _ => (0x76b35c, 0x6aa653),
     };
-    draw_rectangle(sx, sy, ts + 1.0, ts + 1.0, hx(if h % 3 != 0 { a } else { b }));
-    if h % 5 == 0 {
+    draw_rectangle(sx, sy, ts + 1.0, ts + 1.0, hx(if !h.is_multiple_of(3) { a } else { b }));
+    if h.is_multiple_of(5) {
         rc(sx, sy, u, ((h >> 3) % 12) as f32, ((h >> 5) % 12) as f32, 2.0, 3.0, hx(0x5f9a4a));
     }
-    if bm == 0 && h % 11 == 0 {
+    if bm == 0 && h.is_multiple_of(11) {
         rc(sx, sy, u, ((h >> 4) % 12) as f32 + 1.0, ((h >> 6) % 12) as f32 + 1.0, 2.0, 2.0, hx(0xf7e96b));
     }
-    if bm == 0 && h % 17 == 0 {
+    if bm == 0 && h.is_multiple_of(17) {
         rc(sx, sy, u, ((h >> 5) % 12) as f32 + 1.0, ((h >> 7) % 12) as f32 + 1.0, 2.0, 2.0, hx(0xf08fb0));
     }
 }

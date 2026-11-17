@@ -485,7 +485,7 @@ impl Game {
         let g: u32 = if matches!(kind, Kind::Tree | Kind::Rock) {
             1 + tier as u32
         } else if kind.is_ore() {
-            1 + (tier as u32 + 1) / 2
+            1 + (tier as u32).div_ceil(2)
         } else if kind == Kind::Bush && self.tool(Tl::Basket) {
             self.use_tool(Tl::Basket, now);
             2
@@ -674,8 +674,8 @@ mod tests {
         for _ in 0..times {
             *t += 0.4;
             g.energy = 100.0;
-            g.tick(0.016, *t, &Input { dir: Vec2::ZERO, hold: true }, out, &crate::i18n::get_texts(&crate::settings::Language::UA));
-            g.tick(0.016, *t + 0.1, &Input { dir: Vec2::ZERO, hold: false }, out, &crate::i18n::get_texts(&crate::settings::Language::UA));
+            g.tick(0.016, *t, &Input { dir: Vec2::ZERO, hold: true }, out, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
+            g.tick(0.016, *t + 0.1, &Input { dir: Vec2::ZERO, hold: false }, out, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
         }
     }
     fn near_water_land(g: &Game) -> (f32, f32) {
@@ -726,9 +726,9 @@ mod tests {
         for k in [Kind::Tree, Kind::Rock, Kind::Bush, Kind::Stick, Kind::Pebble, Kind::Fiber, Kind::Coal, Kind::CuOre, Kind::FeOre] {
             assert!(g.map.nodes.iter().any(|n| n.kind == k), "на карте нет ресурса");
         }
-        assert!(g.map.terr.iter().any(|&t| t == WATER));
-        assert!(g.map.terr.iter().any(|&t| t == FORD));
-        assert!(g.map.terr.iter().any(|&t| t == SAND));
+        assert!(g.map.terr.contains(&WATER));
+        assert!(g.map.terr.contains(&FORD));
+        assert!(g.map.terr.contains(&SAND));
         assert_eq!(g.mobs.len(), ANIMALS.iter().map(|a| a.1).sum::<usize>());
     }
 
@@ -823,7 +823,7 @@ mod tests {
         g.craft(idx("Жаркое из мяса"), now);
         assert_eq!(g.inv[It::Roast as usize], 1);
         g.hunger = 20.0;
-        g.eat(now, &crate::i18n::get_texts(&crate::settings::Language::UA));
+        g.eat(now, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
         assert_eq!(g.hunger, 90.0);
     }
 
@@ -833,12 +833,12 @@ mod tests {
         g.mobs.clear();
         let mut out = vec![];
         let h0 = g.hunger;
-        g.tick(1.0, 1.0, &Input { dir: Vec2::ZERO, hold: false }, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
+        g.tick(1.0, 1.0, &Input { dir: Vec2::ZERO, hold: false }, &mut out, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
         assert!(g.hunger < h0 && g.thirst < 100.0);
         g.inv[It::Wood as usize] = 5;
         g.hp = 0.5;
         g.hunger = 0.0;
-        g.tick(1.0, 2.0, &Input { dir: Vec2::ZERO, hold: false }, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
+        g.tick(1.0, 2.0, &Input { dir: Vec2::ZERO, hold: false }, &mut out, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
         assert_eq!(g.inv[It::Wood as usize], 0, "после смерти вещи теряются");
         assert_eq!(g.hp, 60.0);
     }
@@ -851,7 +851,7 @@ mod tests {
         g.x = x;
         g.y = y;
         g.thirst = 10.0;
-        g.drink(1.0, &crate::i18n::get_texts(&crate::settings::Language::UA));
+        g.drink(1.0, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
         assert!(g.thirst > 20.0);
         assert!(g.blocked(x + 1.0, y, true, 1.0), "в воду пешком нельзя");
         g.bridges.insert(((x + 1.0).floor() as i32, y.floor() as i32));
@@ -865,14 +865,14 @@ mod tests {
         let (x, y) = near_water_land(&g);
         g.x = x;
         g.y = y;
-        g.boat_toggle(1.0, &crate::i18n::get_texts(&crate::settings::Language::UA));
+        g.boat_toggle(1.0, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
         assert!(!g.in_boat, "без лодки не поплывёшь");
         g.tools[Tl::Boat as usize] = 1;
-        g.boat_toggle(1.0, &crate::i18n::get_texts(&crate::settings::Language::UA));
+        g.boat_toggle(1.0, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
         assert!(g.in_boat);
         assert_eq!(g.map.terr_at(g.x.floor() as i32, g.y.floor() as i32), WATER);
         assert!(g.blocked(x - 1.0, y, true, 1.0), "в лодке на сушу нельзя");
-        g.boat_toggle(2.0, &crate::i18n::get_texts(&crate::settings::Language::UA));
+        g.boat_toggle(2.0, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
         assert!(!g.in_boat);
     }
 
@@ -886,15 +886,15 @@ mod tests {
             .unwrap();
         g.x = spot.0 as f32 + 0.5;
         g.y = spot.1 as f32 + 0.5;
-        g.dig(1.0, &crate::i18n::get_texts(&crate::settings::Language::UA));
+        g.dig(1.0, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
         assert!(g.msg.contains("лопата"));
         g.tools[Tl::Shovel as usize] = 30;
         let mut t = 2.0;
         for _ in 0..3 {
-            g.dig(t, &crate::i18n::get_texts(&crate::settings::Language::UA));
+            g.dig(t, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
             t += 1.0;
         }
-        g.dig(t, &crate::i18n::get_texts(&crate::settings::Language::UA));
+        g.dig(t, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
         assert!(g.msg.contains("перекопано"), "одну точку можно копать 3 раза");
         assert_eq!(g.tools[Tl::Shovel as usize], 27);
     }
@@ -917,23 +917,23 @@ mod tests {
             let mut t = 10.0 + attempt as f64;
             let idle = Input { dir: Vec2::ZERO, hold: false };
             let press = Input { dir: Vec2::ZERO, hold: true };
-            g.tick(0.016, t, &idle, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
-            g.tick(0.016, t + 0.4, &press, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
+            g.tick(0.016, t, &idle, &mut out, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
+            g.tick(0.016, t + 0.4, &press, &mut out, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
             assert_eq!(g.fish.ph, 1, "удочка заброшена");
             assert_eq!(g.inv[It::Worm as usize], 0, "червь потрачен");
             t += 0.4;
             // ждём поклёвку
-            g.tick(0.016, t + 0.5, &idle, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
+            g.tick(0.016, t + 0.5, &idle, &mut out, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
             t += 9.0;
-            g.tick(0.016, t, &idle, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
+            g.tick(0.016, t, &idle, &mut out, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
             assert_eq!(g.fish.ph, 2, "рыба клюнула");
-            g.tick(0.016, t + 0.2, &press, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
+            g.tick(0.016, t + 0.2, &press, &mut out, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
             assert_eq!(g.fish.ph, 3, "вываживание началось");
             let mut tt = t + 0.2;
             for _ in 0..4000 {
                 tt += 0.02;
                 let hold = g.fish.tn < 55.0;
-                g.tick(0.02, tt, &Input { dir: Vec2::ZERO, hold }, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
+                g.tick(0.02, tt, &Input { dir: Vec2::ZERO, hold }, &mut out, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
                 if g.fish.ph == 0 {
                     break;
                 }
@@ -954,7 +954,7 @@ mod tests {
         g.mobs.push(Mob::new(MobKind::Wolf, g.x + 1.0, g.y));
         g.inv[It::Meat as usize] = 3;
         for i in 0..3 {
-            g.tame(10.0 + i as f64, &crate::i18n::get_texts(&crate::settings::Language::UA));
+            g.tame(10.0 + i as f64, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
         }
         assert!(g.has_pet && g.mobs[0].kind == MobKind::Pet);
         // питомец нападает на волка (ночь зафиксирована так, чтобы волки не исчезали и не появлялись новые)
@@ -965,10 +965,10 @@ mod tests {
         for _ in 0..400 {
             t += 0.05;
             g.hp = 100.0;
-            g.tick(0.05, t, &Input { dir: Vec2::ZERO, hold: false }, &mut out, &crate::i18n::get_texts(&crate::settings::Language::UA));
+            g.tick(0.05, t, &Input { dir: Vec2::ZERO, hold: false }, &mut out, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
         }
         let wolf = g.mobs.iter().find(|m| m.kind == MobKind::Wolf);
-        assert!(wolf.map_or(true, |w| w.dead > 0.0), "питомец должен победить волка");
+        assert!(wolf.is_none_or(|w| w.dead > 0.0), "питомец должен победить волка");
         assert!(g.mobs.iter().any(|m| m.kind == MobKind::Pet), "питомец жив");
     }
 
