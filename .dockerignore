@@ -13,7 +13,6 @@ README.md
 
 # Build artifacts
 target/
-Cargo.lock
 
 # IDE
 .vscode/
