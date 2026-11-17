@@ -435,8 +435,16 @@ async fn api_list_bans(State(app): State<App>, headers: HeaderMap) -> Response {
 
 async fn api_players(State(app): State<App>) -> Json<serde_json::Value> {
     let w = app.world.lock().await;
-    let names: Vec<&str> = w.players.values().map(|c| c.state.name.as_str()).collect();
-    Json(serde_json::json!({ "count": names.len(), "players": names }))
+    let players: Vec<serde_json::Value> = w.players.values().map(|c| {
+        serde_json::json!({
+            "id": c.state.id,
+            "name": c.state.name,
+            "position": {"x": c.state.x, "y": c.state.y},
+            "hp": c.state.hp,
+            "status": "online"
+        })
+    }).collect();
+    Json(serde_json::json!({ "count": players.len(), "players": players }))
 }
 
 async fn api_admin_stats(State(app): State<App>, headers: HeaderMap) -> Response {
