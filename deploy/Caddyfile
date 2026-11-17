@@ -56,7 +56,7 @@ admin.pixel-village.online {
         X-Frame-Options "DENY"
         X-XSS-Protection "1; mode=block"
         Referrer-Policy "no-referrer"
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.pixel-village.online;"
     }
 
     # Rate limiting for admin endpoints (optional, uncomment if needed)
