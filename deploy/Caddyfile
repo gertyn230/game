@@ -20,6 +20,11 @@ api.pixel-village.online {
         # Remove server information
         -Server
 
+        # CORS headers for admin panel
+        Access-Control-Allow-Origin "*"
+        Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, X-Admin-Key, Authorization"
+
         # Security headers
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
