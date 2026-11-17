@@ -1,11 +1,13 @@
 # Pixel Village Caddy Configuration
 # This file configures Caddy as a reverse proxy for the game server and admin panel
 
+{
+    # Disable automatic HTTPS (Cloudflare handles SSL)
+    auto_https off
+}
+
 # Game server and API
 api.pixel-village.online {
-    # Enable automatic HTTPS via Let's Encrypt
-    # Or use Cloudflare Origin Certificate (see README for setup)
-
     # WebSocket and HTTP API
     reverse_proxy game-server:8080 {
         # WebSocket support
@@ -35,8 +37,6 @@ api.pixel-village.online {
 
 # Admin panel
 admin.pixel-village.online {
-    # Enable automatic HTTPS
-
     # Proxy to game server admin routes
     reverse_proxy game-server:8080 {
         header_up X-Real-IP {remote_host}
