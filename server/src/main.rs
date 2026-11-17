@@ -440,7 +440,8 @@ async fn api_players(State(app): State<App>) -> Json<serde_json::Value> {
             "id": c.state.id,
             "name": c.state.name,
             "position": {"x": c.state.x, "y": c.state.y},
-            "hp": c.state.hp,
+            "face": c.state.face,
+            "moving": c.state.moving,
             "status": "online"
         })
     }).collect();
