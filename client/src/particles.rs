@@ -180,9 +180,27 @@ impl ParticleSystem {
         self.particles.retain_mut(|p| p.update(dt));
     }
 
-    pub fn draw(&self) {
+    pub fn draw(&self, world_to_screen: impl Fn(f32, f32) -> (f32, f32), scale: f32) {
         for particle in &self.particles {
-            particle.draw();
+            let (sx, sy) = world_to_screen(particle.x, particle.y);
+            let mut color = particle.color;
+            color.a = particle.alpha;
+
+            match particle.particle_type {
+                ParticleType::Sparkle => {
+                    // Зірочка
+                    let points = 5;
+                    for i in 0..points {
+                        let angle = (i as f32 * std::f32::consts::TAU / points as f32) + particle.life;
+                        let x2 = sx + angle.cos() * particle.size * scale;
+                        let y2 = sy + angle.sin() * particle.size * scale;
+                        draw_line(sx, sy, x2, y2, 1.5, color);
+                    }
+                }
+                _ => {
+                    draw_circle(sx, sy, particle.size * scale, color);
+                }
+            }
         }
     }
 

@@ -23,6 +23,7 @@ pub enum MenuAction {
     Quit,
     Back,
     Close,
+    Disconnect,
 }
 
 pub struct Menu {
@@ -602,12 +603,16 @@ impl Menu {
     }
 
     pub fn draw_settings_menu(&mut self, font: &Font, texts: &Texts, settings: &mut Settings) -> Option<MenuAction> {
-        let should_close = self.settings_menu.draw(font, texts, settings);
-        
+        let (should_close, should_disconnect) = self.settings_menu.draw(font, texts, settings);
+
+        if should_disconnect {
+            return Some(MenuAction::Disconnect);
+        }
+
         if should_close {
             return Some(MenuAction::Back);
         }
-        
+
         None
     }
 }

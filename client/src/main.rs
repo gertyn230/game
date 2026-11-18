@@ -704,8 +704,8 @@ async fn main() {
             draw_fx_particles(f, sx, sy, u, now);
         }
 
-        // Малюємо частинки
-        g.particles.draw();
+        // Малюємо частинки з правильною конвертацією координат
+        g.particles.draw(|wx, wy| wp(wx, wy), u);
 
         // удочка, леска, поплавок
         if g.fish.ph > 0 {

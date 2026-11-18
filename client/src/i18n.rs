@@ -13,6 +13,7 @@ pub struct Texts {
     pub continue_game: &'static str,
     pub new_game: &'static str,
     pub quit: &'static str,
+    pub disconnect: &'static str,
 
     // Дії
     pub action: &'static str,
@@ -158,6 +159,7 @@ const UA: Texts = Texts {
     continue_game: "Продовжити",
     new_game: "Нова гра",
     quit: "Вийти",
+    disconnect: "Від'єднатися від сервера",
 
     action: "Добути",
     eat: "Їсти",
@@ -308,6 +310,7 @@ const EN: Texts = Texts {
     continue_game: "Continue",
     new_game: "New Game",
     quit: "Quit",
+    disconnect: "Disconnect from server",
 
     action: "Gather",
     eat: "Eat",
@@ -458,6 +461,7 @@ const RU: Texts = Texts {
     continue_game: "Продолжить",
     new_game: "Новая игра",
     quit: "Выйти",
+    disconnect: "Отключиться от сервера",
 
     action: "Добыть",
     eat: "Есть",

@@ -24,19 +24,19 @@ impl SettingsMenu {
         }
     }
 
-    /// Малює меню налаштувань
-    pub fn draw(&mut self, font: &Font, texts: &Texts, settings: &mut Settings) -> bool {
+    /// Малює меню налаштувань, повертає (close_settings, disconnect)
+    pub fn draw(&mut self, font: &Font, texts: &Texts, settings: &mut Settings) -> (bool, bool) {
         match self.category {
             SettingsCategory::Main => self.draw_main_categories(font, texts),
-            SettingsCategory::Language => self.draw_language(font, texts, settings),
-            SettingsCategory::Audio => self.draw_audio(font, texts, settings),
-            SettingsCategory::Controls => self.draw_controls(font, texts, settings),
-            SettingsCategory::Graphics => self.draw_graphics(font, texts, settings),
+            SettingsCategory::Language => (self.draw_language(font, texts, settings), false),
+            SettingsCategory::Audio => (self.draw_audio(font, texts, settings), false),
+            SettingsCategory::Controls => (self.draw_controls(font, texts, settings), false),
+            SettingsCategory::Graphics => (self.draw_graphics(font, texts, settings), false),
         }
     }
 
-    /// Головне меню з 4 категоріями
-    fn draw_main_categories(&mut self, font: &Font, texts: &Texts) -> bool {
+    /// Головне меню з 4 категоріями, повертає (close_settings, disconnect)
+    fn draw_main_categories(&mut self, font: &Font, texts: &Texts) -> (bool, bool) {
         let (sw, sh) = (screen_width(), screen_height());
         let fs = (sw.min(sh) * 0.04).max(16.0);
         let time = get_time() as f32;
@@ -198,32 +198,35 @@ impl SettingsMenu {
             }
         }
 
-        // Кнопка "Назад"
-        let back_btn_width = 150.0;
-        let back_btn_height = 50.0;
-        let back_btn_x = panel_x + (panel_width - back_btn_width) / 2.0;
-        let back_btn_y = panel_y + panel_height - back_btn_height - 30.0;
+        // Дві кнопки внизу: "Назад" та "Від'єднатися"
+        let btn_width = 180.0;
+        let btn_height = 50.0;
+        let btn_spacing = 20.0;
+        let total_width = btn_width * 2.0 + btn_spacing;
+        let buttons_x = panel_x + (panel_width - total_width) / 2.0;
+        let buttons_y = panel_y + panel_height - btn_height - 30.0;
 
-        let back_hovered = is_button_hovered(back_btn_x, back_btn_y, back_btn_width, back_btn_height);
+        // Кнопка "Назад"
+        let back_btn_x = buttons_x;
+        let back_hovered = is_button_hovered(back_btn_x, buttons_y, btn_width, btn_height);
         let back_lift = if back_hovered { -3.0 } else { 0.0 };
 
-        // Фон кнопки назад
         let back_bg = if back_hovered {
             Color::from_rgba(65, 55, 90, 220)
         } else {
             Color::from_rgba(45, 45, 65, 180)
         };
 
-        draw_rectangle(back_btn_x, back_btn_y + back_lift, back_btn_width, back_btn_height, back_bg);
-        draw_rectangle_lines(back_btn_x, back_btn_y + back_lift, back_btn_width, back_btn_height, 2.0,
+        draw_rectangle(back_btn_x, buttons_y + back_lift, btn_width, btn_height, back_bg);
+        draw_rectangle_lines(back_btn_x, buttons_y + back_lift, btn_width, btn_height, 2.0,
             Color::from_rgba(100, 100, 120, 180));
 
         let back_text = "← Назад";
         let back_measure = measure_text(back_text, Some(font), fs as u16, 1.0);
         draw_text_ex(
             back_text,
-            back_btn_x + (back_btn_width - back_measure.width) / 2.0,
-            back_btn_y + back_lift + (back_btn_height + back_measure.height) / 2.0,
+            back_btn_x + (btn_width - back_measure.width) / 2.0,
+            buttons_y + back_lift + (btn_height + back_measure.height) / 2.0,
             TextParams {
                 font: Some(font),
                 font_size: fs as u16,
@@ -232,12 +235,39 @@ impl SettingsMenu {
             },
         );
 
-        // Повернення до головного меню
-        if (back_hovered && is_mouse_button_pressed(MouseButton::Left)) || is_key_pressed(KeyCode::Escape) {
-            return true; // Закрити налаштування
-        }
+        // Кнопка "Від'єднатися"
+        let disconnect_btn_x = buttons_x + btn_width + btn_spacing;
+        let disconnect_hovered = is_button_hovered(disconnect_btn_x, buttons_y, btn_width, btn_height);
+        let disconnect_lift = if disconnect_hovered { -3.0 } else { 0.0 };
 
-        false
+        let disconnect_bg = if disconnect_hovered {
+            Color::from_rgba(180, 60, 60, 220)
+        } else {
+            Color::from_rgba(65, 45, 45, 180)
+        };
+
+        draw_rectangle(disconnect_btn_x, buttons_y + disconnect_lift, btn_width, btn_height, disconnect_bg);
+        draw_rectangle_lines(disconnect_btn_x, buttons_y + disconnect_lift, btn_width, btn_height, 2.0,
+            Color::from_rgba(180, 80, 80, 180));
+
+        let disconnect_text_measure = measure_text(texts.disconnect, Some(font), (fs * 0.8) as u16, 1.0);
+        draw_text_ex(
+            texts.disconnect,
+            disconnect_btn_x + (btn_width - disconnect_text_measure.width) / 2.0,
+            buttons_y + disconnect_lift + (btn_height + disconnect_text_measure.height) / 2.0,
+            TextParams {
+                font: Some(font),
+                font_size: (fs * 0.8) as u16,
+                color: Color::from_rgba(255, 200, 200, 255),
+                ..Default::default()
+            },
+        );
+
+        // Обробка кліків
+        let should_close = (back_hovered && is_mouse_button_pressed(MouseButton::Left)) || is_key_pressed(KeyCode::Escape);
+        let should_disconnect = disconnect_hovered && is_mouse_button_pressed(MouseButton::Left);
+
+        (should_close, should_disconnect)
     }
 
     /// Меню вибору мови
