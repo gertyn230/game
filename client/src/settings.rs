@@ -27,6 +27,41 @@ impl Language {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+pub enum ServerType {
+    Local,
+    Host,
+}
+
+impl Default for ServerType {
+    fn default() -> Self {
+        ServerType::Host
+    }
+}
+
+impl ServerType {
+    pub fn url(&self) -> &str {
+        match self {
+            ServerType::Local => "ws://127.0.0.1:8080/ws",
+            ServerType::Host => "wss://pixelvillage.h2945829.stratoserver.net/ws",
+        }
+    }
+
+    pub fn next(&self) -> ServerType {
+        match self {
+            ServerType::Local => ServerType::Host,
+            ServerType::Host => ServerType::Local,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            ServerType::Local => "Локальний",
+            ServerType::Host => "Онлайн",
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct KeyBindings {
     pub move_up: String,
@@ -76,6 +111,8 @@ pub struct Settings {
     pub keybindings: KeyBindings,
     #[serde(default)]
     pub show_debug: bool,
+    #[serde(default)]
+    pub server_type: ServerType,
 }
 
 impl Default for Settings {
@@ -88,6 +125,7 @@ impl Default for Settings {
             sounds_enabled: true,
             keybindings: KeyBindings::default(),
             show_debug: false,
+            server_type: ServerType::Host,
         }
     }
 }

@@ -2,15 +2,14 @@
 
 use macroquad::prelude::*;
 use crate::i18n::Texts;
-use crate::settings::{Language, Settings};
+use crate::settings::{Language, Settings, save_settings};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum SettingsCategory {
-    Main,       // Головне меню з 4 кнопками
+    Main,       // Головне меню з 3 кнопками
     Language,   // Вибір мови
     Audio,      // Музика та звук
     Controls,   // Керування
-    Graphics,   // Графіка
 }
 
 pub struct SettingsMenu {
@@ -27,16 +26,15 @@ impl SettingsMenu {
     /// Малює меню налаштувань, повертає (close_settings, disconnect)
     pub fn draw(&mut self, font: &Font, texts: &Texts, settings: &mut Settings) -> (bool, bool) {
         match self.category {
-            SettingsCategory::Main => self.draw_main_categories(font, texts),
+            SettingsCategory::Main => self.draw_main_categories(font, texts, settings),
             SettingsCategory::Language => (self.draw_language(font, texts, settings), false),
             SettingsCategory::Audio => (self.draw_audio(font, texts, settings), false),
             SettingsCategory::Controls => (self.draw_controls(font, texts, settings), false),
-            SettingsCategory::Graphics => (self.draw_graphics(font, texts, settings), false),
         }
     }
 
-    /// Головне меню з 4 категоріями, повертає (close_settings, disconnect)
-    fn draw_main_categories(&mut self, font: &Font, texts: &Texts) -> (bool, bool) {
+    /// Головне меню з 3 категоріями + вибір сервера, повертає (close_settings, disconnect)
+    fn draw_main_categories(&mut self, font: &Font, texts: &Texts, settings: &mut Settings) -> (bool, bool) {
         let (sw, sh) = (screen_width(), screen_height());
         let fs = (sw.min(sh) * 0.04).max(16.0);
         let time = get_time() as f32;
@@ -107,12 +105,11 @@ impl SettingsMenu {
             Color::from_rgba(124, 58, 237, 180)
         );
 
-        // 4 великі кнопки категорій
+        // 4 великі кнопки категорій + кнопка сервера
         let categories = [
             ("🌍", "Мова", SettingsCategory::Language),
             ("🔊", "Аудіо", SettingsCategory::Audio),
             ("🎮", "Керування", SettingsCategory::Controls),
-            ("🎨", "Графіка", SettingsCategory::Graphics),
         ];
 
         let btn_width = (panel_width - 120.0) / 2.0;
@@ -198,35 +195,132 @@ impl SettingsMenu {
             }
         }
 
-        // Дві кнопки внизу: "Назад" та "Від'єднатися"
-        let btn_width = 180.0;
-        let btn_height = 50.0;
-        let btn_spacing = 20.0;
-        let total_width = btn_width * 2.0 + btn_spacing;
-        let buttons_x = panel_x + (panel_width - total_width) / 2.0;
-        let buttons_y = panel_y + panel_height - btn_height - 30.0;
+        // Кнопка вибору сервера (широка, внизу)
+        let server_btn_width = panel_width - 100.0;
+        let server_btn_height = 80.0;
+        let server_btn_x = panel_x + 50.0;
+        let server_btn_y = start_y + 240.0;
 
-        // Кнопка "Назад"
-        let back_btn_x = buttons_x;
-        let back_hovered = is_button_hovered(back_btn_x, buttons_y, btn_width, btn_height);
-        let back_lift = if back_hovered { -3.0 } else { 0.0 };
+        let server_hovered = is_button_hovered(server_btn_x, server_btn_y, server_btn_width, server_btn_height);
+        let server_lift = if server_hovered { -5.0 } else { 0.0 };
 
-        let back_bg = if back_hovered {
-            Color::from_rgba(65, 55, 90, 220)
+        // Тінь
+        if server_hovered {
+            draw_rectangle(
+                server_btn_x + 5.0,
+                server_btn_y + server_lift + 5.0,
+                server_btn_width,
+                server_btn_height,
+                Color::from_rgba(0, 0, 0, 80)
+            );
+        }
+
+        // Фон кнопки
+        let server_bg = if server_hovered {
+            Color::from_rgba(60, 90, 180, 220)
         } else {
-            Color::from_rgba(45, 45, 65, 180)
+            Color::from_rgba(45, 60, 100, 200)
         };
 
-        draw_rectangle(back_btn_x, buttons_y + back_lift, btn_width, btn_height, back_bg);
-        draw_rectangle_lines(back_btn_x, buttons_y + back_lift, btn_width, btn_height, 2.0,
+        draw_rectangle(server_btn_x, server_btn_y + server_lift, server_btn_width, server_btn_height, server_bg);
+
+        // Рамка
+        let server_border = if server_hovered {
+            Color::from_rgba(100, 150, 255, 255)
+        } else {
+            Color::from_rgba(80, 100, 150, 150)
+        };
+
+        draw_rectangle_lines(server_btn_x, server_btn_y + server_lift, server_btn_width, server_btn_height, 2.0, server_border);
+
+        // Іконка сервера
+        let server_emoji = "🌐";
+        let server_emoji_size = fs * 2.0;
+        draw_text_ex(
+            server_emoji,
+            server_btn_x + 30.0,
+            server_btn_y + server_lift + 50.0,
+            TextParams {
+                font: Some(font),
+                font_size: server_emoji_size as u16,
+                color: Color::from_rgba(255, 255, 255, 255),
+                ..Default::default()
+            },
+        );
+
+        // Текст "Сервер:"
+        let server_label = "Сервер:";
+        draw_text_ex(
+            server_label,
+            server_btn_x + 90.0,
+            server_btn_y + server_lift + 35.0,
+            TextParams {
+                font: Some(font),
+                font_size: (fs * 0.9) as u16,
+                color: Color::from_rgba(180, 180, 200, 255),
+                ..Default::default()
+            },
+        );
+
+        // Поточний вибір сервера
+        let server_name = settings.server_type.name();
+        draw_text_ex(
+            server_name,
+            server_btn_x + 90.0,
+            server_btn_y + server_lift + 60.0,
+            TextParams {
+                font: Some(font),
+                font_size: (fs * 1.3) as u16,
+                color: Color::from_rgba(120, 200, 255, 255),
+                ..Default::default()
+            },
+        );
+
+        // Натисніть щоб змінити
+        let hint = "(клік для зміни)";
+        draw_text_ex(
+            hint,
+            server_btn_x + server_btn_width - 180.0,
+            server_btn_y + server_lift + 50.0,
+            TextParams {
+                font: Some(font),
+                font_size: (fs * 0.75) as u16,
+                color: Color::from_rgba(150, 150, 170, 200),
+                ..Default::default()
+            },
+        );
+
+        // Обробка кліка на кнопку сервера
+        if server_hovered && is_mouse_button_pressed(MouseButton::Left) {
+            settings.server_type = settings.server_type.next();
+            save_settings(settings);
+        }
+
+        // Кнопка "Закрити" внизу по центру
+        let btn_width = 200.0;
+        let btn_height = 50.0;
+        let btn_x = panel_x + (panel_width - btn_width) / 2.0;
+        let btn_y = panel_y + panel_height - btn_height - 30.0;
+
+        let hovered = is_button_hovered(btn_x, btn_y, btn_width, btn_height);
+        let lift = if hovered { -3.0 } else { 0.0 };
+
+        let bg = if hovered {
+            Color::from_rgba(75, 60, 180, 220)
+        } else {
+            Color::from_rgba(45, 45, 70, 200)
+        };
+
+        draw_rectangle(btn_x, btn_y + lift, btn_width, btn_height, bg);
+        draw_rectangle_lines(btn_x, btn_y + lift, btn_width, btn_height, 2.0,
             Color::from_rgba(100, 100, 120, 180));
 
-        let back_text = "← Назад";
-        let back_measure = measure_text(back_text, Some(font), fs as u16, 1.0);
+        let text = "Закрити";
+        let text_measure = measure_text(text, Some(font), fs as u16, 1.0);
         draw_text_ex(
-            back_text,
-            back_btn_x + (btn_width - back_measure.width) / 2.0,
-            buttons_y + back_lift + (btn_height + back_measure.height) / 2.0,
+            text,
+            btn_x + (btn_width - text_measure.width) / 2.0,
+            btn_y + lift + (btn_height + text_measure.height) / 2.0,
             TextParams {
                 font: Some(font),
                 font_size: fs as u16,
@@ -235,39 +329,10 @@ impl SettingsMenu {
             },
         );
 
-        // Кнопка "Від'єднатися"
-        let disconnect_btn_x = buttons_x + btn_width + btn_spacing;
-        let disconnect_hovered = is_button_hovered(disconnect_btn_x, buttons_y, btn_width, btn_height);
-        let disconnect_lift = if disconnect_hovered { -3.0 } else { 0.0 };
-
-        let disconnect_bg = if disconnect_hovered {
-            Color::from_rgba(180, 60, 60, 220)
-        } else {
-            Color::from_rgba(65, 45, 45, 180)
-        };
-
-        draw_rectangle(disconnect_btn_x, buttons_y + disconnect_lift, btn_width, btn_height, disconnect_bg);
-        draw_rectangle_lines(disconnect_btn_x, buttons_y + disconnect_lift, btn_width, btn_height, 2.0,
-            Color::from_rgba(180, 80, 80, 180));
-
-        let disconnect_text_measure = measure_text(texts.disconnect, Some(font), (fs * 0.8) as u16, 1.0);
-        draw_text_ex(
-            texts.disconnect,
-            disconnect_btn_x + (btn_width - disconnect_text_measure.width) / 2.0,
-            buttons_y + disconnect_lift + (btn_height + disconnect_text_measure.height) / 2.0,
-            TextParams {
-                font: Some(font),
-                font_size: (fs * 0.8) as u16,
-                color: Color::from_rgba(255, 200, 200, 255),
-                ..Default::default()
-            },
-        );
-
         // Обробка кліків
-        let should_close = (back_hovered && is_mouse_button_pressed(MouseButton::Left)) || is_key_pressed(KeyCode::Escape);
-        let should_disconnect = disconnect_hovered && is_mouse_button_pressed(MouseButton::Left);
+        let should_close = (hovered && is_mouse_button_pressed(MouseButton::Left)) || is_key_pressed(KeyCode::Escape);
 
-        (should_close, should_disconnect)
+        (should_close, false)
     }
 
     /// Меню вибору мови
@@ -518,75 +583,6 @@ impl SettingsMenu {
 
             y += key_height + 20.0;
         }
-
-        self.draw_back_button(font, panel_x, panel_y, panel_width, panel_height, fs)
-    }
-
-    /// Меню графіки
-    fn draw_graphics(&mut self, font: &Font, _texts: &Texts, _settings: &mut Settings) -> bool {
-        let (sw, sh) = (screen_width(), screen_height());
-        let fs = (sw.min(sh) * 0.04).max(16.0);
-        let time = get_time() as f32;
-
-        // Фон
-        let backdrop_pulse = ((time * 0.5).sin() * 10.0) as u8;
-        draw_rectangle(0.0, 0.0, sw, sh, Color::from_rgba(10 + backdrop_pulse, 10, 20 + backdrop_pulse, 235));
-
-        // Панель
-        let panel_width = (sw * 0.6).clamp(500.0, 700.0);
-        let panel_height = (sh * 0.7).clamp(450.0, 600.0);
-        let panel_x = (sw - panel_width) / 2.0;
-        let panel_y = (sh - panel_height) / 2.0;
-
-        draw_rectangle(panel_x, panel_y, panel_width, panel_height, Color::from_rgba(20, 24, 35, 245));
-        draw_rectangle_lines(panel_x, panel_y, panel_width, panel_height, 3.0,
-            Color::from_rgba(124, 58, 237, 200));
-
-        // Заголовок
-        draw_text_ex(
-            "🎨 Графіка",
-            panel_x + 40.0,
-            panel_y + 50.0,
-            TextParams {
-                font: Some(font),
-                font_size: (fs * 1.8) as u16,
-                color: WHITE,
-                ..Default::default()
-            },
-        );
-
-        draw_rectangle(panel_x + 40.0, panel_y + 65.0, panel_width - 80.0, 2.0,
-            Color::from_rgba(124, 58, 237, 180));
-
-        let left = panel_x + 60.0;
-        let y = panel_y + 150.0;
-
-        // Інфо про графіку
-        let info_text = "Налаштування графіки";
-        draw_text_ex(
-            info_text,
-            left,
-            y,
-            TextParams {
-                font: Some(font),
-                font_size: (fs * 1.2) as u16,
-                color: Color::from_rgba(200, 200, 220, 255),
-                ..Default::default()
-            },
-        );
-
-        let desc = "(Буде додано пізніше)";
-        draw_text_ex(
-            desc,
-            left,
-            y + 50.0,
-            TextParams {
-                font: Some(font),
-                font_size: fs as u16,
-                color: Color::from_rgba(150, 150, 170, 255),
-                ..Default::default()
-            },
-        );
 
         self.draw_back_button(font, panel_x, panel_y, panel_width, panel_height, fs)
     }

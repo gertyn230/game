@@ -171,7 +171,7 @@ async fn main() {
         next_frame().await;
     }
 
-    let net = Net::start(SERVER_URL.to_string(), name.clone());
+    let net = Net::start(settings.server_type.url().to_string(), name.clone());
 
     let mut g = Game::new();
     if let Some(s) = &saved {
@@ -805,6 +805,38 @@ async fn main() {
         let (a, b) = mp(px, py);
         draw_rectangle(a - 3.5, b - 3.5, 7.0, 7.0, BLACK);
         draw_rectangle(a - 2.5, b - 2.5, 5.0, 5.0, my_color);
+
+        // Кнопка відключення від сервера (під міні-картою)
+        let disconnect_btn_width = ms;
+        let disconnect_btn_height = fs * 1.8;
+        let disconnect_btn_x = mx0;
+        let disconnect_btn_y = my0 + ms + fs * 3.5;
+
+        let (mx, my) = mouse_position();
+        let disconnect_hovered = connected && mx >= disconnect_btn_x && mx <= disconnect_btn_x + disconnect_btn_width
+            && my >= disconnect_btn_y && my <= disconnect_btn_y + disconnect_btn_height;
+
+        if connected {
+            let disconnect_bg = if disconnect_hovered {
+                ha(0xd94f4f, 0.85)
+            } else {
+                ha(0x8a3a3a, 0.7)
+            };
+
+            draw_rectangle(disconnect_btn_x, disconnect_btn_y, disconnect_btn_width, disconnect_btn_height, disconnect_bg);
+            draw_rectangle_lines(disconnect_btn_x, disconnect_btn_y, disconnect_btn_width, disconnect_btn_height, 2.0, hx(0xff6060));
+
+            let disconnect_text = "Відключитись";
+            let disconnect_text_w = text_w(&font, disconnect_text, fs * 0.75);
+            text(&font, disconnect_text, disconnect_btn_x + (disconnect_btn_width - disconnect_text_w) / 2.0,
+                disconnect_btn_y + disconnect_btn_height * 0.7, fs * 0.75, WHITE);
+
+            if disconnect_hovered && is_mouse_button_pressed(MouseButton::Left) {
+                // Відкриваємо меню налаштувань
+                ui.menu = true;
+            }
+        }
+
         for (i, s) in [format!("Золото {}", g.gold), format!("Очки {}", g.score())].iter().enumerate() {
             let w = text_w(&font, s, fs * 0.9);
             draw_rectangle(sw - pad - w - 6.0, my0 + ms + fs * (0.5 + i as f32 * 1.25), w + 12.0, fs * 1.15, ha(0x000000, 0.55));
