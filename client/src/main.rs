@@ -14,6 +14,8 @@ mod world;
 mod updater;
 mod discord_rpc;
 mod particles;
+mod design_system;
+mod modern_ui;
 
 // Ігрові модулі (розширення для game)
 mod game_survival;
