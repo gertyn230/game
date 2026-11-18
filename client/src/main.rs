@@ -770,53 +770,29 @@ async fn main() {
             label(&font, s, *x, *y, ts * 0.3);
         }
 
-        // ---------- интерфейс ----------
+        // ---------- сучасний HUD ----------
         ui.begin();
-        let pad = fs * 0.5;
-        // полоски состояния
-        let (bw, bh) = (fs * 8.5, fs * 1.25);
-        for (i, (v, c, l)) in [
-            (g.hunger, 0xe0933a, texts.hunger),
-            (g.thirst, 0x4aa3df, texts.thirst),
-            (g.energy, 0xd9c23f, texts.energy),
-            (g.hp, 0xd9534f, texts.health)
-        ].iter().enumerate() {
-            bar(&font, pad, pad + i as f32 * (bh + 4.0), bw, bh, *v, *c, l, fs);
-        }
-        let mut ly = pad + 4.0 * (bh + 4.0) + fs * 0.9;
-        let (status, scol) = if connected { (texts.online, 0x6fbf73) } else { ("❌", 0xd9534f) };
-        draw_circle(pad + fs * 0.4, ly - fs * 0.3, fs * 0.28, hx(scol));
-        text(&font, &format!("{}: {} ({})", texts.online, online.max(usize::from(connected)), status), pad + fs * 1.0, ly, fs * 0.9, WHITE);
-        for o in others.values().take(5) {
-            ly += fs * 1.1;
-            text(&font, &format!("• {}", o.st.name), pad + fs * 0.6, ly, fs * 0.85, ha(0xffffff, 0.9));
-        }
-        // мини-карта + очки
-        let ms = base * 0.2;
-        let (mx0, my0) = (sw - ms - pad, pad);
-        draw_rectangle(mx0 - 3.0, my0 - 3.0, ms + 6.0, ms + 6.0, hx(0x4a3220));
-        draw_texture_ex(&minimap, mx0, my0, WHITE, DrawTextureParams { dest_size: Some(vec2(ms, ms)), ..Default::default() });
-        let mp = |x: f32, y: f32| (mx0 + x / W as f32 * ms, my0 + y / W as f32 * ms);
-        for f in &g.fires {
-            let (a, b) = mp(f.0, f.1);
-            draw_rectangle(a - 1.5, b - 1.5, 3.0, 3.0, hx(0xff9020));
-        }
-        for o in others.values() {
-            let (a, b) = mp(o.dx, o.dy);
-            draw_rectangle(a - 2.0, b - 2.0, 4.0, 4.0, hx(PLAYER_COLORS[(o.st.color as usize) % 5]));
-        }
-        let (a, b) = mp(px, py);
-        draw_rectangle(a - 3.5, b - 3.5, 7.0, 7.0, BLACK);
-        draw_rectangle(a - 2.5, b - 2.5, 5.0, 5.0, my_color);
-        for (i, s) in [format!("Золото {}", g.gold), format!("Очки {}", g.score())].iter().enumerate() {
-            let w = text_w(&font, s, fs * 0.9);
-            draw_rectangle(sw - pad - w - 6.0, my0 + ms + fs * (0.5 + i as f32 * 1.25), w + 12.0, fs * 1.15, ha(0x000000, 0.55));
-            text(&font, s, sw - pad - w, my0 + ms + fs * (1.35 + i as f32 * 1.25), fs * 0.9, WHITE);
-        }
-        // инвентарь
+        let pad = fs * 0.5; // Потрібно для інших елементів UI
+
+        // Збираємо імена інших гравців
+        let others_names: Vec<String> = others.values().take(5).map(|o| o.st.name.clone()).collect();
+
+        // Малюємо HUD через новий модуль
+        modern_hud::draw_modern_hud(
+            &g,
+            &font,
+            &texts,
+            connected,
+            online.max(usize::from(connected)),
+            &others_names,
+            px,
+            py,
+        );
+
+        // Інвентар вже малюється в modern_hud, тому видаляємо старий код
         {
             let max_w = sw * 0.46;
-            let (mut x, mut y) = (pad, sh - pad - fs * 1.6);
+            let (mut x, mut y) = (fs * 0.5, sh - fs * 0.5 - fs * 1.6);
             let mut chips: Vec<(u32, String)> = vec![];
             for (i, &count) in g.inv.iter().enumerate() {
                 if count > 0 {
@@ -831,8 +807,8 @@ async fn main() {
             }
             for (c, s) in chips.iter().rev() {
                 let w = text_w(&font, s, fs * 0.85) + fs * 1.6;
-                if x + w > pad + max_w {
-                    x = pad;
+                if x + w > fs * 0.5 + max_w {
+                    x = fs * 0.5;
                     y -= fs * 1.5;
                 }
                 draw_rectangle(x, y, w, fs * 1.3, ha(0x000000, 0.6));
