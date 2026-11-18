@@ -29,35 +29,35 @@ impl Language {
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 pub enum ServerType {
-    Local,
-    Host,
+    Server1,
+    Server2,
 }
 
 impl Default for ServerType {
     fn default() -> Self {
-        ServerType::Host
+        ServerType::Server1
     }
 }
 
 impl ServerType {
     pub fn url(&self) -> &str {
         match self {
-            ServerType::Local => "ws://127.0.0.1:8080/ws",
-            ServerType::Host => "wss://pixelvillage.h2945829.stratoserver.net/ws",
+            ServerType::Server1 => "wss://pixelvillage.h2945829.stratoserver.net/ws",
+            ServerType::Server2 => "wss://pixelvillage2.h2945829.stratoserver.net/ws",
         }
     }
 
     pub fn next(&self) -> ServerType {
         match self {
-            ServerType::Local => ServerType::Host,
-            ServerType::Host => ServerType::Local,
+            ServerType::Server1 => ServerType::Server2,
+            ServerType::Server2 => ServerType::Server1,
         }
     }
 
     pub fn name(&self) -> &str {
         match self {
-            ServerType::Local => "Локальний",
-            ServerType::Host => "Онлайн",
+            ServerType::Server1 => "Сервер 1 (EU)",
+            ServerType::Server2 => "Сервер 2 (EU)",
         }
     }
 }
@@ -125,7 +125,7 @@ impl Default for Settings {
             sounds_enabled: true,
             keybindings: KeyBindings::default(),
             show_debug: false,
-            server_type: ServerType::Host,
+            server_type: ServerType::Server1,
         }
     }
 }
