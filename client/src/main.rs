@@ -19,6 +19,7 @@ mod modern_ui;
 mod modern_hud;
 mod modern_craft_menu;
 mod modern_market_menu;
+mod modern_animals;
 
 // Ігрові модулі (розширення для game)
 mod game_survival;
@@ -680,7 +681,8 @@ async fn main() {
             if pass == 0 {
                 for m in &g.mobs {
                     let (sx, sy) = wp(m.x, m.y);
-                    draw_mob(m, sx, sy, u, now);
+                    // Використовуємо покращене малювання тварин
+                    modern_animals::draw_modern_mob(m, sx, sy, u, now);
                     if m.kind == game::MobKind::Pet && m.dead == 0.0 {
                         labels.push(("Друг".into(), sx, sy - 11.0 * u));
                     }
