@@ -21,6 +21,7 @@ mod modern_craft_menu;
 mod modern_market_menu;
 mod modern_animals;
 mod modern_items;
+mod modern_world;
 
 // Ігрові модулі (розширення для game)
 mod game_survival;
