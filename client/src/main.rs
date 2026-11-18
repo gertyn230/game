@@ -17,6 +17,7 @@ mod particles;
 mod design_system;
 mod modern_ui;
 mod modern_hud;
+mod modern_craft_menu;
 
 // Ігрові модулі (розширення для game)
 mod game_survival;
@@ -960,37 +961,8 @@ fn draw_menu(
     let rh = fs * 3.0;
     match ui.tab {
         0 => {
-            let ql = g.quick_list(now);
-            let mut order: Vec<usize> = ql.clone();
-            for i in 0..RECIPES.len() {
-                if !order.contains(&i) {
-                    order.push(i);
-                }
-            }
-            let content = order.len() as f32 * rh;
-            ui.scroll = ui.scroll.clamp(0.0, (content - body.h).max(0.0));
-            for (row, &ri) in order.iter().enumerate() {
-                let y = body.y + row as f32 * rh - ui.scroll;
-                if y < body.y || y + rh > body.y + body.h {
-                    continue;
-                }
-                let r = &RECIPES[ri];
-                let can = g.can_craft(r, now);
-                draw_rectangle(body.x, y, body.w, rh - 4.0, ha(if can { 0x2f4a30 } else { 0x2a2d27 }, 0.9));
-                text(font, texts.recipe_names[ri], body.x + pad, y + fs * 1.15, fs * 1.05, if can { WHITE } else { ha(0xffffff, 0.55) });
-                let mut extra = cost_text(r, texts);
-                if r.fire {
-                    extra.push_str(&format!(" · {}", texts.at_campfire));
-                }
-                if r.furnace {
-                    extra.push_str(&format!(" · {}", texts.at_furnace));
-                }
-                if matches!(r.out, Out::Tool(t) if g.tool(t)) {
-                    extra = texts.already_have.into();
-                }
-                text(font, &extra, body.x + pad, y + fs * 2.35, fs * 0.8, ha(0xffffff, if can { 0.8 } else { 0.45 }));
-                ui.button(font, Rect::new(body.x + body.w - fs * 7.0, y + 4.0, fs * 6.6, rh - 12.0), texts.make, Cmd::Craft(ri), can, 0x2f7d36, fs);
-            }
+            // Сучасне меню крафту
+            modern_craft_menu::draw_modern_craft_menu(ui, font, g, now, body, texts, fs);
         }
         1 => {
             // форма виставлення на продаж
