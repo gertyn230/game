@@ -144,7 +144,8 @@ impl Game {
         }
 
         // Атака вовків і ведмедів
-        let mut bites = 0.0;
+        let mut wolf_bites = 0.0;
+        let mut bear_attacks = 0.0;
         for m in &self.mobs {
             if m.dead == 0.0 && now > m.calm {
                 let dx = self.x - m.x;
@@ -152,16 +153,25 @@ impl Game {
                 let dist = dx * dx + dy * dy;
 
                 if m.kind == MobKind::Wolf && dist < 1.0 {
-                    bites += 0.8 * dt;
+                    wolf_bites += 0.8 * dt;
                 } else if m.kind == MobKind::Bear && dist < 1.5 {
-                    bites += 2.0 * dt; // Ведмідь б'є сильніше
+                    bear_attacks += 2.0 * dt; // Ведмідь б'є сильніше
                 }
             }
         }
-        if bites > 0.0 {
-            self.hp -= bites;
+
+        if wolf_bites > 0.0 {
+            self.hp -= wolf_bites;
             self.say(texts.wolf_bites, now);
             // Ефект крові при атаці
+            self.particles.emit_burst(player_x, player_y, ParticleType::Blood);
+        }
+
+        if bear_attacks > 0.0 {
+            self.hp -= bear_attacks;
+            self.say(texts.bear_attacks, now);
+            // Більше крові при атаці ведмедя
+            self.particles.emit_burst(player_x, player_y, ParticleType::Blood);
             self.particles.emit_burst(player_x, player_y, ParticleType::Blood);
         }
 
