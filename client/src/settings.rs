@@ -74,6 +74,8 @@ pub struct Settings {
     pub music_enabled: bool,
     pub sounds_enabled: bool,
     pub keybindings: KeyBindings,
+    #[serde(default)]
+    pub show_debug: bool,
 }
 
 impl Default for Settings {
@@ -85,6 +87,7 @@ impl Default for Settings {
             music_enabled: true,
             sounds_enabled: true,
             keybindings: KeyBindings::default(),
+            show_debug: false,
         }
     }
 }

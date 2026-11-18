@@ -901,6 +901,39 @@ async fn main() {
         }
         ui.finish();
 
+        // Debug Info панель (F3 для показу/приховування)
+        if is_key_pressed(KeyCode::F3) {
+            settings.show_debug = !settings.show_debug;
+            save_settings(&settings);
+        }
+
+        if settings.show_debug {
+            let debug_fs = fs * 0.7;
+            let debug_x = pad;
+            let debug_y = pad + fs * 2.0;
+            let fps = get_fps();
+            let debug_lines = vec![
+                format!("FPS: {}", fps),
+                format!("Гравців онлайн: {}", online),
+                format!("Позиція: ({:.1}, {:.1})", g.x, g.y),
+                format!("Час доби: {:.0}%", g.night() * 100.0),
+                format!("Версія: {}", CLIENT_VERSION),
+                if connected { "Підключено ✓".to_string() } else { "Відключено ✗".to_string() },
+            ];
+
+            // Напівпрозорий фон
+            let box_w = 280.0;
+            let box_h = debug_lines.len() as f32 * debug_fs * 1.5 + pad;
+            draw_rectangle(debug_x, debug_y - pad, box_w, box_h, ha(0x000000, 0.7));
+            draw_rectangle_lines(debug_x, debug_y - pad, box_w, box_h, 2.0, ha(0x4a6fa5, 0.8));
+
+            // Виводимо debug інформацію
+            for (i, line) in debug_lines.iter().enumerate() {
+                let y = debug_y + i as f32 * debug_fs * 1.5;
+                text(&font, line, debug_x + pad * 0.5, y + debug_fs, debug_fs, ha(0xffffff, 0.9));
+            }
+        }
+
         // Показати вікно оновлення (якщо є)
         game_state.draw_update_window(&font, texts);
 
