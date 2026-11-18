@@ -18,6 +18,7 @@ mod design_system;
 mod modern_ui;
 mod modern_hud;
 mod modern_craft_menu;
+mod modern_market_menu;
 
 // Ігрові модулі (розширення для game)
 mod game_survival;
@@ -965,49 +966,8 @@ fn draw_menu(
             modern_craft_menu::draw_modern_craft_menu(ui, font, g, now, body, texts, fs);
         }
         1 => {
-            // форма виставлення на продаж
-            let y = body.y;
-            let bh = fs * 2.3;
-            let sq = fs * 2.3;
-            text(font, &format!("{}:", texts.sell_item), body.x, y + fs * 1.0, fs * 0.9, ha(0xffffff, 0.85));
-            let y2 = y + fs * 1.5;
-            ui.button(font, Rect::new(body.x, y2, sq, bh), "<", Cmd::MktItem(-1), true, 0x4a4f44, fs);
-            text_c(font, texts.item_names[ui.mk_item], body.x + sq + fs * 4.5, y2 + bh * 0.65, fs, WHITE);
-            ui.button(font, Rect::new(body.x + sq + fs * 9.0, y2, sq, bh), ">", Cmd::MktItem(1), true, 0x4a4f44, fs);
-            let y3 = y2 + bh + 6.0;
-            text(font, texts.quantity, body.x, y3 + bh * 0.65, fs * 0.9, WHITE);
-            ui.button(font, Rect::new(body.x + fs * 4.0, y3, sq, bh), "-", Cmd::MktQty(-1), true, 0x4a4f44, fs);
-            text_c(font, &format!("{}", ui.mk_qty), body.x + fs * 4.0 + sq + fs * 1.5, y3 + bh * 0.65, fs, WHITE);
-            ui.button(font, Rect::new(body.x + fs * 4.0 + sq + fs * 3.0, y3, sq, bh), "+", Cmd::MktQty(1), true, 0x4a4f44, fs);
-            let y4 = y3 + bh + 6.0;
-            text(font, texts.price, body.x, y4 + bh * 0.65, fs * 0.9, WHITE);
-            ui.button(font, Rect::new(body.x + fs * 4.0, y4, sq, bh), "-", Cmd::MktPrice(-1), true, 0x4a4f44, fs);
-            text_c(font, &format!("{}", ui.mk_price), body.x + fs * 4.0 + sq + fs * 1.5, y4 + bh * 0.65, fs, WHITE);
-            ui.button(font, Rect::new(body.x + fs * 4.0 + sq + fs * 3.0, y4, sq, bh), "+", Cmd::MktPrice(1), true, 0x4a4f44, fs);
-            let can_post = g.inv[ui.mk_item] >= ui.mk_qty;
-            ui.button(font, Rect::new(body.x + fs * 12.0, y3, fs * 8.0, bh * 2.0 + 6.0), texts.post_offer, Cmd::MktPost, can_post, 0x2f7d36, fs);
-            text(font, &format!("{}: {}   {}: {}", texts.gold_label, g.gold, texts.you_have, g.inv[ui.mk_item]), body.x + fs * 22.0, y2 + bh * 0.65, fs * 0.9, hx(0xe0c060));
-            // список предложений (прокручивается)
-            let top = y4 + bh + fs * 1.2;
-            text(font, &format!("{}:", texts.player_offers), body.x, top - fs * 0.3, fs * 0.9, ha(0xffffff, 0.85));
-            let list = Rect::new(body.x, top, body.w, body.y + body.h - top);
-            let rh2 = fs * 2.6;
-            let content = market.len() as f32 * rh2;
-            ui.scroll = ui.scroll.clamp(0.0, (content - list.h).max(0.0));
-            if market.is_empty() {
-                text(font, "Пока пусто (рынок работает онлайн)", list.x, list.y + fs * 1.2, fs * 0.9, ha(0xffffff, 0.6));
-            }
-            for (row, o) in market.iter().enumerate() {
-                let yy = list.y + row as f32 * rh2 - ui.scroll;
-                if yy < list.y || yy + rh2 > list.y + list.h {
-                    continue;
-                }
-                let mine = Some(o.seller) == my_id || posted.contains_key(&o.id);
-                draw_rectangle(list.x, yy, list.w, rh2 - 4.0, ha(0x2a2d27, 0.9));
-                text(font, &format!("{}: {} ×{} {} {} зол.", o.seller_name, texts.item_names[(o.item as usize).min(NI - 1)], o.qty, texts.for_gold, o.price), list.x + pad, yy + rh2 * 0.62, fs * 0.9, WHITE);
-                let can = mine || g.gold >= o.price;
-                ui.button(font, Rect::new(list.x + list.w - fs * 6.4, yy + 3.0, fs * 6.0, rh2 - 10.0), if mine { texts.withdraw } else { texts.buy }, if mine { Cmd::MktWithdraw(o.id) } else { Cmd::MktBuy(o.id) }, can, if mine { 0x8a3b2e } else { 0x2f7d36 }, fs * 0.9);
-            }
+            // Сучасне меню торгівлі
+            modern_market_menu::draw_modern_market_menu(ui, font, g, body, texts, fs, market, posted, my_id);
         }
         2 => {
             let mut y = body.y + fs;
