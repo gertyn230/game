@@ -8,6 +8,7 @@ use crate::data::*;
 use crate::save::Save;
 use crate::world::*;
 use crate::i18n::Texts;
+use crate::particles::{ParticleSystem, ParticleType};
 
 pub const ANIMALS: [(MobKind, usize, f32, f32, f32, f32); 5] = [
     (MobKind::Rabbit, 15, 10.0, 60.0, 10.0, 60.0),  // 15 кроликів на більшій карті
@@ -134,6 +135,8 @@ pub struct Game {
     pub death_drop: Option<(f32, f32, [u32; NI], [i32; NT])>,
     /// Для тестов: зафиксировать время суток.
     pub night_override: Option<f32>,
+    /// Система частинок для візуальних ефектів
+    pub particles: ParticleSystem,
 }
 
 impl Game {
@@ -177,6 +180,7 @@ impl Game {
             fx: None,
             death_drop: None,
             night_override: std::env::var("PV_NIGHT").ok().and_then(|v| v.parse().ok()),
+            particles: ParticleSystem::new(),
         }
     }
 

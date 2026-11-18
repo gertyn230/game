@@ -13,6 +13,7 @@ mod ui;
 mod world;
 mod updater;
 mod discord_rpc;
+mod particles;
 
 // Ігрові модулі (розширення для game)
 mod game_survival;
@@ -583,6 +584,7 @@ async fn main() {
 
         // ---------- логика ----------
         g.tick(dt, now, &Input { dir, hold }, &mut out, texts);
+        g.particles.update(dt);
         let (px, py) = (g.x, g.y);
 
         // ---------- сеть: отправка ----------
@@ -701,6 +703,10 @@ async fn main() {
             let (sx, sy) = wp(f.x, f.y);
             draw_fx_particles(f, sx, sy, u, now);
         }
+
+        // Малюємо частинки
+        g.particles.draw();
+
         // удочка, леска, поплавок
         if g.fish.ph > 0 {
             let (bx, by) = wp(g.fish.wx, g.fish.wy);

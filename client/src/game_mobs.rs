@@ -4,6 +4,7 @@ use crate::game::{Game, MobKind};
 use crate::data::It;
 use crate::i18n::Texts;
 use macroquad::prelude::rand;
+use crate::particles::ParticleType;
 
 fn rnd() -> f32 {
     rand::gen_range(0.0f32, 1.0)
@@ -160,6 +161,8 @@ impl Game {
         if bites > 0.0 {
             self.hp -= bites;
             self.say(texts.wolf_bites, now);
+            // Ефект крові при атаці
+            self.particles.emit_burst(player_x, player_y, ParticleType::Blood);
         }
 
         // Видалити мертвих тварин (після 120 секунд)
