@@ -20,6 +20,7 @@ mod modern_hud;
 mod modern_craft_menu;
 mod modern_market_menu;
 mod modern_animals;
+mod modern_items;
 
 // Ігрові модулі (розширення для game)
 mod game_survival;
