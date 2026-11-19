@@ -10,6 +10,7 @@ pub struct AdminLog {
     pub timestamp: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
     pub key: String,
@@ -207,3 +208,70 @@ pub async fn update_ticket_status(pool: &SqlitePool, id: i64, status: &str) -> R
         .await?;
     Ok(())
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromoCode {
+    pub code: String,
+    pub reward: String,
+    pub used: i64,
+    pub limit_uses: i64,
+    pub expires: String,
+    pub active: i64,
+}
+
+pub async fn get_promocodes(pool: &SqlitePool) -> Result<Vec<PromoCode>, sqlx::Error> {
+    let rows = sqlx::query("SELECT code, reward, used, limit_uses, expires, active FROM promocodes ORDER BY code ASC")
+        .fetch_all(pool)
+        .await?;
+
+    Ok(rows.iter().map(|row| PromoCode {
+        code: row.get("code"),
+        reward: row.get("reward"),
+        used: row.get("used"),
+        limit_uses: row.get("limit_uses"),
+        expires: row.get("expires"),
+        active: row.get("active"),
+    }).collect())
+}
+
+pub async fn add_promocode(pool: &SqlitePool, code: &str, reward: &str, limit_uses: i64, expires: &str) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT OR REPLACE INTO promocodes (code, reward, used, limit_uses, expires, active) VALUES (?, ?, 0, ?, ?, 1)"
+    )
+    .bind(code)
+    .bind(reward)
+    .bind(limit_uses)
+    .bind(expires)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn toggle_promocode(pool: &SqlitePool, code: &str) -> Result<i64, sqlx::Error> {
+    let row = sqlx::query("SELECT active FROM promocodes WHERE code = ?")
+        .bind(code)
+        .fetch_optional(pool)
+        .await?;
+
+    if let Some(r) = row {
+        let act: i64 = r.get("active");
+        let new_act = if act == 1 { 0 } else { 1 };
+        sqlx::query("UPDATE promocodes SET active = ? WHERE code = ?")
+            .bind(new_act)
+            .bind(code)
+            .execute(pool)
+            .await?;
+        Ok(new_act)
+    } else {
+        Ok(0)
+    }
+}
+
+pub async fn delete_promocode(pool: &SqlitePool, code: &str) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM promocodes WHERE code = ?")
+        .bind(code)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+

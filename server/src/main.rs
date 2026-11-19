@@ -216,17 +216,25 @@ async fn main() {
 
     let router = Router::new()
         .route("/", get(index))
+        .route("/admin", get(admin_page))
+        .route("/admin.html", get(admin_page))
         .route("/api/players", get(api_players))
         .route("/api/admin/stats", get(api_admin_stats))
         .route("/api/admin/ban", post(api_ban))
         .route("/api/admin/unban", post(api_unban))
         .route("/api/admin/mute", post(api_mute))
         .route("/api/admin/unmute", post(api_unmute))
+        .route("/api/admin/kick", post(api_kick))
+        .route("/api/admin/broadcast", post(api_broadcast))
         .route("/api/admin/bans", get(api_list_bans))
         .route("/api/admin/logs", get(api_admin_logs))
         .route("/api/admin/tickets", get(api_tickets))
         .route("/api/admin/ticket/create", post(api_create_ticket))
         .route("/api/admin/ticket/update", post(api_update_ticket))
+        .route("/api/admin/promos", get(api_get_promos))
+        .route("/api/admin/promo/create", post(api_create_promo))
+        .route("/api/admin/promo/toggle", post(api_toggle_promo))
+        .route("/api/admin/promo/delete", post(api_delete_promo))
         .route("/api/admin/config", get(api_get_config))
         .route("/api/admin/config/set", post(api_set_config))
         .route("/api/version", get(api_version))
@@ -255,12 +263,21 @@ fn page(title: &str, body: &str) -> Html<String> {
     ))
 }
 
-async fn index(State(app): State<App>) -> Html<String> {
+async fn admin_page() -> Html<&'static str> {
+    Html(include_str!("../admin.html"))
+}
+
+async fn index(headers: HeaderMap, State(app): State<App>) -> Response {
+    if let Some(host) = headers.get("host").and_then(|h| h.to_str().ok()) {
+        if host.starts_with("admin.") {
+            return admin_page().await.into_response();
+        }
+    }
     let w = app.world.lock().await;
     let mut names: Vec<String> = w.players.values().map(|c| esc(&c.state.name)).collect();
     names.sort();
     let rows: String = names.iter().map(|n| format!("<li>{n}</li>")).collect();
-    page("Pixel Village: онлайн", &format!("<h1>Онлайн: {}</h1><ul>{rows}</ul>", names.len()))
+    page("Pixel Village: онлайн", &format!("<h1>Онлайн: {}</h1><ul>{rows}</ul><p style='margin-top:20px;'><a href='/admin' style='color:#5fcf6e;font-weight:bold;'>👉 Панель Адміністратора (/admin)</a></p>", names.len())).into_response()
 }
 
 async fn api_version() -> Json<serde_json::Value> {
@@ -886,3 +903,148 @@ async fn api_set_config(State(app): State<App>, Json(req): Json<ConfigSetReq>) -
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка: {}", e)).into_response()
     }
 }
+
+#[derive(serde::Deserialize)]
+struct KickRequest {
+    player: String,
+    reason: Option<String>,
+    admin: Option<String>,
+}
+
+async fn api_kick(State(app): State<App>, headers: HeaderMap, Json(req): Json<KickRequest>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
+    }
+
+    let player_name = req.player;
+    let reason = req.reason.unwrap_or_else(|| "Відключено адміністратором".to_string());
+    let admin = req.admin.unwrap_or_else(|| "Адміністратор".to_string());
+
+    let mut w = app.world.lock().await;
+    let player_id = w.players.iter().find(|(_, c)| c.state.name == player_name).map(|(id, _)| *id);
+
+    if let Some(pid) = player_id {
+        if let Some(c) = w.players.get(&pid) {
+            let msg = format!("Вас відключено адміністратором: {}. Адмін: {}", reason, admin);
+            reply(c, &ServerMsg::Err { text: msg });
+        }
+        w.players.remove(&pid);
+        let _ = db::add_log(&app.db, &admin, &format!("Кік гравця {}: {}", player_name, reason)).await;
+        Json(serde_json::json!({
+            "success": true,
+            "message": format!("Гравця {} відключено", player_name)
+        })).into_response()
+    } else {
+        Json(serde_json::json!({
+            "success": false,
+            "message": format!("Гравця {} не знайдено серед онлайн гравців", player_name)
+        })).into_response()
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct BroadcastRequest {
+    message: String,
+    admin: Option<String>,
+}
+
+async fn api_broadcast(State(app): State<App>, headers: HeaderMap, Json(req): Json<BroadcastRequest>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
+    }
+
+    let text = req.message.trim().to_string();
+    if text.is_empty() {
+        return (StatusCode::BAD_REQUEST, "Повідомлення не може бути порожнім").into_response();
+    }
+    let admin = req.admin.unwrap_or_else(|| "Адміністратор".to_string());
+
+    let broadcast_msg = format!("📢 [Оголошення] {}", text);
+    let msg_obj = ServerMsg::Err { text: broadcast_msg };
+    let json_msg = enc(&msg_obj);
+
+    // Send to broadcast channel
+    let _ = app.tx.send(json_msg.clone());
+
+    // Also send directly to each player
+    {
+        let w = app.world.lock().await;
+        for c in w.players.values() {
+            let _ = c.tx.send(json_msg.clone());
+        }
+    }
+
+    let _ = db::add_log(&app.db, &admin, &format!("Оголошення: {}", text)).await;
+
+    Json(serde_json::json!({
+        "success": true,
+        "message": "Оголошення надіслано всім гравцям"
+    })).into_response()
+}
+
+async fn api_get_promos(State(app): State<App>, headers: HeaderMap) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
+    }
+
+    match db::get_promocodes(&app.db).await {
+        Ok(promos) => Json(promos).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка БД: {}", e)).into_response()
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct PromoCreateReq {
+    code: String,
+    reward: String,
+    limit_uses: i64,
+    expires: String,
+}
+
+async fn api_create_promo(State(app): State<App>, headers: HeaderMap, Json(req): Json<PromoCreateReq>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
+    }
+
+    match db::add_promocode(&app.db, &req.code, &req.reward, req.limit_uses, &req.expires).await {
+        Ok(_) => {
+            let _ = db::add_log(&app.db, "admin", &format!("Створено промокод: {}", req.code)).await;
+            Json(serde_json::json!({ "success": true, "message": "Промокод створено" })).into_response()
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка БД: {}", e)).into_response()
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct PromoActionReq {
+    code: String,
+}
+
+async fn api_toggle_promo(State(app): State<App>, headers: HeaderMap, Json(req): Json<PromoActionReq>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
+    }
+
+    match db::toggle_promocode(&app.db, &req.code).await {
+        Ok(new_status) => {
+            let _ = db::add_log(&app.db, "admin", &format!("Статус промокоду {}: {}", req.code, if new_status == 1 { "увімкнено" } else { "вимкнено" })).await;
+            Json(serde_json::json!({ "success": true, "active": new_status })).into_response()
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка БД: {}", e)).into_response()
+    }
+}
+
+async fn api_delete_promo(State(app): State<App>, headers: HeaderMap, Json(req): Json<PromoActionReq>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
+    }
+
+    match db::delete_promocode(&app.db, &req.code).await {
+        Ok(_) => {
+            let _ = db::add_log(&app.db, "admin", &format!("Видалено промокод: {}", req.code)).await;
+            Json(serde_json::json!({ "success": true })).into_response()
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка БД: {}", e)).into_response()
+    }
+}
+

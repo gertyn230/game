@@ -1,0 +1,1970 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pixel Village — Панель Адміністратора</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-dark: #090d16;
+  --bg-card: #111726;
+  --bg-card-hover: #161e31;
+  --bg-input: #0c121e;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: #10b981;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --accent-green: #10b981;
+  --accent-green-glow: rgba(16, 185, 129, 0.2);
+  --accent-blue: #38bdf8;
+  --accent-blue-glow: rgba(56, 189, 248, 0.2);
+  --accent-amber: #f59e0b;
+  --accent-rose: #f43f5e;
+  --accent-purple: #a855f7;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  overflow-x: hidden;
+}
+
+/* Sidebar */
+aside {
+  width: 250px;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  flex-shrink: 0;
+  z-index: 50;
+  transition: transform 0.25s ease;
+}
+
+.brand {
+  padding: 20px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 0 15px var(--accent-green-glow);
+}
+.brand-text h2 {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+  line-height: 1.2;
+}
+.brand-text span {
+  font-size: 11px;
+  color: var(--accent-green);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.nav-links {
+  padding: 16px 10px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 13.5px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+.nav-link:hover {
+  background: var(--bg-card-hover);
+  color: #fff;
+}
+.nav-link.active {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent-green);
+  border-color: rgba(16, 185, 129, 0.3);
+  font-weight: 600;
+}
+.nav-link .badge {
+  margin-left: auto;
+  background: var(--bg-input);
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+.nav-link.active .badge {
+  background: var(--accent-green);
+  color: #000;
+  font-weight: 700;
+}
+
+.aside-footer {
+  padding: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.server-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-input);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  box-shadow: 0 0 8px var(--accent-green);
+}
+.status-dot.offline {
+  background: var(--accent-rose);
+  box-shadow: 0 0 8px var(--accent-rose);
+}
+
+/* Main Content Area */
+main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Header */
+header {
+  height: 64px;
+  background: rgba(17, 23, 38, 0.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.mobile-toggle {
+  display: none;
+  background: none;
+  border: 1px solid var(--border);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 18px;
+}
+.page-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.key-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.key-badge:hover {
+  border-color: var(--accent-blue);
+}
+.key-badge.valid {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+.key-badge.invalid {
+  border-color: rgba(244, 63, 94, 0.5);
+  background: rgba(244, 63, 94, 0.08);
+}
+
+/* Content Container */
+.container {
+  padding: 24px;
+  flex: 1;
+  max-width: 1300px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Sections */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Grid Cards */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.metric-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: transparent;
+}
+.metric-card.green::before { background: var(--accent-green); }
+.metric-card.blue::before { background: var(--accent-blue); }
+.metric-card.amber::before { background: var(--accent-amber); }
+.metric-card.rose::before { background: var(--accent-rose); }
+.metric-card.purple::before { background: var(--accent-purple); }
+
+.metric-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.metric-value {
+  font-size: 28px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: #fff;
+  line-height: 1.1;
+}
+.metric-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* Standard Panel / Card */
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.panel-title {
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-subtitle {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+
+/* Tables */
+.table-responsive {
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+th {
+  background: var(--bg-input);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-main);
+  white-space: nowrap;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+/* Badges & Tags */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.tag-green { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+.tag-blue { background: rgba(56, 189, 248, 0.15); color: var(--accent-blue); border: 1px solid rgba(56, 189, 248, 0.3); }
+.tag-amber { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
+.tag-rose { background: rgba(244, 63, 94, 0.15); color: var(--accent-rose); border: 1px solid rgba(244, 63, 94, 0.3); }
+.tag-gray { background: rgba(148, 163, 184, 0.12); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-main);
+  text-decoration: none;
+}
+.btn:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.btn-primary {
+  background: var(--accent-green);
+  color: #062419;
+  border-color: var(--accent-green);
+}
+.btn-primary:hover {
+  background: #0ea572;
+  box-shadow: 0 0 12px var(--accent-green-glow);
+}
+.btn-danger {
+  background: rgba(244, 63, 94, 0.15);
+  color: var(--accent-rose);
+  border-color: rgba(244, 63, 94, 0.3);
+}
+.btn-danger:hover {
+  background: var(--accent-rose);
+  color: #fff;
+}
+.btn-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--accent-amber);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.btn-warning:hover {
+  background: var(--accent-amber);
+  color: #000;
+}
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 11.5px;
+}
+
+/* Forms & Inputs */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+input, select, textarea {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  padding: 8px 12px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+.input-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+/* World Map Radar */
+.radar-container {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  background: #1b261b;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+}
+#radarCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.radar-legend {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* Toast Notifications */
+#toastContainer {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 100;
+  pointer-events: none;
+}
+.toast {
+  background: #1e293b;
+  color: #fff;
+  border: 1px solid var(--border);
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: toastIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: auto;
+}
+.toast.success { border-left: 4px solid var(--accent-green); }
+.toast.error { border-left: 4px solid var(--accent-rose); }
+.toast.info { border-left: 4px solid var(--accent-blue); }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 90;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  padding: 16px;
+}
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 480px;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  transform: translateY(15px);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-overlay.open .modal {
+  transform: translateY(0);
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.modal-title {
+  font-size: 17px;
+  font-weight: 700;
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 20px;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+.empty-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+/* Mobile responsive */
+@media (max-width: 860px) {
+  aside {
+    position: fixed;
+    transform: translateX(-100%);
+  }
+  aside.open {
+    transform: translateX(0);
+  }
+  .mobile-toggle {
+    display: block;
+  }
+  .container {
+    padding: 16px;
+  }
+  .metrics-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 480px) {
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside id="sidebar">
+  <div class="brand">
+    <div class="brand-icon">🎮</div>
+    <div class="brand-text">
+      <h2>Pixel Village</h2>
+      <span>Admin Console</span>
+    </div>
+  </div>
+
+  <nav class="nav-links">
+    <button class="nav-link active" data-tab="overview">
+      <span>📊</span> Огляд & Гравці
+      <span class="badge" id="badgeOnline">0</span>
+    </button>
+    <button class="nav-link" data-tab="radar">
+      <span>🗺️</span> Жива Радар-Карта
+    </button>
+    <button class="nav-link" data-tab="moderation">
+      <span>⚖️</span> Модерація & Бани
+      <span class="badge" id="badgeBans">0</span>
+    </button>
+    <button class="nav-link" data-tab="tickets">
+      <span>🎫</span> Тікети підтримки
+      <span class="badge" id="badgeTickets">0</span>
+    </button>
+    <button class="nav-link" data-tab="promos">
+      <span>🎁</span> Промокоди
+    </button>
+    <button class="nav-link" data-tab="broadcast">
+      <span>📢</span> Оголошення гравцям
+    </button>
+    <button class="nav-link" data-tab="logs">
+      <span>📜</span> Журнал аудиту
+    </button>
+    <button class="nav-link" data-tab="settings">
+      <span>⚙️</span> Налаштування
+    </button>
+  </nav>
+
+  <div class="aside-footer">
+    <div class="server-status-pill">
+      <div class="status-dot" id="serverStatusDot"></div>
+      <span id="serverStatusText" style="flex:1;">Підключення...</span>
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);" id="pingMs">--ms</span>
+    </div>
+    <div style="color:var(--text-dim);font-size:11px;text-align:center;">
+      Версія v<span id="serverVersion">1.7.4</span>
+    </div>
+  </div>
+</aside>
+
+<!-- Main Wrapper -->
+<main>
+  <!-- Header -->
+  <header>
+    <div class="header-left">
+      <button class="mobile-toggle" id="mobileToggle">☰</button>
+      <div class="page-title" id="pageTitle">Огляд та активні гравці</div>
+    </div>
+    <div class="header-actions">
+      <div class="key-badge" id="keyBadge" title="Натисніть для зміни ADMIN_KEY">
+        <span>🔑</span> <span id="keyText">Встановити ключ</span>
+      </div>
+      <button class="btn btn-sm" id="btnRefresh" title="Оновити дані зараз">
+        🔄 Оновити
+      </button>
+    </div>
+  </header>
+
+  <!-- Container -->
+  <div class="container">
+
+    <!-- TAB 1: OVERVIEW & PLAYERS -->
+    <div class="tab-content active" id="tab-overview">
+      <div class="metrics-grid">
+        <div class="metric-card green">
+          <div class="metric-title">
+            <span>Онлайн гравців</span>
+            <span>🟢</span>
+          </div>
+          <div class="metric-value" id="statOnline">0</div>
+          <div class="metric-sub">Реальний час на сервері</div>
+        </div>
+
+        <div class="metric-card rose">
+          <div class="metric-title">
+            <span>Активні бани</span>
+            <span>🚫</span>
+          </div>
+          <div class="metric-value" id="statBans">0</div>
+          <div class="metric-sub">Заблоковані акаунти</div>
+        </div>
+
+        <div class="metric-card amber">
+          <div class="metric-title">
+            <span>Активні мути</span>
+            <span>🔇</span>
+          </div>
+          <div class="metric-value" id="statMutes">0</div>
+          <div class="metric-sub">Обмеження чату</div>
+        </div>
+
+        <div class="metric-card blue">
+          <div class="metric-title">
+            <span>Відкриті тікети</span>
+            <span>🎫</span>
+          </div>
+          <div class="metric-value" id="statTickets">0</div>
+          <div class="metric-sub">Очікують відповіді</div>
+        </div>
+
+        <div class="metric-card purple">
+          <div class="metric-title">
+            <span>Лотів на ринку</span>
+            <span>🛒</span>
+          </div>
+          <div class="metric-value" id="statOffers">0</div>
+          <div class="metric-sub">Активна торгівля</div>
+        </div>
+      </div>
+
+      <!-- Real Players Table -->
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">👥 Підключені гравці в реальному часі</div>
+            <div class="panel-subtitle">Оновлюється автоматично кожні 3 секунди</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="playerSearch" placeholder="Пошук за ніком..." style="width:180px;padding:5px 10px;font-size:12px;">
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Нікнейм</th>
+                <th>Пристрій / ОС</th>
+                <th>Очки</th>
+                <th>Координати</th>
+                <th>Час онлайн</th>
+                <th>Дії</th>
+              </tr>
+            </thead>
+            <tbody id="playersTableBody">
+              <tr>
+                <td colspan="7" class="empty-state">
+                  <div class="empty-icon">⏳</div>
+                  Завантаження списку гравців...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Quick Server Announcement Banner -->
+      <div class="panel" style="background:linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(56, 189, 248, 0.05));border-color:rgba(16, 185, 129, 0.2);">
+        <div class="panel-title" style="margin-bottom:8px;">📢 Швидке оголошення всім гравцям</div>
+        <p style="color:var(--text-muted);font-size:12.5px;margin-bottom:12px;">Повідомлення з'явиться прямо на екранах усіх, хто зараз у грі (Windows та Android).</p>
+        <div class="input-row">
+          <input type="text" id="quickBroadcastMsg" placeholder="Введіть текст оголошення (напр. 'Сервер оновиться через 10 хвилин')..." style="flex:1;min-width:260px;">
+          <button class="btn btn-primary" id="btnSendQuickBroadcast">Надіслати всім</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: RADAR MAP -->
+    <div class="tab-content" id="tab-radar">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">🗺️ Жива Радар-Карта Світу (40 × 40)</div>
+            <div class="panel-subtitle">Точне розташування гравців на карті Pixel Village в реальному часі</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="checkbox" id="chkShowCoords" checked> Показати координати
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="checkbox" id="chkShowNames" checked> Нікнейми
+            </label>
+          </div>
+        </div>
+
+        <div class="radar-container">
+          <canvas id="radarCanvas" width="600" height="600"></canvas>
+        </div>
+
+        <div class="radar-legend">
+          <div class="legend-item"><div class="legend-color" style="background:#22c55e;"></div> Трава / Селище</div>
+          <div class="legend-item"><div class="legend-color" style="background:#15803d;"></div> Ліс</div>
+          <div class="legend-item"><div class="legend-color" style="background:#0284c7;"></div> Річка & Озеро</div>
+          <div class="legend-item"><div class="legend-color" style="background:#f59e0b;border-radius:50%;"></div> Гравець</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: MODERATION -->
+    <div class="tab-content" id="tab-moderation">
+      <!-- Quick Action Panel -->
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:12px;">⚡ Швидке покарання порушника</div>
+        <div class="input-row">
+          <div class="form-group" style="flex:1;min-width:180px;margin-bottom:0;">
+            <label>Нікнейм гравця</label>
+            <input type="text" id="modPlayerName" placeholder="Введіть нікнейм">
+          </div>
+          <div class="form-group" style="width:140px;margin-bottom:0;">
+            <label>Тип дії</label>
+            <select id="modActionType">
+              <option value="ban">🚫 Бан</option>
+              <option value="mute">🔇 Мут</option>
+              <option value="kick">👢 Кік</option>
+            </select>
+          </div>
+          <div class="form-group" style="width:160px;margin-bottom:0;" id="modDurationGroup">
+            <label>Тривалість</label>
+            <select id="modHours">
+              <option value="1">1 година</option>
+              <option value="6">6 годин</option>
+              <option value="24" selected>24 години (1 доба)</option>
+              <option value="168">7 днів</option>
+              <option value="0">Назавжди</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:2;min-width:200px;margin-bottom:0;">
+            <label>Причина</label>
+            <input type="text" id="modReason" placeholder="Порушення правил, спам, чіти...">
+          </div>
+          <button class="btn btn-danger" id="btnApplyMod" style="height:38px;">Застосувати</button>
+        </div>
+      </div>
+
+      <!-- Bans Table -->
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:14px;">🚫 Активні блокування (Бани)</div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Гравець</th>
+                <th>Причина</th>
+                <th>Хто забанив</th>
+                <th>Дата блокування</th>
+                <th>Термін дії</th>
+                <th>Дія</th>
+              </tr>
+            </thead>
+            <tbody id="bansTableBody">
+              <tr><td colspan="6" class="empty-state">Немає активних банів</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Mutes Table -->
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:14px;">🔇 Активні мути (Обмеження чату)</div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Гравець</th>
+                <th>Причина</th>
+                <th>Хто видав</th>
+                <th>Дата видачі</th>
+                <th>Термін дії</th>
+                <th>Дія</th>
+              </tr>
+            </thead>
+            <tbody id="mutesTableBody">
+              <tr><td colspan="6" class="empty-state">Немає активних мутів</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: TICKETS -->
+    <div class="tab-content" id="tab-tickets">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">🎫 Тікети підтримки від гравців</div>
+            <div class="panel-subtitle">Збережені в SQLite базі даних сервера</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <select id="ticketFilterStatus" style="font-size:12px;padding:4px 8px;">
+              <option value="">Усі статуси</option>
+              <option value="нова">Нові</option>
+              <option value="в роботі">В роботі</option>
+              <option value="вирішено">Вирішені</option>
+              <option value="закрито">Закриті</option>
+            </select>
+            <button class="btn btn-sm" id="btnNewTestTicket">➕ Створити тікет</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>#ID</th>
+                <th>Гравець</th>
+                <th>Тип</th>
+                <th>Тема</th>
+                <th>Статус</th>
+                <th>Дата створення</th>
+                <th>Дії</th>
+              </tr>
+            </thead>
+            <tbody id="ticketsTableBody">
+              <tr><td colspan="7" class="empty-state">Немає тікетів</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: PROMOS -->
+    <div class="tab-content" id="tab-promos">
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:12px;">🎁 Створити новий промокод</div>
+        <div class="input-row">
+          <div class="form-group" style="flex:1;min-width:160px;margin-bottom:0;">
+            <label>Промокод</label>
+            <div style="display:flex;gap:6px;">
+              <input type="text" id="promoCodeInput" placeholder="WELCOME2026" style="text-transform:uppercase;flex:1;">
+              <button class="btn btn-sm" id="btnGenPromo" type="button" title="Згенерувати випадковий">🎲</button>
+            </div>
+          </div>
+          <div class="form-group" style="flex:2;min-width:200px;margin-bottom:0;">
+            <label>Нагорода</label>
+            <input type="text" id="promoRewardInput" placeholder="500 монет, Золота вудка...">
+          </div>
+          <div class="form-group" style="width:130px;margin-bottom:0;">
+            <label>Ліміт активацій</label>
+            <input type="number" id="promoLimitInput" value="100" min="1">
+          </div>
+          <div class="form-group" style="width:140px;margin-bottom:0;">
+            <label>Термін дії</label>
+            <select id="promoExpiresInput">
+              <option value="7 днів">7 днів</option>
+              <option value="30 днів" selected>30 днів</option>
+              <option value="Назавжди">Безстроково</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btnCreatePromo" style="height:38px;">Зберегти код</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:14px;">📋 Список активних промокодів</div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Код</th>
+                <th>Нагорода</th>
+                <th>Використано / Ліміт</th>
+                <th>Термін</th>
+                <th>Статус</th>
+                <th>Дії</th>
+              </tr>
+            </thead>
+            <tbody id="promosTableBody">
+              <tr><td colspan="6" class="empty-state">Немає створених промокодів</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: BROADCAST -->
+    <div class="tab-content" id="tab-broadcast">
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:8px;">📢 Глобальне сповіщення (Серверна розсилка)</div>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">
+          Надішліть важливе системне повідомлення або анонс події. Повідомлення миттєво з'явиться у всіх підключених гравців.
+        </p>
+
+        <div class="form-group">
+          <label>Текст сповіщення</label>
+          <textarea id="fullBroadcastText" rows="4" placeholder="Введіть текст повідомлення..."></textarea>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;">
+          <button class="btn btn-primary" id="btnSendFullBroadcast">🚀 Надіслати всім гравцям</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 7: LOGS -->
+    <div class="tab-content" id="tab-logs">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">📜 Журнал аудиту дій (Admin Logs)</div>
+            <div class="panel-subtitle">Усі дії фіксуються в SQLite базі даних сервера</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="logSearch" placeholder="Пошук у логах..." style="font-size:12px;padding:4px 8px;width:180px;">
+            <button class="btn btn-sm" id="btnExportLogs">📥 Експорт CSV</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>#ID</th>
+                <th>Адміністратор</th>
+                <th>Дія</th>
+                <th>Дата та час</th>
+              </tr>
+            </thead>
+            <tbody id="logsTableBody">
+              <tr><td colspan="4" class="empty-state">Завантаження логів...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 8: SETTINGS -->
+    <div class="tab-content" id="tab-settings">
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:14px;">⚙️ Конфігурація підключення</div>
+        <div class="form-group">
+          <label>API Base URL</label>
+          <input type="text" id="cfgApiBase" placeholder="Залишіть порожнім для автовизначення">
+          <span style="font-size:11.5px;color:var(--text-dim);margin-top:2px;">
+            Поточна адреса: <strong id="curApiBaseLabel" style="color:var(--accent-blue);">--</strong>
+          </span>
+        </div>
+        <div class="form-group">
+          <label>ADMIN_KEY</label>
+          <div style="display:flex;gap:8px;">
+            <input type="password" id="cfgAdminKey" placeholder="Введіть секретний ADMIN_KEY" style="flex:1;">
+            <button class="btn" id="btnToggleKeyVisibility" type="button">👁️</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btnSaveConfig">Зберегти налаштування</button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:8px;">ℹ️ Інформація про сервер</div>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px;">Pixel Village Multiplayer Server (Rust + Axum + SQLite + WebSockets)</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <a href="https://github.com/gertyn230/game/releases" target="_blank" class="btn">🚀 GitHub Релізи</a>
+          <a href="/api/version" target="_blank" class="btn">📄 /api/version JSON</a>
+          <a href="/" target="_blank" class="btn">🌐 Публічна сторінка онлайн</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- Modal for ADMIN_KEY -->
+<div class="modal-overlay" id="keyModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🔑 Авторизація адміністратора</div>
+      <button class="modal-close" onclick="closeKeyModal()">✕</button>
+    </div>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">
+      Введіть ключ доступу <code style="color:var(--accent-green);">ADMIN_KEY</code> для виконання операцій модерації, розсилки оголошень та перегляду логів.
+    </p>
+    <div class="form-group">
+      <label>Секретний ADMIN_KEY</label>
+      <input type="password" id="inputModalKey" placeholder="Введіть ключ..." style="width:100%;">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
+      <button class="btn" onclick="closeKeyModal()">Скасувати</button>
+      <button class="btn btn-primary" id="btnSaveModalKey">Зберегти та увійти</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal for Ticket Details -->
+<div class="modal-overlay" id="ticketModal">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-header">
+      <div class="modal-title" id="tModalTitle">Деталі тікета</div>
+      <button class="modal-close" onclick="closeTicketModal()">✕</button>
+    </div>
+    <div id="tModalContent" style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+      <!-- Dynamic details -->
+    </div>
+    <div class="form-group">
+      <label>Змінити статус тікета</label>
+      <select id="tModalStatusSelect">
+        <option value="нова">Нова</option>
+        <option value="в роботі">В роботі</option>
+        <option value="вирішено">Вирішено</option>
+        <option value="закрито">Закрито</option>
+      </select>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
+      <button class="btn" onclick="closeTicketModal()">Закрити</button>
+      <button class="btn btn-primary" id="btnUpdateTicketStatus">Оновити статус</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer"></div>
+
+<script>
+// ==================== STATE & CONFIG ====================
+var state = {
+  adminKey: localStorage.getItem('pv_admin_key') || '',
+  apiBase: localStorage.getItem('pv_api_base') || '',
+  currentTab: 'overview',
+  activeTicketId: null,
+  cachedPlayers: [],
+  cachedBans: [],
+  cachedMutes: [],
+  cachedTickets: [],
+  cachedLogs: [],
+  cachedPromos: [],
+  refreshTimer: null,
+  isRefreshing: false
+};
+
+// Compute effective API base
+function getApiBase() {
+  if (state.apiBase) return state.apiBase.replace(/\/+$/, '');
+  // If running on admin.pixel-village.online, use same origin or api.pixel-village.online
+  if (window.location.hostname === 'admin.pixel-village.online') {
+    return 'https://api.pixel-village.online';
+  }
+  // Otherwise use same origin (relative URL)
+  return window.location.origin;
+}
+
+// Toast helper
+function showToast(message, type = 'info') {
+  var c = document.getElementById('toastContainer');
+  var el = document.createElement('div');
+  el.className = 'toast ' + type;
+  var icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+  el.innerHTML = '<span>' + icon + '</span><span>' + escapeHtml(message) + '</span>';
+  c.appendChild(el);
+  setTimeout(function() {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(8px)';
+    el.style.transition = 'all 0.2s ease';
+    setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 200);
+  }, 3500);
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function formatTime(timestamp) {
+  if (!timestamp) return '—';
+  var d = new Date(timestamp * 1000);
+  return d.toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDuration(sec) {
+  if (sec == null) return '—';
+  var m = Math.floor(sec / 60);
+  var s = Math.floor(sec % 60);
+  if (m > 60) {
+    var h = Math.floor(m / 60);
+    m = m % 60;
+    return h + ' год ' + m + ' хв';
+  }
+  return m + ' хв ' + s + ' с';
+}
+
+// API request helper with authentication
+async function api(method, endpoint, body) {
+  var url = getApiBase() + endpoint;
+  var headers = {
+    'Content-Type': 'application/json'
+  };
+  if (state.adminKey) {
+    headers['X-Admin-Key'] = state.adminKey;
+    headers['Authorization'] = 'Bearer ' + state.adminKey;
+  }
+
+  var opts = { method: method, headers: headers };
+  if (body) opts.body = JSON.stringify(body);
+
+  var startTime = performance.now();
+  try {
+    var res = await fetch(url, opts);
+    var latency = Math.round(performance.now() - startTime);
+    document.getElementById('pingMs').textContent = latency + 'ms';
+    setServerOnline(true);
+
+    if (res.status === 401) {
+      updateKeyBadge(false);
+      throw new Error('Невірний ADMIN_KEY або сесія завершена');
+    }
+    if (res.status === 429) {
+      throw new Error('Забагато спроб (Rate Limit). Зачекайте 5 хвилин.');
+    }
+    if (!res.ok) {
+      var errText = await res.text();
+      throw new Error(errText || ('Помилка HTTP ' + res.status));
+    }
+    updateKeyBadge(true);
+    return await res.json();
+  } catch (err) {
+    if (err.name === 'TypeError') {
+      setServerOnline(false);
+    }
+    throw err;
+  }
+}
+
+function setServerOnline(online) {
+  var dot = document.getElementById('serverStatusDot');
+  var text = document.getElementById('serverStatusText');
+  if (online) {
+    dot.className = 'status-dot';
+    text.textContent = 'Сервер онлайн';
+    text.style.color = 'var(--text-main)';
+  } else {
+    dot.className = 'status-dot offline';
+    text.textContent = 'Зв\'язок втрачено';
+    text.style.color = 'var(--accent-rose)';
+  }
+}
+
+function updateKeyBadge(isValid) {
+  var badge = document.getElementById('keyBadge');
+  var text = document.getElementById('keyText');
+  if (state.adminKey) {
+    badge.className = 'key-badge ' + (isValid ? 'valid' : 'invalid');
+    text.textContent = isValid ? 'Ключ активний' : 'Помилка ключа';
+  } else {
+    badge.className = 'key-badge';
+    text.textContent = 'Встановити ключ';
+  }
+}
+
+// ==================== TABS NAVIGATION ====================
+document.querySelectorAll('.nav-link').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var tab = this.dataset.tab;
+    switchTab(tab);
+  });
+});
+
+function switchTab(tabId) {
+  state.currentTab = tabId;
+  document.querySelectorAll('.nav-link').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.tab === tabId);
+  });
+  document.querySelectorAll('.tab-content').forEach(function(tc) {
+    tc.classList.toggle('active', tc.id === 'tab-' + tabId);
+  });
+
+  var titles = {
+    overview: 'Огляд та активні гравці',
+    radar: 'Жива Радар-Карта Світу',
+    moderation: 'Керування банами та мутами',
+    tickets: 'Тікети підтримки гравців',
+    promos: 'Керування промокодами',
+    broadcast: 'Глобальне оголошення гравцям',
+    logs: 'Журнал аудиту дій',
+    settings: 'Налаштування сервера'
+  };
+  document.getElementById('pageTitle').textContent = titles[tabId] || 'Панель керування';
+
+  if (tabId === 'radar') {
+    renderRadar();
+  }
+}
+
+// Mobile sidebar toggle
+document.getElementById('mobileToggle').onclick = function() {
+  document.getElementById('sidebar').classList.toggle('open');
+};
+
+// ==================== DATA FETCHING & RENDERING ====================
+async function refreshAll() {
+  if (state.isRefreshing) return;
+  state.isRefreshing = true;
+
+  try {
+    // 1. Fetch public players list (always works without admin key)
+    var playersData = await fetch(getApiBase() + '/api/players').then(r => r.json()).catch(() => null);
+    if (playersData && playersData.players) {
+      state.cachedPlayers = playersData.players;
+      renderPlayers(playersData.players);
+      document.getElementById('statOnline').textContent = playersData.count || playersData.players.length;
+      document.getElementById('badgeOnline').textContent = playersData.count || playersData.players.length;
+      if (state.currentTab === 'radar') renderRadar();
+    }
+
+    // 2. Fetch admin stats if key exists
+    if (state.adminKey) {
+      try {
+        var stats = await api('GET', '/api/admin/stats');
+        if (stats) {
+          if (stats.players && stats.players.list) {
+            state.cachedPlayers = stats.players.list;
+            renderPlayers(stats.players.list);
+            document.getElementById('statOnline').textContent = stats.players.online;
+            document.getElementById('badgeOnline').textContent = stats.players.online;
+          }
+          if (stats.moderation) {
+            document.getElementById('statBans').textContent = stats.moderation.active_bans || 0;
+            document.getElementById('badgeBans').textContent = stats.moderation.active_bans || 0;
+            document.getElementById('statMutes').textContent = stats.moderation.active_mutes || 0;
+          }
+          if (stats.market) {
+            document.getElementById('statOffers').textContent = stats.market.offers_count || 0;
+          }
+        }
+      } catch (e) {
+        // Admin stats failed (unauthorized or key missing)
+      }
+
+      // 3. Fetch active bans & mutes
+      try {
+        var banData = await api('GET', '/api/admin/bans');
+        if (banData) {
+          state.cachedBans = banData.bans || [];
+          state.cachedMutes = banData.mutes || [];
+          renderBans(state.cachedBans);
+          renderMutes(state.cachedMutes);
+        }
+      } catch (e) {}
+
+      // 4. Fetch tickets
+      try {
+        var tData = await api('GET', '/api/admin/tickets');
+        if (Array.isArray(tData)) {
+          state.cachedTickets = tData;
+          renderTickets(tData);
+          var openCount = tData.filter(t => t.status === 'нова' || t.status === 'в роботі').length;
+          document.getElementById('statTickets').textContent = openCount;
+          document.getElementById('badgeTickets').textContent = openCount;
+        }
+      } catch (e) {}
+
+      // 5. Fetch Promos
+      try {
+        var pData = await api('GET', '/api/admin/promos');
+        if (Array.isArray(pData)) {
+          state.cachedPromos = pData;
+          renderPromos(pData);
+        }
+      } catch (e) {}
+
+      // 6. Fetch Logs
+      try {
+        var lData = await api('GET', '/api/admin/logs?limit=50');
+        if (Array.isArray(lData)) {
+          state.cachedLogs = lData;
+          renderLogs(lData);
+        }
+      } catch (e) {}
+    }
+
+  } catch (err) {
+    console.warn('Refresh error:', err);
+  } finally {
+    state.isRefreshing = false;
+  }
+}
+
+// Render Players Table
+function renderPlayers(players) {
+  var tbody = document.getElementById('playersTableBody');
+  var query = (document.getElementById('playerSearch').value || '').toLowerCase();
+  var filtered = (players || []).filter(p => !query || p.name.toLowerCase().includes(query));
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="empty-icon">🌱</div>Зараз немає підключених гравців</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(function(p) {
+    var dev = p.device ? (p.device.os + ' ' + (p.device.arch || '')) : 'Клієнт';
+    var pos = p.position ? ('x: ' + Math.round(p.position.x) + ', y: ' + Math.round(p.position.y)) : '—';
+    var time = formatDuration(p.online_seconds);
+    var score = p.score || 0;
+
+    return '<tr>' +
+      '<td><span class="tag tag-gray">#' + p.id + '</span></td>' +
+      '<td><strong style="color:#fff;">' + escapeHtml(p.name) + '</strong></td>' +
+      '<td><span class="tag tag-blue">' + escapeHtml(dev) + '</span></td>' +
+      '<td><span class="tag tag-green">' + score + '</span></td>' +
+      '<td style="font-family:var(--font-mono);font-size:12px;">' + pos + '</td>' +
+      '<td style="color:var(--text-muted);">' + time + '</td>' +
+      '<td>' +
+        '<div style="display:flex;gap:6px;">' +
+          '<button class="btn btn-sm btn-danger" onclick="quickAction(\'kick\', \'' + escapeHtml(p.name) + '\')">Кік</button>' +
+          '<button class="btn btn-sm btn-warning" onclick="quickAction(\'mute\', \'' + escapeHtml(p.name) + '\')">Мут</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="quickAction(\'ban\', \'' + escapeHtml(p.name) + '\')">Бан</button>' +
+        '</div>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// Render Bans Table
+function renderBans(bans) {
+  var tbody = document.getElementById('bansTableBody');
+  if (!bans || !bans.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Немає активних блокувань</td></tr>';
+    return;
+  }
+  tbody.innerHTML = bans.map(function(b) {
+    var expires = b.expires_at ? formatTime(b.expires_at) : '<span class="tag tag-rose">Назавжди</span>';
+    return '<tr>' +
+      '<td><strong style="color:var(--accent-rose);">' + escapeHtml(b.player_name) + '</strong></td>' +
+      '<td>' + escapeHtml(b.reason) + '</td>' +
+      '<td>' + escapeHtml(b.banned_by) + '</td>' +
+      '<td>' + formatTime(b.banned_at) + '</td>' +
+      '<td>' + expires + '</td>' +
+      '<td><button class="btn btn-sm btn-primary" onclick="unbanPlayer(\'' + escapeHtml(b.player_name) + '\')">Розбанити</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+// Render Mutes Table
+function renderMutes(mutes) {
+  var tbody = document.getElementById('mutesTableBody');
+  if (!mutes || !mutes.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Немає активних мутів</td></tr>';
+    return;
+  }
+  tbody.innerHTML = mutes.map(function(m) {
+    var expires = m.expires_at ? formatTime(m.expires_at) : '<span class="tag tag-amber">Назавжди</span>';
+    return '<tr>' +
+      '<td><strong style="color:var(--accent-amber);">' + escapeHtml(m.player_name) + '</strong></td>' +
+      '<td>' + escapeHtml(m.reason) + '</td>' +
+      '<td>' + escapeHtml(m.muted_by) + '</td>' +
+      '<td>' + formatTime(m.muted_at) + '</td>' +
+      '<td>' + expires + '</td>' +
+      '<td><button class="btn btn-sm btn-primary" onclick="unmutePlayer(\'' + escapeHtml(m.player_name) + '\')">Розмутити</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+// Render Tickets
+function renderTickets(tickets) {
+  var tbody = document.getElementById('ticketsTableBody');
+  var filter = document.getElementById('ticketFilterStatus').value;
+  var filtered = filter ? tickets.filter(t => t.status === filter) : tickets;
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Немає тікетів у цій категорії</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(function(t) {
+    var tagClass = t.status === 'нова' ? 'tag-rose' : t.status === 'в роботі' ? 'tag-amber' : 'tag-green';
+    return '<tr>' +
+      '<td><span class="tag tag-gray">#' + t.id + '</span></td>' +
+      '<td><strong>' + escapeHtml(t.player) + '</strong></td>' +
+      '<td><span class="tag tag-blue">' + escapeHtml(t.ticket_type || 'Запит') + '</span></td>' +
+      '<td>' + escapeHtml(t.subject) + '</td>' +
+      '<td><span class="tag ' + tagClass + '">' + escapeHtml(t.status) + '</span></td>' +
+      '<td>' + formatTime(t.created_at) + '</td>' +
+      '<td><button class="btn btn-sm" onclick="openTicketModal(' + t.id + ')">Деталі</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+// Render Promos
+function renderPromos(promos) {
+  var tbody = document.getElementById('promosTableBody');
+  if (!promos || !promos.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Немає активних промокодів</td></tr>';
+    return;
+  }
+  tbody.innerHTML = promos.map(function(p) {
+    var isAct = p.active === 1;
+    var statusBadge = isAct ? '<span class="tag tag-green">Активний</span>' : '<span class="tag tag-rose">Вимкнений</span>';
+    return '<tr>' +
+      '<td><strong style="font-family:var(--font-mono);color:var(--accent-blue);">' + escapeHtml(p.code) + '</strong></td>' +
+      '<td>' + escapeHtml(p.reward) + '</td>' +
+      '<td>' + p.used + ' / ' + p.limit_uses + '</td>' +
+      '<td>' + escapeHtml(p.expires) + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td>' +
+        '<div style="display:flex;gap:6px;">' +
+          '<button class="btn btn-sm" onclick="copyToClipboard(\'' + escapeHtml(p.code) + '\')">📋</button>' +
+          '<button class="btn btn-sm ' + (isAct ? 'btn-warning' : 'btn-primary') + '" onclick="togglePromo(\'' + escapeHtml(p.code) + '\')">' + (isAct ? 'Вимкнути' : 'Увімкнути') + '</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="deletePromo(\'' + escapeHtml(p.code) + '\')">🗑️</button>' +
+        '</div>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// Render Logs
+function renderLogs(logs) {
+  var tbody = document.getElementById('logsTableBody');
+  var query = (document.getElementById('logSearch').value || '').toLowerCase();
+  var filtered = logs.filter(l => !query || l.action.toLowerCase().includes(query) || l.admin.toLowerCase().includes(query));
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Логів не знайдено</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(function(l) {
+    return '<tr>' +
+      '<td><span class="tag tag-gray">#' + l.id + '</span></td>' +
+      '<td><strong style="color:var(--accent-blue);">' + escapeHtml(l.admin) + '</strong></td>' +
+      '<td style="font-family:var(--font-mono);font-size:12.5px;">' + escapeHtml(l.action) + '</td>' +
+      '<td style="color:var(--text-muted);">' + formatTime(l.timestamp) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ==================== RADAR CANVAS ====================
+function renderRadar() {
+  var canvas = document.getElementById('radarCanvas');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var w = canvas.width;
+  var h = canvas.height;
+  var worldSize = 40.0;
+
+  // Clear background
+  ctx.fillStyle = '#1e291e';
+  ctx.fillRect(0, 0, w, h);
+
+  // Draw River / Lake
+  ctx.fillStyle = '#0284c7';
+  ctx.beginPath();
+  // River winding through map
+  ctx.moveTo(w * 0.45, 0);
+  ctx.bezierCurveTo(w * 0.5, h * 0.3, w * 0.35, h * 0.6, w * 0.55, h);
+  ctx.lineTo(w * 0.65, h);
+  ctx.bezierCurveTo(w * 0.45, h * 0.6, w * 0.6, h * 0.3, w * 0.55, 0);
+  ctx.fill();
+
+  // Lake on east side
+  ctx.beginPath();
+  ctx.ellipse(w * 0.8, h * 0.7, w * 0.12, h * 0.08, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Forest patches
+  ctx.fillStyle = 'rgba(21, 128, 61, 0.4)';
+  ctx.fillRect(0, 0, w * 0.35, h * 0.35);
+  ctx.fillRect(w * 0.7, 0, w * 0.3, h * 0.4);
+
+  // Village Spawn Center
+  ctx.fillStyle = 'rgba(234, 179, 8, 0.15)';
+  ctx.beginPath();
+  ctx.arc(w * 0.5, h * 0.5, w * 0.15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(234, 179, 8, 0.4)';
+  ctx.stroke();
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.lineWidth = 1;
+  for (var i = 0; i <= worldSize; i += 5) {
+    var x = (i / worldSize) * w;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    var y = (i / worldSize) * h;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+
+  // Draw Players
+  var showNames = document.getElementById('chkShowNames').checked;
+  var showCoords = document.getElementById('chkShowCoords').checked;
+
+  (state.cachedPlayers || []).forEach(function(p) {
+    if (!p.position) return;
+    var px = (p.position.x / worldSize) * w;
+    var py = (p.position.y / worldSize) * h;
+
+    // Pulse Glow
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.3)';
+    ctx.beginPath();
+    ctx.arc(px, py, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Player Dot
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(px, py, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Name label
+    if (showNames) {
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 11px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(p.name, px, py - 8);
+    }
+    if (showCoords) {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('(' + Math.round(p.position.x) + ',' + Math.round(p.position.y) + ')', px, py + 14);
+    }
+  });
+}
+
+document.getElementById('chkShowNames').onchange = renderRadar;
+document.getElementById('chkShowCoords').onchange = renderRadar;
+
+// ==================== ACTIONS & HANDLERS ====================
+
+// Quick action from players table
+window.quickAction = function(action, playerName) {
+  if (action === 'kick') {
+    var reason = prompt('Причина кіку гравця ' + playerName + ':', 'Відключено адміністратором');
+    if (reason != null) {
+      api('POST', '/api/admin/kick', { player: playerName, reason: reason })
+        .then(function() {
+          showToast('Гравця ' + playerName + ' відключено', 'success');
+          refreshAll();
+        })
+        .catch(err => showToast(err.message, 'error'));
+    }
+  } else if (action === 'mute') {
+    switchTab('moderation');
+    document.getElementById('modPlayerName').value = playerName;
+    document.getElementById('modActionType').value = 'mute';
+  } else if (action === 'ban') {
+    switchTab('moderation');
+    document.getElementById('modPlayerName').value = playerName;
+    document.getElementById('modActionType').value = 'ban';
+  }
+};
+
+// Moderation Apply Button
+document.getElementById('btnApplyMod').onclick = async function() {
+  var player = document.getElementById('modPlayerName').value.trim();
+  var type = document.getElementById('modActionType').value;
+  var hours = parseInt(document.getElementById('modHours').value) || null;
+  var reason = document.getElementById('modReason').value.trim() || 'Порушення правил гри';
+
+  if (!player) {
+    showToast('Введіть нікнейм гравця', 'error');
+    return;
+  }
+
+  try {
+    if (type === 'ban') {
+      await api('POST', '/api/admin/ban', { player: player, reason: reason, hours: hours === 0 ? null : hours });
+      showToast('Гравця ' + player + ' успішно заблоковано', 'success');
+    } else if (type === 'mute') {
+      await api('POST', '/api/admin/mute', { player: player, reason: reason, hours: hours === 0 ? null : hours });
+      showToast('Гравцю ' + player + ' видано мут', 'success');
+    } else if (type === 'kick') {
+      await api('POST', '/api/admin/kick', { player: player, reason: reason });
+      showToast('Гравця ' + player + ' відключено', 'success');
+    }
+    document.getElementById('modPlayerName').value = '';
+    document.getElementById('modReason').value = '';
+    refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+window.unbanPlayer = async function(player) {
+  if (!confirm('Розбанити гравця ' + player + '?')) return;
+  try {
+    await api('POST', '/api/admin/unban', { player: player });
+    showToast('Гравця ' + player + ' розбанено', 'success');
+    refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+window.unmutePlayer = async function(player) {
+  if (!confirm('Зняти мут з гравця ' + player + '?')) return;
+  try {
+    await api('POST', '/api/admin/unmute', { player: player });
+    showToast('З гравця ' + player + ' знято мут', 'success');
+    refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+// Broadcast Buttons
+document.getElementById('btnSendQuickBroadcast').onclick = async function() {
+  var msg = document.getElementById('quickBroadcastMsg').value.trim();
+  if (!msg) {
+    showToast('Введіть текст сповіщення', 'error');
+    return;
+  }
+  try {
+    await api('POST', '/api/admin/broadcast', { message: msg });
+    showToast('Оголошення надіслано всім онлайн гравцям!', 'success');
+    document.getElementById('quickBroadcastMsg').value = '';
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+document.getElementById('btnSendFullBroadcast').onclick = async function() {
+  var msg = document.getElementById('fullBroadcastText').value.trim();
+  if (!msg) {
+    showToast('Введіть текст сповіщення', 'error');
+    return;
+  }
+  try {
+    await api('POST', '/api/admin/broadcast', { message: msg });
+    showToast('Оголошення успішно розіслано!', 'success');
+    document.getElementById('fullBroadcastText').value = '';
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+// Promocodes
+document.getElementById('btnGenPromo').onclick = function() {
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var res = '';
+  for (var i = 0; i < 8; i++) res += chars[Math.floor(Math.random() * chars.length)];
+  document.getElementById('promoCodeInput').value = res;
+};
+
+document.getElementById('btnCreatePromo').onclick = async function() {
+  var code = document.getElementById('promoCodeInput').value.trim().toUpperCase();
+  var reward = document.getElementById('promoRewardInput').value.trim();
+  var limit = parseInt(document.getElementById('promoLimitInput').value) || 100;
+  var expires = document.getElementById('promoExpiresInput').value;
+
+  if (!code || !reward) {
+    showToast('Заповніть код та нагороду', 'error');
+    return;
+  }
+
+  try {
+    await api('POST', '/api/admin/promo/create', { code: code, reward: reward, limit_uses: limit, expires: expires });
+    showToast('Промокод ' + code + ' створено!', 'success');
+    document.getElementById('promoCodeInput').value = '';
+    document.getElementById('promoRewardInput').value = '';
+    refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+window.togglePromo = async function(code) {
+  try {
+    await api('POST', '/api/admin/promo/toggle', { code: code });
+    showToast('Статус промокоду ' + code + ' змінено', 'success');
+    refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+window.deletePromo = async function(code) {
+  if (!confirm('Видалити промокод ' + code + '?')) return;
+  try {
+    await api('POST', '/api/admin/promo/delete', { code: code });
+    showToast('Промокод ' + code + ' видалено', 'success');
+    refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+window.copyToClipboard = function(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('Скопійовано: ' + text, 'info');
+  }).catch(() => {
+    showToast('Помилка копіювання', 'error');
+  });
+};
+
+// Tickets Modal
+window.openTicketModal = function(id) {
+  var t = state.cachedTickets.find(x => x.id === id);
+  if (!t) return;
+  state.activeTicketId = id;
+  document.getElementById('tModalTitle').textContent = 'Тікет #' + t.id + ' — ' + t.subject;
+  document.getElementById('tModalContent').innerHTML =
+    '<div><span style="color:var(--text-muted);">Від гравця:</span> <strong>' + escapeHtml(t.player) + '</strong></div>' +
+    '<div><span style="color:var(--text-muted);">Тип:</span> <span class="tag tag-blue">' + escapeHtml(t.ticket_type) + '</span></div>' +
+    '<div><span style="color:var(--text-muted);">Час:</span> ' + formatTime(t.created_at) + '</div>' +
+    '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:12px;margin-top:6px;color:#fff;">' +
+      escapeHtml(t.message) +
+    '</div>';
+  document.getElementById('tModalStatusSelect').value = t.status;
+  document.getElementById('ticketModal').classList.add('open');
+};
+
+window.closeTicketModal = function() {
+  document.getElementById('ticketModal').classList.remove('open');
+};
+
+document.getElementById('btnUpdateTicketStatus').onclick = async function() {
+  if (!state.activeTicketId) return;
+  var status = document.getElementById('tModalStatusSelect').value;
+  try {
+    await api('POST', '/api/admin/ticket/update', { id: state.activeTicketId, status: status, key: state.adminKey });
+    showToast('Статус тікета оновлено', 'success');
+    closeTicketModal();
+    refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+document.getElementById('btnNewTestTicket').onclick = async function() {
+  var player = prompt('Нікнейм гравця:', 'TestUser');
+  if (!player) return;
+  var subj = prompt('Тема тікета:', 'Проблема з човном');
+  if (!subj) return;
+  var msg = prompt('Текст повідомлення:', 'Після останнього оновлення човен застряг біля берега.');
+  if (!msg) return;
+
+  try {
+    await api('POST', '/api/admin/ticket/create', { key: state.adminKey, player: player, ticket_type: 'Баг', subject: subj, message: msg });
+    showToast('Тестовий тікет створено!', 'success');
+    refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+// Filter event listeners
+document.getElementById('playerSearch').oninput = () => renderPlayers(state.cachedPlayers);
+document.getElementById('logSearch').oninput = () => renderLogs(state.cachedLogs);
+document.getElementById('ticketFilterStatus').onchange = () => renderTickets(state.cachedTickets);
+
+// CSV Export for logs
+document.getElementById('btnExportLogs').onclick = function() {
+  if (!state.cachedLogs.length) {
+    showToast('Немає логів для експорту', 'error');
+    return;
+  }
+  var csv = 'ID,Admin,Action,Timestamp,DateTime\n' +
+    state.cachedLogs.map(l => l.id + ',"' + l.admin + '","' + l.action.replace(/"/g, '""') + '",' + l.timestamp + ',"' + formatTime(l.timestamp) + '"').join('\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'pixel_village_logs_' + Date.now() + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+// ADMIN_KEY Modal Management
+window.openKeyModal = function() {
+  document.getElementById('inputModalKey').value = state.adminKey;
+  document.getElementById('keyModal').classList.add('open');
+};
+window.closeKeyModal = function() {
+  document.getElementById('keyModal').classList.remove('open');
+};
+document.getElementById('keyBadge').onclick = openKeyModal;
+
+document.getElementById('btnSaveModalKey').onclick = function() {
+  var key = document.getElementById('inputModalKey').value.trim();
+  state.adminKey = key;
+  localStorage.setItem('pv_admin_key', key);
+  closeKeyModal();
+  updateKeyBadge(true);
+  showToast('Ключ збережено! Оновлюємо дані...', 'success');
+  refreshAll();
+};
+
+// Settings Tab
+document.getElementById('btnSaveConfig').onclick = function() {
+  var newBase = document.getElementById('cfgApiBase').value.trim();
+  var newKey = document.getElementById('cfgAdminKey').value.trim();
+  state.apiBase = newBase;
+  state.adminKey = newKey;
+  localStorage.setItem('pv_api_base', newBase);
+  localStorage.setItem('pv_admin_key', newKey);
+  document.getElementById('curApiBaseLabel').textContent = getApiBase();
+  updateKeyBadge(true);
+  showToast('Налаштування збережено!', 'success');
+  refreshAll();
+};
+
+document.getElementById('btnToggleKeyVisibility').onclick = function() {
+  var inp = document.getElementById('cfgAdminKey');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+};
+
+document.getElementById('btnRefresh').onclick = function() {
+  refreshAll();
+  showToast('Дані оновлено', 'info');
+};
+
+// Initialization
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('cfgApiBase').value = state.apiBase;
+  document.getElementById('cfgAdminKey').value = state.adminKey;
+  document.getElementById('curApiBaseLabel').textContent = getApiBase();
+  updateKeyBadge(!!state.adminKey);
+
+  // Load version
+  fetch(getApiBase() + '/api/version')
+    .then(r => r.json())
+    .then(v => {
+      if (v && v.version) {
+        document.getElementById('serverVersion').textContent = v.version;
+      }
+    }).catch(() => {});
+
+  // Initial refresh
+  refreshAll();
+
+  // Auto refresh every 3 seconds
+  state.refreshTimer = setInterval(refreshAll, 3000);
+});
+</script>
+</body>
+</html>
