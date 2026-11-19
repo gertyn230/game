@@ -1,0 +1,64 @@
+api.pixel-village.online {
+    @options {
+        method OPTIONS
+    }
+    handle @options {
+        header Access-Control-Allow-Origin "*"
+        header Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        header Access-Control-Allow-Headers "Content-Type, X-Admin-Key, Authorization"
+        header Access-Control-Max-Age "86400"
+        respond 204
+    }
+
+    reverse_proxy game-server:8080 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    header {
+        -Server
+        Access-Control-Allow-Origin "*"
+        Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, X-Admin-Key, Authorization"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    log {
+        output file /var/log/caddy/api.log
+        format json
+    }
+}
+
+admin.pixel-village.online {
+    reverse_proxy game-server:8080 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    header {
+        -Server
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "no-referrer"
+        Content-Security-Policy "default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://api.pixel-village.online https://game-n6ay.onrender.com; img-src 'self' data:;"
+    }
+
+    log {
+        output file /var/log/caddy/admin.log
+        format json
+    }
+}
+
+pixel-village.online, www.pixel-village.online {
+    respond "Pixel Village - Game Server Active" 200
+    log {
+        output file /var/log/caddy/www.log
+        format json
+    }
+}
