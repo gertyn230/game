@@ -18,22 +18,188 @@ h1,h2,h3,.logo,.tab,.big{font-family:'Bricolage Grotesque','DM Sans',system-ui,s
 #w{position:fixed;inset:0;width:100%;height:100%;image-rendering:pixelated;z-index:-2}
 #t{position:fixed;inset:0;z-index:-1;pointer-events:none;background:var(--tint);mix-blend-mode:multiply}
 a:focus-visible,button:focus-visible{outline:3px solid var(--sun);outline-offset:3px}
-.nav{position:fixed;top:0;left:0;right:0;z-index:20;padding:calc(env(safe-area-inset-top,0px) + 10px) 5vw 10px;display:flex;align-items:center;gap:28px;color:#fff;text-shadow:0 1px 12px rgba(8,35,28,.55);transition:background .25s,color .25s,box-shadow .25s}
-.nav.s{background:var(--sheet);color:var(--ink);text-shadow:none;box-shadow:0 1px 0 var(--line)}
-.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;color:inherit;text-decoration:none;letter-spacing:-.01em}
-.nav ul{display:flex;gap:6px;list-style:none;margin-left:auto}
-.nav li a{color:inherit;text-decoration:none;font-weight:700;font-size:16px;padding:8px 14px;border-radius:999px}
-.nav li a:hover{background:rgba(255,255,255,.2)}.nav.s li a:hover{background:var(--soft)}
-.nav li a.go{background:var(--sun);color:#10261c;text-shadow:none}
-#mb{display:none;margin-left:auto;background:none;border:2px solid currentColor;color:inherit;border-radius:999px;font:700 15px 'DM Sans';padding:6px 16px;cursor:pointer}
-.lang{display:flex;gap:6px;margin-left:auto}
-.lang button{background:rgba(255,255,255,.16);border:1.5px solid rgba(255,255,255,.4);color:#fff;border-radius:6px;font:600 14px 'DM Sans';padding:6px 10px;cursor:pointer;transition:all .2s}
-.lang button:hover{background:rgba(255,255,255,.25);transform:scale(1.05)}
-.lang button.active{background:var(--sun);color:#10261c;border-color:var(--sun)}
-.nav.s .lang button{color:var(--ink);border-color:var(--line);background:var(--soft)}
-.nav.s .lang button:hover{background:var(--sheet);border-color:var(--mute)}
-.nav.s .lang button.active{background:var(--sun);color:#10261c;border-color:var(--sun)}
-@media(max-width:860px){#mb{display:block}.lang{margin-left:0;order:-1}.nav ul{display:none;position:absolute;top:100%;left:0;right:0;flex-direction:column;padding:12px 5vw 20px;background:var(--sheet);color:var(--ink);text-shadow:none;box-shadow:0 12px 24px rgba(0,0,0,.15)}.nav.o ul{display:flex}.nav.o{background:var(--sheet);color:var(--ink);text-shadow:none}}
+
+/* Modern Header & Navigation Bar */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 12px clamp(16px, 4vw, 48px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(16, 38, 28, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.25s ease;
+  color: #fff;
+}
+.nav.s {
+  background: var(--sheet);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Bricolage Grotesque', 'DM Sans', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 21px;
+  color: #fff;
+  text-decoration: none;
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+.nav.s .logo {
+  color: var(--ink);
+}
+.logo:hover {
+  opacity: 0.9;
+}
+.nav-center {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
+  margin: 0 20px;
+}
+.nav-center li a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14.5px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  transition: all 0.2s ease;
+}
+.nav.s .nav-center li a {
+  color: var(--mute);
+}
+.nav-center li a:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+.nav.s .nav-center li a:hover {
+  background: var(--soft);
+  color: var(--ink);
+}
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.btn-nav-dl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--sun);
+  color: #10261c !important;
+  font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  text-decoration: none;
+  box-shadow: 0 2px 10px rgba(255, 200, 61, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.btn-nav-dl:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(255, 200, 61, 0.45);
+}
+.lang {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 3px 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.nav.s .lang {
+  background: var(--soft);
+  border-color: var(--line);
+}
+.lang button {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.nav.s .lang button {
+  color: var(--mute);
+}
+.lang button:hover {
+  color: #fff;
+}
+.nav.s .lang button:hover {
+  color: var(--ink);
+}
+.lang button.active {
+  background: var(--sun);
+  color: #10261c !important;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.2);
+}
+#mb {
+  display: none;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+.nav.s #mb {
+  background: var(--soft);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+@media (max-width: 1020px) {
+  #mb { display: block; }
+  .nav-center {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    padding: 18px 24px 24px;
+    background: var(--sheet);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    gap: 6px;
+    margin: 0;
+  }
+  .nav.o .nav-center { display: flex; }
+  .nav-center li a {
+    color: var(--ink);
+    font-size: 16px;
+    padding: 10px 16px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+}
 .btn{display:inline-flex;align-items:center;height:54px;padding:0 28px;border-radius:999px;font:700 17px 'Bricolage Grotesque',sans-serif;text-decoration:none;border:0;cursor:pointer;transition:transform .15s}
 .btn:hover{transform:translateY(-2px)}
 .btn.p{background:var(--sun);color:#10261c}.btn.g{background:rgba(255,255,255,.16);color:#fff;border:2px solid rgba(255,255,255,.75);backdrop-filter:blur(6px)}
@@ -209,22 +375,23 @@ footer{background:var(--sheet);padding:30px 5vw 60px;color:var(--mute);font-size
 <canvas id="w"></canvas><div id="t"></div>
 <header class="nav" id="nav">
 <a class="logo" href="#home"><canvas class="ic" data-i="0" data-s="1"></canvas>Pixel Village</a>
-<div class="lang">
-<button onclick="setLang('uk')" class="active" data-lang="uk">🇺🇦 UA</button>
-<button onclick="setLang('en')" data-lang="en">🇬🇧 EN</button>
-<button onclick="setLang('ru')" data-lang="ru">🇷🇺 RU</button>
-</div>
-<button id="mb" aria-label="Menu">Menu</button>
-<ul>
+<ul class="nav-center">
 <li><a href="#home">Головна</a></li>
 <li><a href="#about">Про гру</a></li>
 <li><a href="#features">Особливості</a></li>
 <li><a href="#promo">🎁 Промокоди</a></li>
 <li><a href="#support">📩 Підтримка</a></li>
 <li><a href="#updates">Оновлення</a></li>
-<li><a class="go" href="#download">Завантажити</a></li>
-<li><a style="background:rgba(16,185,129,.18);color:#10b981;border:1.5px solid #10b981;padding:6px 14px;border-radius:999px;font-weight:700" href="https://admin.pixel-village.online/?key=9e960ddbafbd5e768358eab8fd8c416b1fd130e624949ded5d1bbbe6a80bcd91" target="_blank" title="Панель адміністратора">🛡️ Адмінка</a></li>
 </ul>
+<div class="nav-right">
+<div class="lang">
+<button onclick="setLang('uk')" class="active" data-lang="uk">🇺🇦 UA</button>
+<button onclick="setLang('en')" data-lang="en">🇬🇧 EN</button>
+<button onclick="setLang('ru')" data-lang="ru">🇷🇺 RU</button>
+</div>
+<a class="btn-nav-dl" href="#download">Завантажити</a>
+<button id="mb" aria-label="Menu">☰ Меню</button>
+</div>
 </header>
 <main>
 <section class="hero" id="home"><div>
@@ -302,7 +469,7 @@ footer{background:var(--sheet);padding:30px 5vw 60px;color:var(--mute);font-size
     <span style="font-size:36px">📩</span>
     <div>
       <h2 style="font-size:clamp(28px,4vw,44px)">Підтримка та Баг-репорти</h2>
-      <p class="lead">Знайшли баг або маєте пропозицію для гри? Напишіть нам — тікет миттєво з'явиться в панелі адміністратора.</p>
+      <p class="lead">Знайшли баг або маєте пропозицію для гри? Напишіть нам — тікет миттєво з'явиться в підтримці гри.</p>
     </div>
   </div>
   <div class="support-box">
@@ -364,7 +531,6 @@ footer{background:var(--sheet);padding:30px 5vw 60px;color:var(--mute);font-size
 <div class="soc" style="margin-top:36px">
 <a href="https://discord.gg/atJW5ArM3R">Discord<small data-i18n="community_discord_desc">Chat and share</small></a>
 <a href="https://t.me/pixel_village">Telegram<small data-i18n="community_telegram_desc">News and updates</small></a>
-<a href="https://admin.pixel-village.online/?key=9e960ddbafbd5e768358eab8fd8c416b1fd130e624949ded5d1bbbe6a80bcd91" target="_blank" style="border-color:#10b981">🛡️ Адмін-панель<small>Управління сервером та модерація</small></a>
 </div></div></section>
 </main>
 <footer>© 2026 Pixel Village</footer>
@@ -499,7 +665,7 @@ setInterval(()=>{if(!bv)return;cb[0]+=(bt[0]-cb[0])*.3;cb[1]+=(bt[1]-cb[1])*.3;r
 const BI=[['Meadow village','Rooftops, a market road and neighbours out for a walk.',16,9.5],['Whispering forest','Dense trees, a quiet cabin and the upper bend of the river.',5,5],['Snowy peaks','Frosted pines and a house with a warm chimney.',18,3.5],['Golden farmlands','Crop rows, hay bales and a farmhouse by the path.',6.5,17]];
 $$('.tab').forEach((b,i)=>b.onclick=()=>{$$('.tab').forEach(t=>t.setAttribute('aria-selected',t==b));bt=[BI[i][2],BI[i][3]];$('#bn').textContent=BI[i][0];$('#bd').textContent=BI[i][1]});
 const nav=$('#nav');const ns=()=>nav.classList.toggle('s',scrollY>40);addEventListener('scroll',ns,{passive:true});ns();
-$('#mb').onclick=()=>nav.classList.toggle('o');$$('.nav li a').forEach(a=>a.onclick=()=>nav.classList.remove('o'));
+$('#mb').onclick=()=>nav.classList.toggle('o');$$('.nav-center li a, .btn-nav-dl').forEach(a=>a.onclick=()=>nav.classList.remove('o'));
 
 // Багатомовність
 const translations = {
@@ -743,7 +909,7 @@ function setLang(lang) {
 
 
   // Навігація
-  const navA = (href) => $(`.nav ul li a[href="${href}"]`);
+  const navA = (href) => $(`.nav-center li a[href="${href}"], .btn-nav-dl[href="${href}"]`);
   if (navA('#home')) navA('#home').textContent = t.nav_home;
   if (navA('#about')) navA('#about').textContent = t.nav_about;
   if (navA('#features')) navA('#features').textContent = t.nav_features;
