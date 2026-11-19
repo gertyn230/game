@@ -1043,12 +1043,18 @@ function toastFloat(msg, type='success') {
 async function checkServerStatus() {
   const start = performance.now();
   try {
-    const res = await fetch(API_URL + '/api/players');
-    const data = await res.json();
+    const vpsPromise = fetch(API_URL + '/api/players').then(r => r.json()).catch(() => null);
+    const renderPromise = fetch('https://game-n6ay.onrender.com/api/players').then(r => r.json()).catch(() => null);
+    const [vpsData, renderData] = await Promise.all([vpsPromise, renderPromise]);
+
     const ping = Math.round(performance.now() - start);
     document.getElementById('srvPing').textContent = '(' + ping + 'ms)';
-    const cnt = data.count || (data.players ? data.players.length : 0);
-    document.getElementById('srvOnline').textContent = cnt;
+
+    const vpsCount = vpsData ? (vpsData.count || (vpsData.players ? vpsData.players.length : 0)) : 0;
+    const renderCount = renderData ? (renderData.count || (renderData.players ? renderData.players.length : 0)) : 0;
+    const totalOnline = vpsCount + renderCount;
+
+    document.getElementById('srvOnline').textContent = totalOnline;
     document.getElementById('srvStatusText').textContent = 'Сервер онлайн';
     const dot = document.querySelector('.srv-dot');
     if (dot) dot.classList.remove('offline');

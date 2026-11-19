@@ -75,6 +75,7 @@ struct World {
     bans: Vec<Ban>,
     mutes: Vec<Mute>,
     failed_auth_attempts: HashMap<String, (u32, Instant)>, // IP -> (count, last_attempt)
+    kicked: HashMap<String, i64>, // Player name -> expires_at unix timestamp
 }
 
 #[derive(Clone)]
@@ -694,6 +695,19 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
                     }
                 }
 
+                // Перевірка кіку (cooldown щоб уникнути миттєвого автоперепідключення)
+                if let Some(&expires_at) = w.kicked.get(&n) {
+                    if expires_at > now {
+                        let remaining = expires_at - now;
+                        let reason = format!("Вас було відключено адміністратором. Зачекайте ще {} с.", remaining);
+                        if let Some(c) = w.players.get(&id) {
+                            reply(c, &ServerMsg::Err { text: reason });
+                        }
+                        w.players.remove(&id);
+                        return;
+                    }
+                }
+
                 // Перевірка муту
                 // TODO #71: Check mute by player identity (IP/session), not by requested name
                 let is_muted = w.mutes.iter().any(|m| {
@@ -970,6 +984,10 @@ async fn api_kick(State(app): State<App>, headers: HeaderMap, Json(req): Json<Ki
     let admin = req.admin.unwrap_or_else(|| "Адміністратор".to_string());
 
     let mut w = app.world.lock().await;
+    let now = chrono::Utc::now().timestamp();
+    // 60 секунд кік-таймауту (щоб клієнт не міг миттєво автоперепідключитися)
+    w.kicked.insert(player_name.clone(), now + 60);
+
     let player_id = w.players.iter().find(|(_, c)| c.state.name == player_name).map(|(id, _)| *id);
 
     if let Some(pid) = player_id {
@@ -981,12 +999,13 @@ async fn api_kick(State(app): State<App>, headers: HeaderMap, Json(req): Json<Ki
         let _ = db::add_log(&app.db, &admin, &format!("Кік гравця {}: {}", player_name, reason)).await;
         Json(serde_json::json!({
             "success": true,
-            "message": format!("Гравця {} відключено", player_name)
+            "message": format!("Гравця {} відключено на 60 секунд", player_name)
         })).into_response()
     } else {
+        let _ = db::add_log(&app.db, &admin, &format!("Кік гравця {} (таймаут 60с): {}", player_name, reason)).await;
         Json(serde_json::json!({
-            "success": false,
-            "message": format!("Гравця {} не знайдено серед онлайн гравців", player_name)
+            "success": true,
+            "message": format!("Гравця {} додано до списку відключених на 60 секунд", player_name)
         })).into_response()
     }
 }
