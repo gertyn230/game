@@ -1,4 +1,4 @@
-//! Мини-«интерфейс»: кнопки, которые видны и нажимаются и пальцем, и мышью.
+//! Мини-«інтерфейс»: кнопки в піксельному дерев'яному стилі.
 use macroquad::prelude::*;
 
 use crate::art::*;
@@ -29,14 +29,19 @@ pub enum Cmd {
     Space,
     Back,
     Lang,
-    // Нові команди для налаштувань
+    // Команди налаштувань
     ToggleMusic,
     ToggleSound,
     MusicVolume(f32),
     SoundVolume(f32),
     ChangeLanguage,
-    Inventory,  // Нова команда для відкриття інвентаря
-    Settings,   // Нова команда для відкриття налаштувань
+    SettingsSubtab(u8),
+    Rebind(crate::settings::RebindAction),
+    ResetKeybinds,
+    Inventory,
+    CraftMenu,
+    Settings,
+    Quit,
 }
 
 pub struct Btn {
@@ -50,6 +55,8 @@ pub struct Ui {
     next: Vec<Btn>,
     pub menu: bool,
     pub tab: u8,
+    pub settings_subtab: u8,
+    pub rebinding: Option<crate::settings::RebindAction>,
     pub scroll: f32,
     pub panel: Rect,
     pub mk_item: usize,
@@ -73,26 +80,117 @@ impl Ui {
     pub fn hit(&self, p: Vec2) -> Option<Cmd> {
         self.btns.iter().rev().find(|b| b.r.contains(p)).map(|b| b.cmd)
     }
-    /// Нарисовать кнопку и зарегистрировать её для нажатия.
+
+    /// Піксельна дерев'яна кнопка
     pub fn button(&mut self, font: &Font, r: Rect, label: &str, cmd: Cmd, enabled: bool, color: u32, fs: f32) {
-        let col = if enabled { hx(color) } else { ha(0x555555, 0.8) };
-        draw_rectangle(r.x, r.y + 3.0, r.w, r.h, ha(0x000000, 0.35));
+        let col = if enabled { hx(color) } else { ha(0x444444, 0.7) };
+
+        // Тінь під кнопкою (піксельна — зміщена на 2-3 пікселі)
+        draw_rectangle(r.x + 2.0, r.y + 3.0, r.w, r.h, ha(0x000000, 0.4));
+
+        // Основний фон кнопки
         draw_rectangle(r.x, r.y, r.w, r.h, col);
-        draw_rectangle_lines(r.x, r.y, r.w, r.h, 2.0, ha(0xffffff, if enabled { 0.5 } else { 0.2 }));
+
+        // Дерев'яна текстура — тонкі горизонтальні лінії
+        if r.h > 20.0 {
+            for i in 0..(r.h as i32 / 8) {
+                let ly = r.y + i as f32 * 8.0;
+                if ly < r.y + r.h {
+                    let alpha = if i % 3 == 0 { 0.04 } else { 0.02 };
+                    draw_rectangle(r.x + 1.0, ly, r.w - 2.0, 1.0, ha(0xffffff, alpha));
+                }
+            }
+        }
+
+        // Верхній блік (3D ефект)
+        draw_rectangle(r.x, r.y, r.w, r.h * 0.4, ha(0xffffff, if enabled { 0.1 } else { 0.04 }));
+        // Нижня тінь
+        draw_rectangle(r.x, r.y + r.h * 0.6, r.w, r.h * 0.4, ha(0x000000, if enabled { 0.18 } else { 0.1 }));
+
+        // Зовнішня рамка — темна
+        draw_rectangle_lines(r.x, r.y, r.w, r.h, 2.0, ha(0x000000, 0.5));
+        // Внутрішня рамка — світла
+        draw_rectangle_lines(r.x + 2.0, r.y + 2.0, r.w - 4.0, r.h - 4.0, 1.0,
+            ha(0xffffff, if enabled { 0.12 } else { 0.04 }));
+
+        // Декоративні кутові пікселі (лише для великих кнопок)
+        if r.w > 60.0 && r.h > 30.0 {
+            let cs = 2.0;
+            let cc = ha(0xffffff, if enabled { 0.18 } else { 0.06 });
+            draw_rectangle(r.x + 5.0, r.y + 5.0, cs, cs, cc);
+            draw_rectangle(r.x + r.w - 7.0, r.y + 5.0, cs, cs, cc);
+            draw_rectangle(r.x + 5.0, r.y + r.h - 7.0, cs, cs, cc);
+            draw_rectangle(r.x + r.w - 7.0, r.y + r.h - 7.0, cs, cs, cc);
+        }
+
+        // Текст з тінню
         let mut size = fs;
-        while text_w(font, label, size) > r.w - 8.0 && size > 9.0 {
+        while text_w(font, label, size) > r.w - 10.0 && size > 9.0 {
             size -= 1.0;
         }
-        text_c(font, label, r.x + r.w / 2.0, r.y + r.h / 2.0 + size * 0.35, size, if enabled { WHITE } else { ha(0xffffff, 0.5) });
+        let tx = r.x + r.w / 2.0;
+        let ty = r.y + r.h / 2.0 + size * 0.35;
+        // Тінь тексту
+        text_c(font, label, tx + 1.0, ty + 1.0, size, ha(0x000000, 0.55));
+        // Основний текст
+        text_c(font, label, tx, ty, size, if enabled { WHITE } else { ha(0xffffff, 0.4) });
+
         if enabled {
             self.next.push(Btn { r, cmd });
         }
     }
 }
 
+/// Піксельний бар стану (HP, голод, вода, енергія)
 pub fn bar(font: &Font, x: f32, y: f32, w: f32, h: f32, v: f32, col: u32, label: &str, fs: f32) {
-    draw_rectangle(x, y, w, h, ha(0x000000, 0.55));
-    draw_rectangle(x, y, w * (v / 100.0).clamp(0.0, 1.0), h, hx(col));
-    draw_rectangle_lines(x, y, w, h, 1.5, ha(0xffffff, 0.35));
-    text_c(font, &format!("{} {}", label, v.round() as i32), x + w / 2.0, y + h * 0.5 + fs * 0.33, fs * 0.9, WHITE);
+    let fill = (v / 100.0).clamp(0.0, 1.0);
+
+    // Тінь під баром
+    draw_rectangle(x + 2.0, y + 2.0, w, h, ha(0x000000, 0.4));
+
+    // Темний фон
+    draw_rectangle(x, y, w, h, Color::from_rgba(22, 20, 16, 200));
+
+    // Дерев'яна текстура фону
+    for i in 0..(h as i32 / 4) {
+        let ly = y + i as f32 * 4.0;
+        if ly < y + h {
+            draw_rectangle(x, ly, w, 1.0, ha(0xffffff, 0.015));
+        }
+    }
+
+    // Заповнення
+    let fill_w = w * fill;
+    if fill_w > 0.0 {
+        draw_rectangle(x, y, fill_w, h, hx(col));
+        // Верхній блік
+        draw_rectangle(x, y, fill_w, h * 0.35, ha(0xffffff, 0.12));
+        // Нижня тінь
+        draw_rectangle(x, y + h * 0.7, fill_w, h * 0.3, ha(0x000000, 0.2));
+        // Піксельний край заповнення
+        if fill_w > 2.0 && fill < 0.98 {
+            draw_rectangle(x + fill_w - 2.0, y, 2.0, h, ha(0xffffff, 0.1));
+        }
+    }
+
+    // Рамка — подвійна піксельна
+    draw_rectangle_lines(x, y, w, h, 2.0, ha(0x000000, 0.6));
+    draw_rectangle_lines(x + 1.0, y + 1.0, w - 2.0, h - 2.0, 1.0, ha(0xffffff, 0.1));
+
+    // Іконка стану (ліворуч)
+    let icon = match col {
+        0xe0933a => "H", // hunger
+        0x4aa3df => "W", // water
+        0xd9c23f => "E", // energy
+        0xd9534f => "HP",
+        _ => "",
+    };
+    if !icon.is_empty() {
+        text(font, icon, x + 3.0, y + h * 0.75, fs * 0.7, ha(0xffffff, 0.6));
+    }
+
+    // Текст з тінню
+    let display = format!("{} {}", label, v.round() as i32);
+    text_c(font, &display, x + w / 2.0 + 1.0, y + h * 0.5 + fs * 0.34, fs * 0.85, ha(0x000000, 0.55));
+    text_c(font, &display, x + w / 2.0, y + h * 0.5 + fs * 0.33, fs * 0.85, WHITE);
 }

@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod art;
 mod audio;
 mod data;
@@ -14,6 +16,7 @@ mod world;
 mod updater;
 mod discord_rpc;
 mod particles;
+mod translate_messages;
 
 // Ігрові модулі (розширення для game)
 mod game_survival;
@@ -93,24 +96,65 @@ struct Other {
     dy: f32,
 }
 
+struct FloatingText {
+    text: String,
+    x: f32,
+    y: f32,
+    t: f64,
+    color: Color,
+}
+
+fn spawn_hit_feedback(
+    outcome: HitOutcome,
+    floating_texts: &mut Vec<FloatingText>,
+    now: f64,
+    texts: &Texts,
+) {
+    match outcome {
+        HitOutcome::HitNode { destroyed, item, count, x, y, .. } => {
+            if destroyed && count > 0 {
+                let item_name = texts.item_names[item as usize];
+                floating_texts.push(FloatingText {
+                    text: format!("+{} {}", count, item_name),
+                    x,
+                    y: y - 0.2,
+                    t: now,
+                    color: Color::from_rgba(100, 255, 120, 255),
+                });
+            }
+        }
+        HitOutcome::Butchered { x, y, .. } => {
+            floating_texts.push(FloatingText {
+                text: format!("🍖 {}", texts.corpse_butchered),
+                x,
+                y: y - 0.5,
+                t: now,
+                color: Color::from_rgba(255, 200, 100, 255),
+            });
+        }
+        _ => {}
+    }
+}
+
 fn cost_text(r: &Recipe, texts: &Texts) -> String {
     r.cost.iter().map(|(it, n)| format!("{} ×{}", texts.item_names[*it as usize], n)).collect::<Vec<_>>().join(", ")
 }
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    // Перевірка SERVER_URL у release режимі
+    // Якщо PV_SERVER не задано — використовуємо localhost (для тестування)
+    // У продакшн-білді задайте PV_SERVER через змінну оточення
     #[cfg(not(debug_assertions))]
     {
-        if SERVER_URL.is_empty() || SERVER_URL.starts_with("ws://127.0.0.1") || SERVER_URL.starts_with("ws://localhost") {
-            panic!("PV_SERVER must be set to a valid remote server for release builds");
+        if SERVER_URL.starts_with("ws://127.0.0.1") || SERVER_URL.starts_with("ws://localhost") {
+            eprintln!("[WARN] PV_SERVER не задано — підключаюсь до localhost. Для продакшн задайте PV_SERVER.");
         }
     }
 
     // Видалити старі backup файли з попередніх оновлень
     updater::Updater::cleanup_old_version();
 
-    simulate_mouse_with_touch(true);
+    simulate_mouse_with_touch(false);
     rand::srand(macroquad::miniquad::date::now() as u64);
     let font = load_ttf_font_from_bytes(include_bytes!("../assets/DejaVuSans.ttf")).expect("шрифт");
 
@@ -209,6 +253,7 @@ async fn main() {
     let mut cur = Vec2::ZERO;
     let mut act_id: Option<u64> = None;
     let mut scroll_id: Option<(u64, f32)> = None;
+    let mut floating_texts: Vec<FloatingText> = Vec::new();
 
     loop {
         let dt = get_frame_time().min(0.05);
@@ -220,6 +265,7 @@ async fn main() {
             break;
         }
 
+        let is_mobile = settings.is_mobile();
         let texts = get_texts(&settings.language);
         let (sw, sh) = (screen_width(), screen_height());
         let base = sw.min(sh);
@@ -228,6 +274,7 @@ async fn main() {
         let k = ts / 48.0;
         let (cx, cy) = (sw / 2.0, sh / 2.0);
         let fs = (base * 0.03).max(14.0);
+        let pad = fs * 0.5;
         let ring_r = base * 0.09;
         let mut out: Vec<ClientMsg> = vec![];
         let mut cmds: Vec<Cmd> = vec![];
@@ -249,8 +296,11 @@ async fn main() {
                 NetEvent::Connected => connected = true,
                 NetEvent::Disconnected => {
                     if connected {
+                        // TODO #2: Market items should be server-authoritative, don't refund on disconnect
                         for (_, (item, qty)) in posted.drain() {
-                            g.inv[item as usize] += qty;
+                            if let Some(slot) = g.inv.get_mut(item as usize) {
+                                *slot += qty;
+                            }
                         }
                     }
                     connected = false;
@@ -302,24 +352,26 @@ async fn main() {
                     }
                     ServerMsg::Posted { offer } => {
                         posted.insert(offer.id, (offer.item, offer.qty));
-                        g.say("Предложение выставлено", now);
+                        g.say(texts.offer_posted, now);
                     }
                     ServerMsg::Sold { id, gold } => {
                         posted.remove(&id);
+                        // TODO #29: Gold should be server-authoritative
                         g.gold += gold;
-                        g.say(&format!("Продано! +{gold} золота"), now);
+                        g.say(&format!("{} +{gold} {}", texts.offer_sold, texts.gold_label), now);
                     }
                     ServerMsg::Withdrawn { offer } => {
                         posted.remove(&offer.id);
                         g.inv[(offer.item as usize).min(NI - 1)] += offer.qty;
-                        g.say("Предложение снято", now);
+                        g.say(texts.offer_withdrawn, now);
                     }
                     ServerMsg::Bought { offer } => {
+                        // TODO #29: Gold should be server-authoritative
                         g.gold = g.gold.saturating_sub(offer.price);
                         g.inv[(offer.item as usize).min(NI - 1)] += offer.qty;
                         g.say(&format!("{}: {} ×{}", texts.bought, texts.item_names[(offer.item as usize).min(NI - 1)], offer.qty), now);
                     }
-                    ServerMsg::Err { text } => g.say(&text, now),
+                    ServerMsg::Err { text } => g.say(translate_messages::translate_message(&text, texts), now),
                 },
             }
         }
@@ -331,6 +383,13 @@ async fn main() {
                     if let Some(c) = ui.hit(pos) {
                         if c == Cmd::Act {
                             act_id = Some(id);
+                            if is_mobile {
+                                let outcome = g.act_target(now, &mut out, texts, None);
+                                spawn_hit_feedback(outcome, &mut floating_texts, now, texts);
+                                if outcome != HitOutcome::None {
+                                    audio.play("hit");
+                                }
+                            }
                         } else {
                             cmds.push(c);
                         }
@@ -338,10 +397,26 @@ async fn main() {
                         if ui.panel.contains(pos) {
                             scroll_id = Some((id, pos.y));
                         }
-                    } else if joy_id.is_none() && name_edit.is_none() {
+                    } else if is_mobile && joy_id.is_none() && name_edit.is_none() && pos.x < sw * 0.45 {
+                        // Джойстик для пересування на лівій стороні мобільного екрану
                         joy_id = Some(id);
                         origin = pos;
                         cur = pos;
+                    } else if !ui.menu && name_edit.is_none() {
+                        let wx = g.x + (pos.x - cx) / ts;
+                        let wy = g.y + (pos.y - cy) / ts;
+                        g.face_to(wx, wy);
+
+                        // Удар по ресурсу або тварині
+                        if let Some(target) = g.find_nearby_target(now, Some((wx, wy))) {
+                            if target.dist_sq <= 3.8 {
+                                let outcome = g.act_target(now, &mut out, texts, Some((target.x, target.y)));
+                                spawn_hit_feedback(outcome, &mut floating_texts, now, texts);
+                                if outcome != HitOutcome::None {
+                                    audio.play("hit");
+                                }
+                            }
+                        }
                     }
                 }
                 Ph::Move => {
@@ -371,7 +446,7 @@ async fn main() {
         if ui.menu {
             ui.scroll -= mouse_wheel().1 * 40.0;
         }
-        let typing = name_edit.is_some();
+        let typing = name_edit.is_some() || ui.menu;
         if let Some(buf) = name_edit.as_mut() {
             while let Some(c) = get_char_pressed() {
                 if !c.is_control() && buf.chars().count() < 16 {
@@ -404,17 +479,44 @@ async fn main() {
                 cmds.push(c);
             }
         }
-        if !typing && is_key_pressed(KeyCode::M) || is_key_pressed(KeyCode::Tab) {
-            cmds.push(if ui.menu { Cmd::Close } else { Cmd::Menu });
+        // Обробка зміни клавіші в режимі ребінду
+        if let Some(action) = ui.rebinding {
+            if let Some(key) = get_last_key_pressed() {
+                if key == KeyCode::Escape {
+                    ui.rebinding = None;
+                } else {
+                    let k_name = key_name(key);
+                    settings.keybindings.set_key_for_action(action, k_name.to_string());
+                    save_settings(&settings);
+                    ui.rebinding = None;
+                    audio.play("craft");
+                }
+            }
         }
-        if !typing && is_key_pressed(KeyCode::I) {
+
+        if !typing && settings.keybindings.is_inventory_pressed() {
             cmds.push(Cmd::Inventory);
         }
+        if !typing && settings.keybindings.is_craft_pressed() {
+            cmds.push(Cmd::CraftMenu);
+        }
+        if !typing && settings.keybindings.is_eat_pressed() {
+            cmds.push(Cmd::Eat);
+        }
+        if !typing && settings.keybindings.is_drink_pressed() {
+            cmds.push(Cmd::Drink);
+        }
+        if !typing && settings.keybindings.is_dig_pressed() {
+            cmds.push(Cmd::Dig);
+        }
+        if !typing && settings.keybindings.is_menu_pressed() {
+            cmds.push(if ui.menu { Cmd::Close } else { Cmd::Menu });
+        }
         if !typing && is_key_pressed(KeyCode::Escape) {
-            cmds.push(Cmd::Settings);
+            cmds.push(if ui.menu { Cmd::Close } else { Cmd::Settings });
         }
         // ---------- ввод ----------
-        let typing = name_edit.is_some() || ui.menu;
+        let typing = name_edit.is_some() || (ui.menu && ui.rebinding.is_none());
         for c in cmds {
             match c {
                 Cmd::Eat => {
@@ -431,22 +533,65 @@ async fn main() {
                 }
                 Cmd::Tame => g.tame(now, texts),
                 Cmd::Boat => g.boat_toggle(now, texts),
+                // TODO #30: Bridges/fires/furnaces should sync via server
                 Cmd::Bridge => g.bridge(now, texts),
                 Cmd::Menu => {
-                    ui.menu = true;
+                    ui.menu = !ui.menu;
                     ui.scroll = 0.0;
                 }
                 Cmd::Inventory => {
-                    ui.menu = true;
-                    ui.tab = 0; // Відкрити вкладку "Інвентар"
-                    ui.scroll = 0.0;
+                    if ui.menu && ui.tab == 0 {
+                        ui.menu = false;
+                    } else {
+                        ui.menu = true;
+                        ui.tab = 0; // Відкрити вкладку "Інвентар"
+                        ui.scroll = 0.0;
+                    }
+                }
+                Cmd::CraftMenu => {
+                    if ui.menu && ui.tab == 1 {
+                        ui.menu = false;
+                    } else {
+                        ui.menu = true;
+                        ui.tab = 1; // Відкрити вкладку "Крафт"
+                        ui.scroll = 0.0;
+                    }
                 }
                 Cmd::Settings => {
                     ui.menu = true;
-                    ui.tab = 3; // Відкрити вкладку "Налаштування"
+                    ui.tab = 4; // Відкрити вкладку "Налаштування"
+                    ui.settings_subtab = 0;
+                    ui.rebinding = None;
                     ui.scroll = 0.0;
                 }
-                Cmd::Close => ui.menu = false,
+                Cmd::SettingsSubtab(s) => {
+                    ui.settings_subtab = s;
+                    ui.rebinding = None;
+                }
+                Cmd::Rebind(action) => {
+                    if ui.rebinding == Some(action) {
+                        ui.rebinding = None;
+                    } else {
+                        ui.rebinding = Some(action);
+                    }
+                }
+                Cmd::ResetKeybinds => {
+                    settings.keybindings = Default::default();
+                    save_settings(&settings);
+                    ui.rebinding = None;
+                    audio.play("craft");
+                }
+                Cmd::Close => {
+                    ui.menu = false;
+                    ui.rebinding = None;
+                }
+                Cmd::Quit => {
+                    // Зберігаємо гру перед виходом
+                    save::store(&snapshot(&g, now, &name, &posted));
+                    save_settings(&settings);
+                    // Виходимо з гри
+                    std::process::exit(0);
+                }
                 Cmd::ChangeLanguage => {
                     settings.language = settings.language.next();
                     save_settings(&settings);
@@ -476,12 +621,12 @@ async fn main() {
                     ui.scroll = 0.0;
                 }
                 Cmd::Craft(i) => {
-                    g.craft(i, now);
+                    g.craft(i, now, texts);
                     audio.play("craft");
                 }
                 Cmd::Quick(j) => {
                     if let Some(&i) = g.quick_list(now).get(j) {
-                        g.craft(i, now);
+                        g.craft(i, now, texts);
                         audio.play("craft");
                     }
                 }
@@ -497,6 +642,7 @@ async fn main() {
                     } else if g.inv[ui.mk_item] < ui.mk_qty {
                         g.say(texts.not_enough_items, now);
                     } else {
+                        // TODO #27: Track in-flight posts, refund on ServerMsg::Err
                         g.inv[ui.mk_item] -= ui.mk_qty;
                         out.push(ClientMsg::Post { item: ui.mk_item as u8, qty: ui.mk_qty, price: ui.mk_price });
                     }
@@ -556,28 +702,33 @@ async fn main() {
 
         let mut dir = Vec2::ZERO;
         if typing {
-            // пока вводим имя, персонаж стоит
-        } else if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
-            dir.x -= 1.0;
-        }
-        if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
-            dir.x += 1.0;
-        }
-        if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) {
-            dir.y -= 1.0;
-        }
-        if is_key_down(KeyCode::Down) || is_key_down(KeyCode::S) {
-            dir.y += 1.0;
+            // пока вводим имя або відкрите меню, персонаж стоїть
+        } else {
+            if is_key_down(KeyCode::Left) || settings.keybindings.is_left_down() {
+                dir.x -= 1.0;
+            }
+            if is_key_down(KeyCode::Right) || settings.keybindings.is_right_down() {
+                dir.x += 1.0;
+            }
+            if is_key_down(KeyCode::Up) || settings.keybindings.is_up_down() {
+                dir.y -= 1.0;
+            }
+            if is_key_down(KeyCode::Down) || settings.keybindings.is_down_down() {
+                dir.y += 1.0;
+            }
         }
         if dir != Vec2::ZERO {
             dir = dir.normalize();
-        } else if joy_id.is_some() {
+        } else if is_mobile && joy_id.is_some() {
             let v = (cur - origin) / ring_r;
             if v.length() > 0.2 {
                 dir = v.clamp_length_max(1.0);
             }
         }
-        let hold = !typing && (is_key_down(KeyCode::Space) || is_key_down(KeyCode::E) || act_id.is_some());
+        let (mx, my) = mouse_position();
+        let in_minimap_area = mx >= sw - base * 0.2 - pad - 10.0 && my <= pad + base * 0.2 + fs * 6.0;
+        let mouse_act = !is_mobile && !ui.menu && name_edit.is_none() && !in_minimap_area && is_mouse_button_down(MouseButton::Left);
+        let hold = !typing && (settings.keybindings.is_action_down() || is_key_down(KeyCode::Space) || mouse_act || act_id.is_some());
         if typing {
             dir = Vec2::ZERO;
         }
@@ -604,6 +755,7 @@ async fn main() {
         }
         if stats_t > 5.0 {
             stats_t = 0.0;
+            // TODO #28: Stats should be computed server-side
             out.push(ClientMsg::Stats { score: g.score(), big: g.biggest, fish: g.caught });
         }
         for m in out {
@@ -654,7 +806,7 @@ async fn main() {
             let pulse = ((now * 2.0).sin() * 0.3 + 0.7) as f32;
             draw_rectangle(sx - 6.0 * u, sy - 6.0 * u, 12.0 * u, 12.0 * u, Color::new(0.6, 0.4, 0.2, pulse));
             draw_rectangle_lines(sx - 6.0 * u, sy - 6.0 * u, 12.0 * u, 12.0 * u, 1.5, Color::new(1.0, 0.8, 0.3, pulse));
-            labels.push(("💀 Твої речі".into(), sx, sy - 10.0 * u));
+            labels.push((texts.pick_up_items.into(), sx, sy - 10.0 * u));
         }
         let swing = g.fx.as_ref().and_then(|f| {
             let p = ((now - f.t) / 0.26) as f32;
@@ -677,7 +829,7 @@ async fn main() {
                     let (sx, sy) = wp(m.x, m.y);
                     draw_mob(m, sx, sy, u, now);
                     if m.kind == game::MobKind::Pet && m.dead == 0.0 {
-                        labels.push(("Друг".into(), sx, sy - 11.0 * u));
+                        labels.push((texts.pet_friend.into(), sx, sy - 11.0 * u));
                     }
                 }
                 for o in others.values() {
@@ -707,6 +859,65 @@ async fn main() {
         // Малюємо частинки з правильною конвертацією координат
         g.particles.draw(|wx, wy| wp(wx, wy), u);
 
+        // Малювання плаваючих текстів (отримані ресурси)
+        floating_texts.retain(|ft| (now - ft.t) < 1.3);
+        for ft in &floating_texts {
+            let age = (now - ft.t) as f32;
+            let alpha = (1.0 - age / 1.3).clamp(0.0, 1.0);
+            let lift = age * 0.8;
+            let (sx, sy) = wp(ft.x, ft.y - lift);
+            let text_size = fs * 0.85;
+            let mut col = ft.color;
+            col.a = alpha;
+            let shadow = Color::new(0.0, 0.0, 0.0, alpha * 0.75);
+            text_c(&font, &ft.text, sx + 1.0, sy + 1.0, text_size, shadow);
+            text_c(&font, &ft.text, sx, sy, text_size, col);
+        }
+
+        // Підсвітка та міцність об'єкта біля гравця
+        if let Some(target) = g.find_nearby_target(now, None) {
+            let (sx, sy) = wp(target.x, target.y);
+            let base_r = 16.0 * u;
+            draw_circle_lines(sx, sy, base_r, 1.5, ha(0x38bdf8, 0.55));
+
+            if is_mobile {
+                match target.kind {
+                    TargetKind::Node(kind, _, hp, max_hp) => {
+                        let pips_str = (0..max_hp).map(|i| if i < hp { "●" } else { "○" }).collect::<Vec<_>>().join(" ");
+                        let node_name = match kind {
+                            Kind::Tree => "🌲 Дерево",
+                            Kind::Rock => "🪨 Камінь",
+                            Kind::Bush => "🌿 Кущ",
+                            Kind::BerryBush => "🍓 Ягоди",
+                            Kind::CuOre => "⛏️ Мідь",
+                            Kind::FeOre => "⛏️ Залізо",
+                            Kind::AuOre => "⛏️ Золото",
+                            _ => "Ресурс",
+                        };
+                        let badge = format!("{} [{}]", node_name, pips_str);
+                        let bw = text_w(&font, &badge, fs * 0.75) + 12.0;
+                        draw_rectangle(sx - bw / 2.0, sy - base_r - fs * 0.85, bw, fs * 1.1, ha(0x0a0f18, 0.85));
+                        text_c(&font, &badge, sx, sy - base_r - fs * 0.1, fs * 0.75, WHITE);
+                    }
+                    TargetKind::Mob(kind, _, hp, dead) => {
+                        let mob_name = match kind {
+                            MobKind::Wolf => "🐺 Вовк",
+                            MobKind::Bear => "🐻 Ведмідь",
+                            MobKind::Deer => "🦌 Олень",
+                            MobKind::Fox => "🦊 Лисиця",
+                            MobKind::Rabbit => "🐰 Кролик",
+                            MobKind::Pet => "🐶 Пес",
+                        };
+                        let badge = if dead { format!("🍖 Туша {}", mob_name) } else { format!("{} (HP: {:.0})", mob_name, hp.max(0.0)) };
+                        let bw = text_w(&font, &badge, fs * 0.75) + 12.0;
+                        draw_rectangle(sx - bw / 2.0, sy - base_r - fs * 0.85, bw, fs * 1.1, ha(0x0a0f18, 0.85));
+                        text_c(&font, &badge, sx, sy - base_r - fs * 0.1, fs * 0.75, WHITE);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         // удочка, леска, поплавок
         if g.fish.ph > 0 {
             let (bx, by) = wp(g.fish.wx, g.fish.wy);
@@ -730,20 +941,7 @@ async fn main() {
                 draw_circle_lines(bx, by, (12.0 + ((now * 12.0) % 8.0) as f32) * k, 2.0, WHITE);
             }
         }
-        for pass in 0..2 {
-            if pass == 0 {
-                continue;
-            }
-            for ty in (me_row + 1)..=y1 {
-                for tx in x0..=x1 {
-                    // узлы перед персонажем рисуются поверх него
-                    if let Some(n) = g.map.node_at(tx, ty) {
-                        let (sx, sy) = scr(tx, ty);
-                        draw_node(n, sx, sy, u, now);
-                    }
-                }
-            }
-        }
+        // TODO #77: Redundant second foreground-node rendering loop for pass==1 removed (already drawn in pass 1 above)
         // ночь, свет костров, дождь
         let al = g.night();
         if al > 0.0 {
@@ -826,54 +1024,38 @@ async fn main() {
             draw_rectangle(disconnect_btn_x, disconnect_btn_y, disconnect_btn_width, disconnect_btn_height, disconnect_bg);
             draw_rectangle_lines(disconnect_btn_x, disconnect_btn_y, disconnect_btn_width, disconnect_btn_height, 2.0, hx(0xff6060));
 
-            let disconnect_text = "Відключитись";
+            let disconnect_text = texts.disconnect;
             let disconnect_text_w = text_w(&font, disconnect_text, fs * 0.75);
             text(&font, disconnect_text, disconnect_btn_x + (disconnect_btn_width - disconnect_text_w) / 2.0,
                 disconnect_btn_y + disconnect_btn_height * 0.7, fs * 0.75, WHITE);
 
             if disconnect_hovered && is_mouse_button_pressed(MouseButton::Left) {
                 // Відкриваємо меню налаштувань
+                // TODO #76: Should actually disconnect from server
                 ui.menu = true;
+                ui.tab = 4;
             }
         }
 
-        for (i, s) in [format!("Золото {}", g.gold), format!("Очки {}", g.score())].iter().enumerate() {
+        for (i, s) in [format!("{} {}", texts.gold, g.gold), format!("{} {}", texts.score, g.score())].iter().enumerate() {
             let w = text_w(&font, s, fs * 0.9);
             draw_rectangle(sw - pad - w - 6.0, my0 + ms + fs * (0.5 + i as f32 * 1.25), w + 12.0, fs * 1.15, ha(0x000000, 0.55));
             text(&font, s, sw - pad - w, my0 + ms + fs * (1.35 + i as f32 * 1.25), fs * 0.9, WHITE);
         }
-        // инвентарь
-        {
-            let max_w = sw * 0.46;
-            let (mut x, mut y) = (pad, sh - pad - fs * 1.6);
-            let mut chips: Vec<(u32, String)> = vec![];
-            for (i, &count) in g.inv.iter().enumerate() {
-                if count > 0 {
-                    chips.push((IT_COLOR[i], format!("{} {}", texts.item_names[i], count)));
-                }
-            }
-            for (t, &dur) in g.tools.iter().enumerate() {
-                if dur > 0 {
-                    let d = if TL_DUR[t] > 1 { format!("{} ({})", texts.tool_names[t], dur) } else { texts.tool_names[t].to_string() };
-                    chips.push((0xffffff, d));
-                }
-            }
-            for (c, s) in chips.iter().rev() {
-                let w = text_w(&font, s, fs * 0.85) + fs * 1.6;
-                if x + w > pad + max_w {
-                    x = pad;
-                    y -= fs * 1.5;
-                }
-                draw_rectangle(x, y, w, fs * 1.3, ha(0x000000, 0.6));
-                draw_rectangle(x + 3.0, y + 3.0, fs * 0.9, fs * 0.9, hx(*c));
-                text(&font, s, x + fs * 1.2, y + fs * 0.95, fs * 0.85, WHITE);
-                x += w + 4.0;
-            }
-        }
+
         // сообщение
         if now < g.msg_until {
             let w = text_w(&font, &g.msg, fs * 1.1) + fs * 2.0;
-            draw_rectangle(cx - w / 2.0, pad + fs * 5.2, w, fs * 1.9, ha(0x000000, 0.7));
+            let msg_x = cx - w / 2.0;
+            let msg_y = pad + fs * 5.2;
+            // Тінь
+            draw_rectangle(msg_x + 2.0, msg_y + 2.0, w, fs * 1.9, ha(0x000000, 0.5));
+            // Фон з заокругленням
+            draw_rectangle(msg_x, msg_y, w, fs * 1.9, ha(0x1a1c18, 0.85));
+            // Верхня кольорова лінія
+            draw_rectangle(msg_x, msg_y, w, 3.0, ha(0x58b85f, 0.8));
+            // Рамка
+            draw_rectangle_lines(msg_x, msg_y, w, fs * 1.9, 1.0, ha(0xffffff, 0.2));
             label(&font, &g.msg, cx, pad + fs * 6.5, fs * 1.1);
         }
 
@@ -893,46 +1075,59 @@ async fn main() {
             draw_rectangle(mx + mw * (g.fish.tn / 100.0).clamp(0.0, 1.0) - 3.0, my - 5.0, 6.0, mh + 10.0, WHITE);
             draw_rectangle(mx, my + mh + 8.0, mw, mh * 0.6, hx(0x333333));
             draw_rectangle(mx, my + mh + 8.0, mw * (g.fish.p / 100.0).clamp(0.0, 1.0), mh * 0.6, hx(0x4aa3df));
-            text_c(&font, "Держи кнопку — тяни, отпусти — ослабь", cx, my - fs * 0.5, fs * 0.9, WHITE);
+            text_c(&font, texts.fish_minigame_hint, cx, my - fs * 0.5, fs * 0.9, WHITE);
         }
 
         if let Some(buf) = &name_edit {
-            draw_name_modal(&mut ui, &font, buf, kb_lang, sw, sh, fs, now);
+            draw_name_modal(&mut ui, &font, buf, kb_lang, sw, sh, fs, now, texts);
         } else if !ui.menu {
-            // быстрый крафт
-            let ql = g.quick_list(now);
-            let (qw, qh) = (fs * 7.5, fs * 2.5);
-            let n = ql.len().min(5);
-            let total = n as f32 * (qw + 6.0);
-            if n > 0 {
-                text_c(&font, texts.quick_craft, cx, sh - pad - qh - fs * 0.6 - 4.0, fs * 0.8, ha(0xffffff, 0.85));
-            }
-            for (j, &ri) in ql.iter().take(5).enumerate() {
-                let r = Rect::new(cx - total / 2.0 + j as f32 * (qw + 6.0), sh - pad - qh, qw, qh);
-                ui.button(&font, r, &format!("{} {}", j + 1, texts.recipe_names[ri]), Cmd::Quick(j), true, 0x2f7d36, fs * 0.95);
-            }
-            // кнопки действий справа
-            let ab = base * 0.2;
-            let ar = Rect::new(sw - ab - pad, sh - ab - pad - qh * 0.2, ab, ab);
-            draw_circle(ar.x + ab / 2.0, ar.y + ab / 2.0, ab / 2.0, ha(if hold { 0x2f7d36 } else { 0x58b85f }, 0.9));
-            draw_circle_lines(ar.x + ab / 2.0, ar.y + ab / 2.0, ab / 2.0, 3.0, ha(0x1f5a25, 0.9));
-            text_c(&font, texts.action, ar.x + ab / 2.0, ar.y + ab / 2.0 + fs * 0.35, fs * 1.1, WHITE);
-            ui.btns_push_circle(ar, Cmd::Act);
-            let (bw2, bh2) = (ab * 0.62, fs * 2.3);
-            for (i, (l, c)) in [
-                (texts.menu, Cmd::Menu),
-                (texts.dig, Cmd::Dig),
-                (texts.drink, Cmd::Drink),
-                (texts.eat, Cmd::Eat)
-            ].iter().enumerate() {
-                let r = Rect::new(sw - bw2 - pad, ar.y - (i as f32 + 1.0) * (bh2 + 6.0), bw2, bh2);
-                ui.button(&font, r, l, *c, true, if *c == Cmd::Menu { 0x4a6fa5 } else { 0x6b5a3a }, fs);
+            if is_mobile {
+                // Мобільна кругла кнопка дії
+                let ab = base * 0.22;
+                let ar = Rect::new(sw - ab - pad, sh - ab - pad - fs * 0.5, ab, ab);
+                draw_circle(ar.x + ab / 2.0 + 2.0, ar.y + ab / 2.0 + 2.0, ab / 2.0, ha(0x000000, 0.4));
+                draw_circle(ar.x + ab / 2.0, ar.y + ab / 2.0, ab / 2.0, ha(if hold { 0x2f7d36 } else { 0x58b85f }, 0.9));
+                draw_circle(ar.x + ab / 2.0 - ab * 0.08, ar.y + ab / 2.0 - ab * 0.08, ab * 0.35, ha(0xffffff, 0.12));
+                draw_circle_lines(ar.x + ab / 2.0, ar.y + ab / 2.0, ab / 2.0, 2.5, ha(0x1f5a25, 0.9));
+                draw_circle_lines(ar.x + ab / 2.0, ar.y + ab / 2.0, ab / 2.0 - 2.0, 1.0, ha(0xffffff, 0.2));
+                text_c(&font, texts.action, ar.x + ab / 2.0, ar.y + ab / 2.0 + fs * 0.35, fs * 1.0, WHITE);
+                ui.btns_push_circle(ar, Cmd::Act);
+
+                // Компактні плаваючі мобільні пігулки дій (вертикально праворуч)
+                let pill_w = ab * 0.75;
+                let pill_h = fs * 2.0;
+                let mobile_pills = [
+                    ("🎒", texts.inventory, Cmd::Inventory, 0x7c4f24),
+                    ("🔨", texts.craft, Cmd::CraftMenu, 0x2e6b3e),
+                    ("🍴", texts.eat, Cmd::Eat, 0x6b5a3a),
+                    ("🥤", texts.drink, Cmd::Drink, 0x3a5a6b),
+                    ("⛏️", texts.dig, Cmd::Dig, 0x5a5040),
+                    ("⚙️", texts.menu, Cmd::Menu, 0x4a6fa5),
+                ];
+                for (i, (icon, label, cmd, col)) in mobile_pills.iter().enumerate() {
+                    let bx = sw - pad - pill_w;
+                    let by = ar.y - (i as f32 + 1.0) * (pill_h + 5.0);
+                    let r = Rect::new(bx, by, pill_w, pill_h);
+                    ui.button(&font, r, &format!("{icon} {label}"), *cmd, true, *col, fs * 0.78);
+                }
+            } else {
+                // ПК, Linux, macOS: чистий екран без зайвих наекранних кнопок дій!
+                // Стильна смуга гарячих клавіш по центру внизу екрану:
+                let hint_str = texts.controls_desktop_hint;
+                let hint_fs = fs * 0.8;
+                let bar_w = text_w(&font, hint_str, hint_fs) + fs * 2.2;
+                let bar_h = fs * 1.7;
+                let bar_x = (sw - bar_w) / 2.0;
+                let bar_y = sh - pad - bar_h;
+                draw_rectangle(bar_x, bar_y, bar_w, bar_h, ha(0x0d111a, 0.85));
+                draw_rectangle_lines(bar_x, bar_y, bar_w, bar_h, 1.2, ha(0x38bdf8, 0.45));
+                text_c(&font, hint_str, sw / 2.0, bar_y + bar_h * 0.65, hint_fs, Color::from_rgba(226, 232, 240, 240));
             }
         } else {
             draw_menu(&mut ui, &font, &g, now, sw, sh, fs, &market, &posted, my_id, &board_score, &board_fish, &settings, texts);
         }
-        // джойстик
-        if joy_id.is_some() && !ui.menu {
+        // джойстик (лише для мобільних)
+        if is_mobile && joy_id.is_some() && !ui.menu {
             draw_circle_lines(origin.x, origin.y, ring_r, 3.0, ha(0xffffff, 0.55));
             let v = (cur - origin).clamp_length_max(ring_r);
             draw_circle(origin.x + v.x, origin.y + v.y, ring_r * 0.42, ha(0xffffff, 0.35));
@@ -952,11 +1147,11 @@ async fn main() {
             let fps = get_fps();
             let debug_lines = vec![
                 format!("FPS: {}", fps),
-                format!("Гравців онлайн: {}", online),
-                format!("Позиція: ({:.1}, {:.1})", g.x, g.y),
-                format!("Час доби: {:.0}%", g.night() * 100.0),
-                format!("Версія: {}", CLIENT_VERSION),
-                if connected { "Підключено ✓".to_string() } else { "Відключено ✗".to_string() },
+                format!("{}: {}", texts.debug_players_online, online),
+                format!("{}: ({:.1}, {:.1})", texts.debug_position, g.x, g.y),
+                format!("{}: {:.0}%", texts.debug_time_of_day, g.night() * 100.0),
+                format!("{}: {}", texts.debug_version, CLIENT_VERSION),
+                if connected { texts.debug_connected.to_string() } else { texts.debug_disconnected.to_string() },
             ];
 
             // Напівпрозорий фон
@@ -999,20 +1194,165 @@ fn draw_menu(
     let pad = fs * 0.6;
     let p = Rect::new(sw * 0.03, sh * 0.03, sw * 0.94, sh * 0.94);
     ui.panel = p;
-    draw_rectangle(p.x, p.y, p.w, p.h, ha(0x1d1f1b, 0.95));
-    draw_rectangle_lines(p.x, p.y, p.w, p.h, 3.0, hx(0x6b5a3a));
-    // вкладки
-    let tabs = [texts.craft, texts.market, texts.leaderboard, texts.settings];
-    let tw = (p.w - pad * 3.0 - fs * 6.5 - 16.0) / 4.0;
+    // Затемнення фону за панеллю
+    draw_rectangle(0.0, 0.0, sw, sh, ha(0x000000, 0.4));
+    // Тінь панелі
+    draw_rectangle(p.x + 4.0, p.y + 4.0, p.w, p.h, ha(0x000000, 0.5));
+    // Фон панелі з градієнтом
+    draw_rectangle(p.x, p.y, p.w, p.h, ha(0x1a1c18, 0.97));
+    // Верхня світла смуга
+    draw_rectangle(p.x, p.y, p.w, 4.0, ha(0x8b7a55, 0.6));
+    // Рамка
+    draw_rectangle_lines(p.x, p.y, p.w, p.h, 3.0, hx(0x8b7a55));
+    draw_rectangle_lines(p.x + 2.0, p.y + 2.0, p.w - 4.0, p.h - 4.0, 1.0, ha(0xffffff, 0.08));
+    // вкладки (5 вкладок: Інвентар, Крафт, Ринок, Таблиця, Налаштування)
+    let tabs = [texts.inventory, texts.craft, texts.market, texts.leaderboard, texts.settings];
+    let tw = (p.w - pad * 3.0 - fs * 6.5 - 20.0) / 5.0;
     for (i, t) in tabs.iter().enumerate() {
         let r = Rect::new(p.x + pad + i as f32 * (tw + 4.0), p.y + pad, tw, fs * 2.4);
         ui.button(font, r, t, Cmd::Tab(i as u8), true, if ui.tab == i as u8 { 0x2f7d36 } else { 0x4a4f44 }, fs);
     }
     ui.button(font, Rect::new(p.x + p.w - pad - fs * 6.5, p.y + pad, fs * 6.5, fs * 2.4), texts.close, Cmd::Close, true, 0x8a3b2e, fs);
     let body = Rect::new(p.x + pad, p.y + pad * 2.0 + fs * 2.4, p.w - pad * 2.0, p.h - pad * 3.0 - fs * 2.4);
-    let rh = fs * 3.0;
+    let rh = fs * 3.2;
     match ui.tab {
         0 => {
+            // === ПІКСЕЛЬНИЙ ІНВЕНТАР ===
+            let tools_w = (body.w * 0.36).max(fs * 13.0).min(body.w * 0.45);
+            let inv_w = body.w - tools_w - pad;
+
+            // Ліва панель - Рюкзак
+            let inv_panel = Rect::new(body.x, body.y, inv_w, body.h);
+            draw_rectangle(inv_panel.x, inv_panel.y, inv_panel.w, inv_panel.h, ha(0x1e1b18, 0.9));
+            draw_rectangle_lines(inv_panel.x, inv_panel.y, inv_panel.w, inv_panel.h, 2.0, hx(0x4a3a28));
+
+            // Заголовок рюкзака
+            draw_rectangle(inv_panel.x, inv_panel.y, inv_panel.w, fs * 2.2, ha(0x2d241c, 0.95));
+            draw_rectangle(inv_panel.x, inv_panel.y + fs * 2.2 - 2.0, inv_panel.w, 2.0, hx(0x6b533b));
+            text(font, &format!("🎒 {}", texts.inventory), inv_panel.x + pad, inv_panel.y + fs * 1.5, fs * 1.05, hx(0xf5d996));
+
+            // Сітка слотів предметів
+            let slot_cols = ((inv_panel.w - pad * 2.0) / (fs * 7.5)).floor().max(2.0) as usize;
+            let slot_w = (inv_panel.w - pad * 2.0 - (slot_cols - 1) as f32 * pad) / slot_cols as f32;
+            let slot_h = fs * 3.2;
+
+            let mut active_items: Vec<(usize, u32)> = Vec::new();
+            for (i, &count) in g.inv.iter().enumerate() {
+                if count > 0 {
+                    active_items.push((i, count));
+                }
+            }
+
+            let grid_y = inv_panel.y + fs * 2.6;
+            let grid_h = inv_panel.h - fs * 2.8;
+            let total_rows = (active_items.len() + slot_cols - 1) / slot_cols;
+            let content_h = total_rows as f32 * (slot_h + pad);
+            ui.scroll = ui.scroll.clamp(0.0, (content_h - grid_h).max(0.0));
+
+            if active_items.is_empty() {
+                text_c(font, texts.empty_inv_label, inv_panel.x + inv_panel.w / 2.0, inv_panel.y + inv_panel.h / 2.0, fs * 1.0, ha(0xffffff, 0.5));
+            } else {
+                for (idx, &(i, count)) in active_items.iter().enumerate() {
+                    let col = idx % slot_cols;
+                    let row = idx / slot_cols;
+                    let sx = inv_panel.x + pad + col as f32 * (slot_w + pad);
+                    let sy = grid_y + row as f32 * (slot_h + pad) - ui.scroll;
+
+                    if sy + slot_h < grid_y || sy > grid_y + grid_h {
+                        continue;
+                    }
+
+                    // Піксельний слот 3D-рамка
+                    draw_rectangle(sx, sy, slot_w, slot_h, ha(0x141210, 0.95));
+                    draw_line(sx, sy, sx + slot_w, sy, 2.0, ha(0x0a0807, 0.9));
+                    draw_line(sx, sy, sx, sy + slot_h, 2.0, ha(0x0a0807, 0.9));
+                    draw_line(sx, sy + slot_h, sx + slot_w, sy + slot_h, 2.0, ha(0x383025, 0.8));
+                    draw_line(sx + slot_w, sy, sx + slot_w, sy + slot_h, 2.0, ha(0x383025, 0.8));
+
+                    // Кольорова іконка предмета
+                    let icon_size = fs * 1.8;
+                    let icon_x = sx + pad * 0.7;
+                    let icon_y = sy + (slot_h - icon_size) / 2.0;
+                    draw_rectangle(icon_x, icon_y, icon_size, icon_size, hx(IT_COLOR[i]));
+                    draw_rectangle_lines(icon_x, icon_y, icon_size, icon_size, 1.5, ha(0x000000, 0.6));
+                    draw_rectangle(icon_x + 1.0, icon_y + 1.0, icon_size * 0.4, icon_size * 0.4, ha(0xffffff, 0.25));
+
+                    // Назва предмета
+                    let name_x = icon_x + icon_size + pad * 0.6;
+                    let it_name = texts.item_names[i];
+                    text(font, it_name, name_x, sy + fs * 1.3, fs * 0.85, WHITE);
+
+                    // Кількість (значок у кутку)
+                    let count_str = format!("×{}", count);
+                    let count_w = text_w(font, &count_str, fs * 0.8);
+                    let badge_x = sx + slot_w - count_w - pad * 0.8;
+                    let badge_y = sy + slot_h - fs * 0.5;
+                    draw_rectangle(badge_x - 3.0, badge_y - fs * 0.75, count_w + 6.0, fs * 0.95, ha(0x000000, 0.75));
+                    text(font, &count_str, badge_x, badge_y, fs * 0.8, hx(0xf5d996));
+                }
+            }
+
+            // Права панель - Інструменти та Статистика
+            let tools_panel = Rect::new(body.x + inv_w + pad, body.y, tools_w, body.h);
+            draw_rectangle(tools_panel.x, tools_panel.y, tools_panel.w, tools_panel.h, ha(0x1a1c18, 0.9));
+            draw_rectangle_lines(tools_panel.x, tools_panel.y, tools_panel.w, tools_panel.h, 2.0, hx(0x4a3a28));
+
+            // Заголовок інструментів
+            draw_rectangle(tools_panel.x, tools_panel.y, tools_panel.w, fs * 2.2, ha(0x242820, 0.95));
+            draw_rectangle(tools_panel.x, tools_panel.y + fs * 2.2 - 2.0, tools_panel.w, 2.0, hx(0x4a6040));
+            text(font, &format!("🛠️ {}", texts.tools_label), tools_panel.x + pad, tools_panel.y + fs * 1.5, fs * 1.05, hx(0x96d9f5));
+
+            // Список інструментів
+            let mut ty = tools_panel.y + fs * 2.8;
+            let mut tool_count = 0;
+            for (t, &dur) in g.tools.iter().enumerate() {
+                if dur > 0 {
+                    tool_count += 1;
+                    let max_dur = TL_DUR[t];
+                    let card_h = fs * 2.4;
+
+                    draw_rectangle(tools_panel.x + pad, ty, tools_panel.w - pad * 2.0, card_h, ha(0x222620, 0.85));
+                    draw_rectangle_lines(tools_panel.x + pad, ty, tools_panel.w - pad * 2.0, card_h, 1.0, ha(0xffffff, 0.15));
+
+                    // Назва інструмента
+                    text(font, texts.tool_names[t], tools_panel.x + pad * 1.6, ty + fs * 1.1, fs * 0.88, WHITE);
+
+                    // Смужка міцності
+                    let bar_w = tools_panel.w - pad * 3.2;
+                    let bar_h = fs * 0.55;
+                    let bar_y = ty + fs * 1.45;
+                    let ratio = (dur as f32 / max_dur as f32).clamp(0.0, 1.0);
+
+                    draw_rectangle(tools_panel.x + pad * 1.6, bar_y, bar_w, bar_h, ha(0x000000, 0.6));
+                    let dur_col = if ratio > 0.5 { 0x58b85f } else if ratio > 0.25 { 0xd9c23f } else { 0xd9534f };
+                    draw_rectangle(tools_panel.x + pad * 1.6, bar_y, bar_w * ratio, bar_h, hx(dur_col));
+                    draw_rectangle_lines(tools_panel.x + pad * 1.6, bar_y, bar_w, bar_h, 1.0, ha(0xffffff, 0.2));
+
+                    let dur_text = format!("{}: {}/{}", texts.durability_label, dur, max_dur);
+                    let dtw = text_w(font, &dur_text, fs * 0.7);
+                    text(font, &dur_text, tools_panel.x + tools_panel.w - pad * 1.6 - dtw, ty + fs * 1.1, fs * 0.75, hx(0xd0d0d0));
+
+                    ty += card_h + pad * 0.6;
+                }
+            }
+
+            if tool_count == 0 {
+                text(font, "—", tools_panel.x + pad * 2.0, ty + fs * 1.0, fs * 0.9, ha(0xffffff, 0.4));
+            }
+
+            // Статистика гравця внизу правої панелі
+            let stat_y = tools_panel.y + tools_panel.h - fs * 7.0;
+            draw_rectangle(tools_panel.x + pad, stat_y, tools_panel.w - pad * 2.0, fs * 6.4, ha(0x141613, 0.9));
+            draw_rectangle_lines(tools_panel.x + pad, stat_y, tools_panel.w - pad * 2.0, fs * 6.4, 1.5, hx(0x4a3a28));
+
+            text(font, &format!("🪙 {}: {}", texts.gold_label, g.gold), tools_panel.x + pad * 1.8, stat_y + fs * 1.4, fs * 0.9, hx(0xe0c060));
+            text(font, &format!("🏆 {}: {}", texts.score, g.score()), tools_panel.x + pad * 1.8, stat_y + fs * 2.8, fs * 0.9, hx(0x6aa0d0));
+            text(font, &format!("🏠 {}: {}", texts.houses_label, g.houses), tools_panel.x + pad * 1.8, stat_y + fs * 4.2, fs * 0.9, hx(0x7bc676));
+            let pet_status = if g.has_pet { texts.yes } else { texts.no };
+            text(font, &format!("🐺 {}: {}", texts.tame_wolf, pet_status), tools_panel.x + pad * 1.8, stat_y + fs * 5.6, fs * 0.9, WHITE);
+        }
+        1 => {
+            // === КРАФТ / ВЕРСТАТ ===
             let ql = g.quick_list(now);
             let mut order: Vec<usize> = ql.clone();
             for i in 0..RECIPES.len() {
@@ -1029,8 +1369,56 @@ fn draw_menu(
                 }
                 let r = &RECIPES[ri];
                 let can = g.can_craft(r, now);
-                draw_rectangle(body.x, y, body.w, rh - 4.0, ha(if can { 0x2f4a30 } else { 0x2a2d27 }, 0.9));
-                text(font, texts.recipe_names[ri], body.x + pad, y + fs * 1.15, fs * 1.05, if can { WHITE } else { ha(0xffffff, 0.55) });
+                // Фон рядка з чергуванням кольорів та піксельною рамкою
+                let row_bg = if can {
+                    ha(if row % 2 == 0 { 0x243e26 } else { 0x1f3621 }, 0.92)
+                } else {
+                    ha(if row % 2 == 0 { 0x232521 } else { 0x1c1e1a }, 0.88)
+                };
+                draw_rectangle(body.x, y, body.w, rh - 4.0, row_bg);
+                draw_rectangle_lines(body.x, y, body.w, rh - 4.0, 1.0, ha(0xffffff, if can { 0.15 } else { 0.05 }));
+
+                // Ліва кольорова смужка
+                let status_color = if can { 0x58b85f } else { 0x4a4f44 };
+                draw_rectangle(body.x, y, 4.0, rh - 4.0, hx(status_color));
+
+                // Іконка результату крафту
+                let icon_size = fs * 1.8;
+                let icon_x = body.x + pad + 4.0;
+                let icon_y = y + (rh - 4.0 - icon_size) / 2.0;
+                match r.out {
+                    Out::Item(it, _) => {
+                        draw_rectangle(icon_x, icon_y, icon_size, icon_size, hx(IT_COLOR[it as usize]));
+                        draw_rectangle_lines(icon_x, icon_y, icon_size, icon_size, 1.5, ha(0x000000, 0.6));
+                        draw_rectangle(icon_x + 1.0, icon_y + 1.0, icon_size * 0.35, icon_size * 0.35, ha(0xffffff, 0.25));
+                    }
+                    Out::Tool(_) => {
+                        draw_rectangle(icon_x, icon_y, icon_size, icon_size, hx(0x4a6fa5));
+                        draw_rectangle_lines(icon_x, icon_y, icon_size, icon_size, 1.5, ha(0x000000, 0.6));
+                        text(font, "⚔", icon_x + icon_size * 0.2, icon_y + icon_size * 0.75, fs * 0.9, WHITE);
+                    }
+                    Out::Fire => {
+                        draw_rectangle(icon_x, icon_y, icon_size, icon_size, hx(0xd9823a));
+                        draw_rectangle_lines(icon_x, icon_y, icon_size, icon_size, 1.5, ha(0x000000, 0.6));
+                        text(font, "🔥", icon_x + icon_size * 0.15, icon_y + icon_size * 0.75, fs * 0.9, WHITE);
+                    }
+                    Out::Furnace => {
+                        draw_rectangle(icon_x, icon_y, icon_size, icon_size, hx(0x7a5a3a));
+                        draw_rectangle_lines(icon_x, icon_y, icon_size, icon_size, 1.5, ha(0x000000, 0.6));
+                        text(font, "🧱", icon_x + icon_size * 0.15, icon_y + icon_size * 0.75, fs * 0.9, WHITE);
+                    }
+                    Out::House => {
+                        draw_rectangle(icon_x, icon_y, icon_size, icon_size, hx(0x8a5a2e));
+                        draw_rectangle_lines(icon_x, icon_y, icon_size, icon_size, 1.5, ha(0x000000, 0.6));
+                        text(font, "🏠", icon_x + icon_size * 0.15, icon_y + icon_size * 0.75, fs * 0.9, WHITE);
+                    }
+                }
+
+                // Назва рецепта
+                let text_start_x = icon_x + icon_size + pad * 0.8;
+                text(font, texts.recipe_names[ri], text_start_x, y + fs * 1.2, fs * 1.05, if can { WHITE } else { ha(0xffffff, 0.5) });
+
+                // Вартість та умови
                 let mut extra = cost_text(r, texts);
                 if r.fire {
                     extra.push_str(&format!(" · {}", texts.at_campfire));
@@ -1041,11 +1429,15 @@ fn draw_menu(
                 if matches!(r.out, Out::Tool(t) if g.tool(t)) {
                     extra = texts.already_have.into();
                 }
-                text(font, &extra, body.x + pad, y + fs * 2.35, fs * 0.8, ha(0xffffff, if can { 0.8 } else { 0.45 }));
-                ui.button(font, Rect::new(body.x + body.w - fs * 7.0, y + 4.0, fs * 6.6, rh - 12.0), texts.make, Cmd::Craft(ri), can, 0x2f7d36, fs);
+                text(font, &extra, text_start_x, y + fs * 2.45, fs * 0.82, ha(0xffffff, if can { 0.85 } else { 0.45 }));
+
+                // Кнопка створити
+                let btn_w = fs * 7.0;
+                let btn_h = rh - 12.0;
+                ui.button(font, Rect::new(body.x + body.w - btn_w - pad * 0.5, y + 4.0, btn_w, btn_h), texts.make, Cmd::Craft(ri), can, 0x2f7d36, fs);
             }
         }
-        1 => {
+        2 => {
             // форма виставлення на продаж
             let y = body.y;
             let bh = fs * 2.3;
@@ -1076,7 +1468,7 @@ fn draw_menu(
             let content = market.len() as f32 * rh2;
             ui.scroll = ui.scroll.clamp(0.0, (content - list.h).max(0.0));
             if market.is_empty() {
-                text(font, "Пока пусто (рынок работает онлайн)", list.x, list.y + fs * 1.2, fs * 0.9, ha(0xffffff, 0.6));
+                text(font, texts.market_empty, list.x, list.y + fs * 1.2, fs * 0.9, ha(0xffffff, 0.6));
             }
             for (row, o) in market.iter().enumerate() {
                 let yy = list.y + row as f32 * rh2 - ui.scroll;
@@ -1085,141 +1477,205 @@ fn draw_menu(
                 }
                 let mine = Some(o.seller) == my_id || posted.contains_key(&o.id);
                 draw_rectangle(list.x, yy, list.w, rh2 - 4.0, ha(0x2a2d27, 0.9));
-                text(font, &format!("{}: {} ×{} {} {} зол.", o.seller_name, texts.item_names[(o.item as usize).min(NI - 1)], o.qty, texts.for_gold, o.price), list.x + pad, yy + rh2 * 0.62, fs * 0.9, WHITE);
+                text(font, &format!("{}: {} ×{} {} {} {}", o.seller_name, texts.item_names[(o.item as usize).min(NI - 1)], o.qty, texts.for_gold, o.price, texts.gold_label), list.x + pad, yy + rh2 * 0.62, fs * 0.9, WHITE);
                 let can = mine || g.gold >= o.price;
                 ui.button(font, Rect::new(list.x + list.w - fs * 6.4, yy + 3.0, fs * 6.0, rh2 - 10.0), if mine { texts.withdraw } else { texts.buy }, if mine { Cmd::MktWithdraw(o.id) } else { Cmd::MktBuy(o.id) }, can, if mine { 0x8a3b2e } else { 0x2f7d36 }, fs * 0.9);
             }
         }
-        2 => {
+        3 => {
             let mut y = body.y + fs;
-            text(font, "Лучшие по очкам", body.x, y, fs * 1.1, hx(0xe0c060));
+            text(font, texts.best_score, body.x, y, fs * 1.1, hx(0xe0c060));
             for (i, (n, s)) in board_score.iter().enumerate() {
                 y += fs * 1.4;
                 text(font, &format!("{}. {} — {}", i + 1, n, s), body.x + pad, y, fs, WHITE);
             }
             y += fs * 2.4;
-            text(font, "Лучшие рыбаки (самая крупная рыба)", body.x, y, fs * 1.1, hx(0x6aa0d0));
+            text(font, texts.best_fishers, body.x, y, fs * 1.1, hx(0x6aa0d0));
             for (i, (n, big, cnt)) in board_fish.iter().enumerate() {
                 y += fs * 1.4;
-                text(font, &format!("{}. {} — {:.2} кг ({} шт.)", i + 1, n, big, cnt), body.x + pad, y, fs, WHITE);
+                text(font, &format!("{}. {} — {:.2} {} ({} {})", i + 1, n, big, texts.kg_unit, cnt, texts.pcs_unit), body.x + pad, y, fs, WHITE);
             }
             if board_score.is_empty() {
                 text(font, texts.leaderboard_pending, body.x, y + fs * 2.0, fs * 0.9, ha(0xffffff, 0.6));
             }
         }
         _ => {
-            // Вкладка "Налаштування"
-            let bh = fs * 2.8;
-            let bw = body.w.min(fs * 22.0);
-            let y_start = body.y + fs;
-
-            // === МОВА ===
-            text(font, texts.language, body.x + pad, y_start, fs * 1.1, WHITE);
-            let lang_names = ["🇺🇦 Українська", "🇬🇧 English", "🇷🇺 Русский"];
-            let current_lang = match settings.language {
-                Language::Ukrainian => 0,
-                Language::English => 1,
-                Language::Russian => 2,
-            };
-            ui.button(
-                font,
-                Rect::new(body.x, y_start + fs * 1.5, bw, bh),
-                lang_names[current_lang],
-                Cmd::ChangeLanguage,
-                true,
-                0x4a6fa5,
-                fs,
-            );
-
-            // === МУЗИКА ===
-            let y_music = y_start + fs * 5.5;
-            text(font, &format!("🎵 {}", texts.music), body.x + pad, y_music, fs * 1.1, WHITE);
-
-            // Перемикач вкл/викл
-            let toggle_w = fs * 8.0;
-            ui.button(
-                font,
-                Rect::new(body.x, y_music + fs * 1.5, toggle_w, bh * 0.9),
-                if settings.music_enabled { texts.yes } else { texts.no },
-                Cmd::ToggleMusic,
-                true,
-                if settings.music_enabled { 0x2f7d36 } else { 0x8a3b2e },
-                fs,
-            );
-
-            // Повзунок гучності
-            if settings.music_enabled {
-                let slider_y = y_music + fs * 1.5 + bh * 0.9 + fs * 0.8;
-                let slider_w = bw * 0.7;
-                draw_rectangle(body.x, slider_y, slider_w, fs * 1.5, ha(0x000000, 0.4));
-                draw_rectangle(body.x, slider_y, slider_w * settings.music_volume, fs * 1.5, hx(0x2f7d36));
-                draw_rectangle_lines(body.x, slider_y, slider_w, fs * 1.5, 2.0, hx(0x4a6fa5));
-                text(font, &format!("{}: {}%", texts.volume, (settings.music_volume * 100.0) as i32), body.x + pad, slider_y + fs * 1.1, fs * 0.9, WHITE);
-
-                // Кнопки +/-
-                let btn_size = fs * 2.0;
-                ui.button(font, Rect::new(body.x + slider_w + fs, slider_y, btn_size, fs * 1.5), "-", Cmd::MusicVolume(-0.1), true, 0x6b5a3a, fs);
-                ui.button(font, Rect::new(body.x + slider_w + fs + btn_size + fs * 0.5, slider_y, btn_size, fs * 1.5), "+", Cmd::MusicVolume(0.1), true, 0x6b5a3a, fs);
-            }
-
-            // === ЗВУКИ ===
-            let y_sound = if settings.music_enabled { y_music + fs * 7.0 } else { y_music + fs * 4.0 };
-            text(font, &format!("🔊 {}", texts.sounds), body.x + pad, y_sound, fs * 1.1, WHITE);
-
-            // Перемикач вкл/викл
-            ui.button(
-                font,
-                Rect::new(body.x, y_sound + fs * 1.5, toggle_w, bh * 0.9),
-                if settings.sounds_enabled { texts.yes } else { texts.no },
-                Cmd::ToggleSound,
-                true,
-                if settings.sounds_enabled { 0x2f7d36 } else { 0x8a3b2e },
-                fs,
-            );
-
-            // Повзунок гучності
-            if settings.sounds_enabled {
-                let slider_y = y_sound + fs * 1.5 + bh * 0.9 + fs * 0.8;
-                let slider_w = bw * 0.7;
-                draw_rectangle(body.x, slider_y, slider_w, fs * 1.5, ha(0x000000, 0.4));
-                draw_rectangle(body.x, slider_y, slider_w * settings.sound_volume, fs * 1.5, hx(0x2f7d36));
-                draw_rectangle_lines(body.x, slider_y, slider_w, fs * 1.5, 2.0, hx(0x4a6fa5));
-                text(font, &format!("{}: {}%", texts.volume, (settings.sound_volume * 100.0) as i32), body.x + pad, slider_y + fs * 1.1, fs * 0.9, WHITE);
-
-                // Кнопки +/-
-                let btn_size = fs * 2.0;
-                ui.button(font, Rect::new(body.x + slider_w + fs, slider_y, btn_size, fs * 1.5), "-", Cmd::SoundVolume(-0.1), true, 0x6b5a3a, fs);
-                ui.button(font, Rect::new(body.x + slider_w + fs + btn_size + fs * 0.5, slider_y, btn_size, fs * 1.5), "+", Cmd::SoundVolume(0.1), true, 0x6b5a3a, fs);
-            }
-
-            // === ІНШІ ДІЇ ===
-            let y_actions = if settings.music_enabled && settings.sounds_enabled {
-                y_sound + fs * 7.0
-            } else if settings.music_enabled || settings.sounds_enabled {
-                y_sound + fs * 4.0
-            } else {
-                y_sound + fs * 3.5
-            };
-
-            let items: [(&str, Cmd); 4] = [
-                ("🌉 Построить мост (2 доски)", Cmd::Bridge),
-                ("🚣 Лодка: сесть / выйти", Cmd::Boat),
-                ("🐺 Приручить волка (мясо)", Cmd::Tame),
-                ("✏️ Сменить имя", Cmd::NameOpen),
+            // === СУЧАСНІ НАЛАШТУВАННЯ (MODERN SETTINGS) ===
+            let subtab_h = fs * 2.2;
+            let subtabs = [
+                ("🌐", texts.general_tab),
+                ("🎵", texts.audio_tab),
+                ("⌨️", texts.controls_tab),
             ];
-            for (i, (l, c)) in items.iter().enumerate() {
-                ui.button(
-                    font,
-                    Rect::new(body.x, y_actions + i as f32 * (bh + 8.0), bw, bh),
-                    l,
-                    *c,
-                    true,
-                    0x4a6fa5,
-                    fs,
-                );
+            let subtab_w = (body.w - pad * 2.0 - 16.0) / 3.0;
+            for (i, (icon, label)) in subtabs.iter().enumerate() {
+                let rx = body.x + pad + i as f32 * (subtab_w + 8.0);
+                let r = Rect::new(rx, body.y + pad, subtab_w, subtab_h);
+                let active = ui.settings_subtab == i as u8;
+                ui.button(font, r, &format!("{} {}", icon, label), Cmd::SettingsSubtab(i as u8), true, if active { 0x0284c7 } else { 0x1e293b }, fs * 0.9);
+            }
+
+            let sbody_y = body.y + pad + subtab_h + fs * 0.8;
+
+            match ui.settings_subtab {
+                0 => {
+                    // === ЗАГАЛЬНІ: МОВА ТА СЕРВЕРНІ ДІЇ ===
+                    let bh = fs * 2.8;
+                    let bw = body.w.min(fs * 22.0);
+                    text(font, texts.language, body.x + pad, sbody_y + fs * 0.9, fs * 1.1, WHITE);
+                    let lang_names = ["🇺🇦 Українська", "🇬🇧 English", "🇷🇺 Русский"];
+                    let current_lang = match settings.language {
+                        Language::Ukrainian => 0,
+                        Language::English => 1,
+                        Language::Russian => 2,
+                    };
+                    ui.button(font, Rect::new(body.x + pad, sbody_y + fs * 1.5, bw, bh), lang_names[current_lang], Cmd::ChangeLanguage, true, 0x0284c7, fs);
+
+                    let y_actions = sbody_y + fs * 5.2;
+                    text(font, texts.actions, body.x + pad, y_actions, fs * 1.05, Color::from_rgba(148, 163, 184, 255));
+                    let items: [(&str, Cmd); 4] = [
+                        (texts.build_bridge, Cmd::Bridge),
+                        (texts.boat_toggle, Cmd::Boat),
+                        (texts.tame_wolf, Cmd::Tame),
+                        (texts.change_name, Cmd::NameOpen),
+                    ];
+                    for (i, (l, c)) in items.iter().enumerate() {
+                        ui.button(
+                            font,
+                            Rect::new(body.x + pad, y_actions + fs * 0.8 + i as f32 * (bh + 8.0), bw, bh),
+                            l,
+                            *c,
+                            true,
+                            0x334155,
+                            fs,
+                        );
+                    }
+                }
+                1 => {
+                    // === ЗВУК ТА МУЗИКА ===
+                    let bh = fs * 2.6;
+                    let bw = body.w.min(fs * 22.0);
+
+                    // Музика
+                    text(font, &format!("🎵 {}", texts.music), body.x + pad, sbody_y + fs * 0.9, fs * 1.1, WHITE);
+                    let toggle_w = fs * 8.0;
+                    ui.button(
+                        font,
+                        Rect::new(body.x + pad, sbody_y + fs * 1.4, toggle_w, bh * 0.9),
+                        if settings.music_enabled { texts.yes } else { texts.no },
+                        Cmd::ToggleMusic,
+                        true,
+                        if settings.music_enabled { 0x10b981 } else { 0x64748b },
+                        fs,
+                    );
+
+                    if settings.music_enabled {
+                        let slider_y = sbody_y + fs * 1.4 + bh * 0.9 + fs * 0.8;
+                        let slider_w = bw * 0.7;
+                        draw_rectangle(body.x + pad, slider_y, slider_w, fs * 1.5, ha(0x0f172a, 0.9));
+                        draw_rectangle(body.x + pad, slider_y, slider_w * settings.music_volume, fs * 1.5, hx(0x0ea5e9));
+                        draw_rectangle_lines(body.x + pad, slider_y, slider_w, fs * 1.5, 1.5, hx(0x38bdf8));
+                        text(font, &format!("{}: {}%", texts.volume, (settings.music_volume * 100.0) as i32), body.x + pad * 1.5, slider_y + fs * 1.1, fs * 0.85, WHITE);
+
+                        let btn_size = fs * 2.0;
+                        ui.button(font, Rect::new(body.x + pad + slider_w + fs, slider_y, btn_size, fs * 1.5), "-", Cmd::MusicVolume(-0.1), true, 0x334155, fs);
+                        ui.button(font, Rect::new(body.x + pad + slider_w + fs + btn_size + fs * 0.5, slider_y, btn_size, fs * 1.5), "+", Cmd::MusicVolume(0.1), true, 0x334155, fs);
+                    }
+
+                    // Звуки
+                    let y_sound = if settings.music_enabled { sbody_y + fs * 8.0 } else { sbody_y + fs * 5.0 };
+                    text(font, &format!("🔊 {}", texts.sounds), body.x + pad, y_sound, fs * 1.1, WHITE);
+                    ui.button(
+                        font,
+                        Rect::new(body.x + pad, y_sound + fs * 0.5, toggle_w, bh * 0.9),
+                        if settings.sounds_enabled { texts.yes } else { texts.no },
+                        Cmd::ToggleSound,
+                        true,
+                        if settings.sounds_enabled { 0x10b981 } else { 0x64748b },
+                        fs,
+                    );
+
+                    if settings.sounds_enabled {
+                        let slider_y = y_sound + fs * 0.5 + bh * 0.9 + fs * 0.8;
+                        let slider_w = bw * 0.7;
+                        draw_rectangle(body.x + pad, slider_y, slider_w, fs * 1.5, ha(0x0f172a, 0.9));
+                        draw_rectangle(body.x + pad, slider_y, slider_w * settings.sound_volume, fs * 1.5, hx(0x0ea5e9));
+                        draw_rectangle_lines(body.x + pad, slider_y, slider_w, fs * 1.5, 1.5, hx(0x38bdf8));
+                        text(font, &format!("{}: {}%", texts.volume, (settings.sound_volume * 100.0) as i32), body.x + pad * 1.5, slider_y + fs * 1.1, fs * 0.85, WHITE);
+
+                        let btn_size = fs * 2.0;
+                        ui.button(font, Rect::new(body.x + pad + slider_w + fs, slider_y, btn_size, fs * 1.5), "-", Cmd::SoundVolume(-0.1), true, 0x334155, fs);
+                        ui.button(font, Rect::new(body.x + pad + slider_w + fs + btn_size + fs * 0.5, slider_y, btn_size, fs * 1.5), "+", Cmd::SoundVolume(0.1), true, 0x334155, fs);
+                    }
+                }
+                _ => {
+                    // === КЕРУВАННЯ ТА БІНДИ ===
+                    text(font, texts.rebind_hint, body.x + pad, sbody_y + fs * 0.6, fs * 0.85, Color::from_rgba(148, 163, 184, 255));
+
+                    let actions = RebindAction::ALL;
+                    let cols = 2;
+                    let item_w = (body.w - pad * 3.0) / cols as f32;
+                    let item_h = fs * 2.4;
+                    let start_y = sbody_y + fs * 1.2;
+
+                    for (idx, &action) in actions.iter().enumerate() {
+                        let col = idx % cols;
+                        let row = idx / cols;
+                        let bx = body.x + pad + col as f32 * (item_w + pad);
+                        let by = start_y + row as f32 * (item_h + 6.0);
+
+                        let is_rebinding_this = ui.rebinding == Some(action);
+                        let current_key = settings.keybindings.get_key_for_action(action);
+
+                        let action_name = match action {
+                            RebindAction::Inventory => texts.inventory,
+                            RebindAction::Craft => texts.craft,
+                            RebindAction::Action => texts.action,
+                            RebindAction::Eat => texts.eat,
+                            RebindAction::Drink => texts.drink,
+                            RebindAction::Dig => texts.dig,
+                            RebindAction::Menu => texts.menu,
+                            RebindAction::MoveUp => texts.move_up,
+                            RebindAction::MoveDown => texts.move_down,
+                            RebindAction::MoveLeft => texts.move_left,
+                            RebindAction::MoveRight => texts.move_right,
+                        };
+
+                        let btn_label = if is_rebinding_this {
+                            format!("{} {} [ ... ]", action.icon(), action_name)
+                        } else {
+                            format!("{} {} [ {} ]", action.icon(), action_name, current_key)
+                        };
+
+                        let col_hex = if is_rebinding_this { 0x0284c7 } else { 0x1e293b };
+                        ui.button(font, Rect::new(bx, by, item_w, item_h), &btn_label, Cmd::Rebind(action), true, col_hex, fs * 0.85);
+                    }
+
+                    // Кнопка скидання біндів
+                    let reset_btn_w = fs * 11.0;
+                    let reset_btn_h = fs * 2.0;
+                    let reset_y = start_y + (actions.len() as f32 / cols as f32).ceil() * (item_h + 6.0) + fs * 0.4;
+                    ui.button(font, Rect::new(body.x + (body.w - reset_btn_w) / 2.0, reset_y, reset_btn_w, reset_btn_h), &format!("🔄 {}", texts.reset_defaults), Cmd::ResetKeybinds, true, 0x475569, fs * 0.85);
+                }
             }
         }
     }
+
+    // Кнопка "Вийти з гри" внизу меню
+    let exit_btn_width = fs * 10.0;
+    let exit_btn_height = fs * 2.0;
+    let exit_btn_x = p.x + (p.w - exit_btn_width) / 2.0;
+    let exit_btn_y = p.y + p.h - exit_btn_height - pad;
+
+    ui.button(
+        font,
+        Rect::new(exit_btn_x, exit_btn_y, exit_btn_width, exit_btn_height),
+        texts.quit,
+        Cmd::Quit,
+        true,
+        0xd94f4f,
+        fs,
+    );
 }
 
 fn snapshot(g: &Game, now: f64, name: &str, posted: &HashMap<u32, (u8, u32)>) -> save::Save {
@@ -1228,7 +1684,7 @@ fn snapshot(g: &Game, now: f64, name: &str, posted: &HashMap<u32, (u8, u32)>) ->
 }
 
 #[allow(clippy::too_many_arguments)]
-fn draw_name_modal(ui: &mut Ui, font: &Font, buf: &str, lang: usize, sw: f32, sh: f32, fs: f32, now: f64) {
+fn draw_name_modal(ui: &mut Ui, font: &Font, buf: &str, lang: usize, sw: f32, sh: f32, fs: f32, now: f64, texts: &Texts) {
     const UA: [&str; 4] = ["1234567890", "йцукенгшщзхї", "фівапролджєґ", "ячсмитьбю'-"];
     const RU: [&str; 4] = ["1234567890", "йцукенгшщзхъ", "фывапролджэё", "ячсмитьбю.-"];
     const EN: [&str; 4] = ["1234567890", "qwertyuiop", "asdfghjkl_", "zxcvbnm.-"];
@@ -1241,8 +1697,8 @@ fn draw_name_modal(ui: &mut Ui, font: &Font, buf: &str, lang: usize, sw: f32, sh
     let p = Rect::new(sw * 0.03, sh * 0.03, sw * 0.94, sh * 0.94);
     draw_rectangle(p.x, p.y, p.w, p.h, ha(0x1d1f1b, 0.97));
     draw_rectangle_lines(p.x, p.y, p.w, p.h, 3.0, hx(0x6b5a3a));
-    text_c(font, "Как тебя зовут?", sw / 2.0, p.y + fs * 2.0, fs * 1.4, WHITE);
-    text_c(font, "Имя увидят другие игроки. Можно печатать и с клавиатуры.", sw / 2.0, p.y + fs * 3.4, fs * 0.8, ha(0xffffff, 0.7));
+    text_c(font, texts.what_is_your_name, sw / 2.0, p.y + fs * 2.0, fs * 1.4, WHITE);
+    text_c(font, texts.name_modal_desc, sw / 2.0, p.y + fs * 3.4, fs * 0.8, ha(0xffffff, 0.7));
     let f = Rect::new(p.x + fs * 2.0, p.y + fs * 4.2, p.w - fs * 4.0, fs * 2.8);
     draw_rectangle(f.x, f.y, f.w, f.h, ha(0x000000, 0.6));
     draw_rectangle_lines(f.x, f.y, f.w, f.h, 2.0, hx(0x58b85f));
@@ -1264,8 +1720,8 @@ fn draw_name_modal(ui: &mut Ui, font: &Font, buf: &str, lang: usize, sw: f32, sh
     let (lw, bw, ow) = (fs * 5.0, fs * 5.5, fs * 7.0);
     let sp = p.w - fs * 2.0 - lw - bw - ow - 24.0;
     let x0 = p.x + fs;
-    ui.button(font, Rect::new(x0, y, lw, kh), ["Язык UA", "Язык RU", "Язык EN"][lang], Cmd::Lang, true, 0x4a6fa5, fs);
-    ui.button(font, Rect::new(x0 + lw + 8.0, y, sp, kh), "Пробел", Cmd::Space, true, 0x3d4238, fs);
-    ui.button(font, Rect::new(x0 + lw + sp + 16.0, y, bw, kh), "Стереть", Cmd::Back, true, 0x8a3b2e, fs);
-    ui.button(font, Rect::new(x0 + lw + sp + bw + 24.0, y, ow, kh), "Готово", Cmd::NameOk, !buf.trim().is_empty(), 0x2f7d36, fs);
+    ui.button(font, Rect::new(x0, y, lw, kh), ["UA", "RU", "EN"][lang], Cmd::Lang, true, 0x4a6fa5, fs);
+    ui.button(font, Rect::new(x0 + lw + 8.0, y, sp, kh), texts.space, Cmd::Space, true, 0x3d4238, fs);
+    ui.button(font, Rect::new(x0 + lw + sp + 16.0, y, bw, kh), texts.delete_key, Cmd::Back, true, 0x8a3b2e, fs);
+    ui.button(font, Rect::new(x0 + lw + sp + bw + 24.0, y, ow, kh), texts.done, Cmd::NameOk, !buf.trim().is_empty(), 0x2f7d36, fs);
 }

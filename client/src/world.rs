@@ -1,4 +1,6 @@
 //! Карта мира: вода, река, пляжи, биомы и ресурсы.
+use macroquad::time::get_time;
+
 pub const W: usize = 80;
 pub const RESPAWN_SECS: f64 = 480.0;
 
@@ -21,6 +23,7 @@ pub enum Kind {
 }
 
 impl Kind {
+    // TODO #87: Node::blocks() should check hp > 0 and dead_until <= now
     pub fn blocks(self) -> bool {
         matches!(self, Kind::Tree | Kind::Rock | Kind::Coal | Kind::CuOre | Kind::FeOre | Kind::AgOre | Kind::AuOre)
     }
@@ -96,7 +99,7 @@ impl Map {
         for y in 0..W as i32 {
             for x in 0..W as i32 {
                 let v = if raw_water(x, y) {
-                    if y % 11 < 2 && (x as f32 + 0.5 - river_center(y as f32)).abs() < 1.6 {
+                    if y % 11 < 2 && (x as f32 + 0.5 - river_center(y as f32)).abs() < 2.0 {
                         FORD
                     } else {
                         WATER
@@ -229,8 +232,22 @@ impl Map {
             let i = self.idx[cell as usize];
             if i >= 0 {
                 let n = &mut self.nodes[i as usize];
-                n.dead_until = until;
-                n.hp = 0;
+                if until <= 0.0 {
+                    n.dead_until = 0.0;
+                    n.hp = Map::max_hp(n.kind);
+                } else {
+                    n.dead_until = get_time() + until;
+                    n.hp = 0;
+                    // When node respawns, hp should be restored — add check in node_at or draw_node
+                }
+            }
+        }
+    }
+
+    pub fn check_respawns(&mut self, now: f64) {
+        for n in &mut self.nodes {
+            if n.dead_until <= now && n.hp == 0 {
+                n.hp = Map::max_hp(n.kind);
             }
         }
     }
@@ -246,7 +263,7 @@ impl Map {
 
     pub fn terr_at(&self, x: i32, y: i32) -> u8 {
         if x < 0 || y < 0 || x >= W as i32 || y >= W as i32 {
-            GRASS
+            WATER
         } else {
             self.terr[y as usize * W + x as usize]
         }

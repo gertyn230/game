@@ -10,7 +10,7 @@ impl DiscordRpc {
     pub fn new() -> Self {
         let start_timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs() as i64;
 
         let mut client = match DiscordIpcClient::new("1571930178194645043") {
@@ -35,6 +35,7 @@ impl DiscordRpc {
     }
 
     pub fn update(&mut self, state: &str, details: &str, players_online: Option<usize>) {
+        let mut failed = false;
         if let Some(ref mut client) = self.client {
             let mut activity_builder = activity::Activity::new()
                 .state(state)
@@ -49,15 +50,21 @@ impl DiscordRpc {
                 );
 
             if let Some(count) = players_online {
-                activity_builder = activity_builder.party(
-                    activity::Party::new()
-                        .size([1, count as i32])
-                );
+                if count > 0 {
+                    activity_builder = activity_builder.party(
+                        activity::Party::new()
+                            .size([count as i32, count as i32])
+                    );
+                }
             }
 
             if let Err(e) = client.set_activity(activity_builder) {
                 eprintln!("Failed to update Discord activity: {}", e);
+                failed = true;
             }
+        }
+        if failed {
+            self.client = None;
         }
     }
 

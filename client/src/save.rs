@@ -3,6 +3,8 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+use crate::data::{NI, NT};
+
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
 pub struct Save {
     pub name: String,
@@ -50,7 +52,10 @@ fn dir() -> PathBuf {
 
 pub fn load() -> Option<Save> {
     let s = std::fs::read_to_string(dir().join("save.json")).ok()?;
-    serde_json::from_str(&s).ok()
+    let mut save: Save = serde_json::from_str(&s).ok()?;
+    if save.inv.len() < NI { save.inv.resize(NI, 0); }
+    if save.tools.len() < NT { save.tools.resize(NT, 0); }
+    Some(save)
 }
 
 pub fn store(s: &Save) {

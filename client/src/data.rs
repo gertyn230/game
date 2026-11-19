@@ -27,7 +27,7 @@ pub enum Tl {
 }
 pub const NT: usize = 14;
 // Назви інструментів тепер в i18n.rs: texts.tool_names[14]
-pub const TL_DUR: [i32; NT] = [40, 40, 80, 80, 160, 160, 20, 15, 30, 25, 25, 1, 1, 1];
+pub const TL_DUR: [i32; NT] = [40, 40, 80, 80, 160, 160, 20, 15, 30, 25, 25, 1, 50, 150];
 
 pub enum Out {
     Item(It, u32),
@@ -54,7 +54,7 @@ pub const RECIPES: &[Recipe] = &[
     Recipe { name: "Паёк", cost: &[(Food, 2)], out: Out::Item(Meal, 1), fire: false, furnace: false },
     Recipe { name: "Ягодный пирог", cost: &[(Berry, 3), (Food, 1)], out: Out::Item(Meal, 2), fire: true, furnace: false },
     Recipe { name: "Грибной суп", cost: &[(Mushroom, 2), (Food, 1)], out: Out::Item(Meal, 2), fire: true, furnace: false },
-    Recipe { name: "Целебный отвар", cost: &[(Herb, 2)], out: Out::Item(Herb, 1), fire: true, furnace: false },
+    Recipe { name: "Целебный отвар", cost: &[(Herb, 2)], out: Out::Item(Meal, 2), fire: true, furnace: false },
     Recipe { name: "Каменный нож", cost: &[(Stick, 1), (Pebble, 1), (Fiber, 1)], out: Out::Tool(Tl::Knife), fire: false, furnace: false },
     Recipe { name: "Каменный топор", cost: &[(Stick, 1), (Pebble, 2), (Fiber, 1)], out: Out::Tool(Tl::Axe), fire: false, furnace: false },
     Recipe { name: "Каменная кирка", cost: &[(Stick, 1), (Pebble, 3), (Fiber, 1)], out: Out::Tool(Tl::Pick), fire: false, furnace: false },

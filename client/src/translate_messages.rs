@@ -1,7 +1,7 @@
 //! Автоматичний переклад ігрових повідомлень
 use crate::i18n::Texts;
 
-pub fn translate_message<'a>(msg: &str, texts: &'a Texts) -> &'a str {
+pub fn translate_message<'a>(msg: &'a str, texts: &'a Texts) -> &'a str {
     match msg {
         // Тварини
         "Кролика поймает только копьё" => texts.need_spear,
@@ -46,8 +46,8 @@ pub fn translate_message<'a>(msg: &str, texts: &'a Texts) -> &'a str {
         "Волк кусает!" => texts.wolf_bites,
 
         // Смерть/речі
-        "Забрал свої речі!" => texts.picked_up_items,
-        "Ти помер. Поверніся на місце смерті, щоб забрати речі!" => texts.you_died_message,
+        "Забрал свои вещи!" | "Забрав свої речі!" | "Забрал свої речі!" => texts.picked_up_items,
+        "Ты умер. Вернись на место смерти, чтобы забрать вещи!" | "Ти загинув. Повернися на місце загибелі, щоб забрати речі!" => texts.you_died_message,
 
         // Рибалка
         "Закинул удочку, жди поклёвку" => texts.cast_rod,
@@ -62,6 +62,9 @@ pub fn translate_message<'a>(msg: &str, texts: &'a Texts) -> &'a str {
         // Кирка/видобування
         "Нужна кирка: палка, камешки, нить" |
         "Нужна кирка: палки, камешки, нить" => texts.need_pickaxe,
+        "Железо добывают медной киркой или лучше" => texts.need_copper_pickaxe,
+        "Нужна железная кирка или лучше" => texts.need_iron_pickaxe,
+        "Нужен топор: палка, камешки, нить" => texts.need_axe,
 
         // Якщо повідомлення не знайдено - повертаємо оригінал
         _ => msg,

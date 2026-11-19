@@ -12,6 +12,12 @@ fn rnd() -> f32 {
 impl Game {
     /// Закинути вудку
     pub fn cast(&mut self, wx: f32, wy: f32, now: f64, texts: &Texts) {
+        // Bug #48: prevent double-cast
+        if self.fish.ph != 0 { return; }
+        // Bug #47: check rod
+        if !self.tool(Tl::Rod) { self.say(texts.need_fishing_rod, now); return; }
+        // Bug #5: check worm count before decrement
+        if self.inv[It::Worm as usize] < 1 { self.say(texts.need_worm, now); return; }
         self.inv[It::Worm as usize] -= 1;
         self.use_tool(Tl::Rod, now, texts);
         self.fish.ph = 1;
@@ -57,7 +63,8 @@ impl Game {
                     self.fish.ph = 3;
                     self.fish.p = 30.0;
                     self.fish.tn = 40.0;
-                    let r = rnd() - if self.night() > 0.3 { 0.1 } else { 0.0 };
+                    // Bug #49: + instead of - to boost rare catches at night
+                    let r = rnd() + if self.night() > 0.3 { 0.1 } else { 0.0 };
                     self.fish.kind = if r < 0.45 { 0 } else if r < 0.75 { 1 } else if r < 0.93 { 2 } else { 3 };
                     self.say(texts.pull_keep_green, now);
                 } else if now > self.fish.t {
@@ -88,7 +95,8 @@ impl Game {
                         if wt > self.biggest {
                             self.biggest = wt;
                         }
-                        self.say(&format!("{}: {} {} кг", texts.caught_fish, f.0, wt), now);
+                        let fish_name = texts.fish_names[self.fish.kind.min(3)];
+                        self.say(&format!("{}: {} {} {}", texts.caught_fish, fish_name, wt, texts.kg_unit), now);
                     } else if self.fish.p <= 0.0 {
                         self.fish.ph = 0;
                         self.say(texts.fish_got_away, now);

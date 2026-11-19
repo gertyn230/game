@@ -38,10 +38,10 @@ impl GameStateManager {
                 self.draw_available_window(font, texts, info);
             }
             UpdateState::Downloading(progress) => {
-                self.draw_downloading_window(font, progress);
+                self.draw_downloading_window(font, progress, texts);
             }
             UpdateState::Installing => {
-                self.draw_installing_window(font);
+                self.draw_installing_window(font, texts);
             }
             UpdateState::Failed(ref err) => {
                 self.draw_failed_window(font, texts, err);
@@ -66,7 +66,7 @@ impl GameStateManager {
         draw_rectangle_lines(x, y, w, h, 3.0, Color::from_rgba(100, 150, 255, 255));
 
         // Заголовок
-        let title = format!("Доступна версія {}", info.version);
+        let title = format!("{} {}", texts.update_available, info.version);
         draw_text_ex(
             &title,
             x + 20.0,
@@ -81,7 +81,7 @@ impl GameStateManager {
 
         // Розмір
         let size_mb = info.size as f32 / 1024.0 / 1024.0;
-        let size_text = format!("Розмір: {:.1} МБ", size_mb);
+        let size_text = format!("{}: {:.1} MB", texts.update_size, size_mb);
         draw_text_ex(
             &size_text,
             x + 20.0,
@@ -175,7 +175,7 @@ impl GameStateManager {
         }
     }
 
-    fn draw_downloading_window(&self, font: &Font, progress: f32) {
+    fn draw_downloading_window(&self, font: &Font, progress: f32, texts: &Texts) {
         let (sw, sh) = (screen_width(), screen_height());
         let w = 400.0;
         let h = 150.0;
@@ -187,7 +187,7 @@ impl GameStateManager {
         draw_rectangle_lines(x, y, w, h, 3.0, Color::from_rgba(100, 150, 255, 255));
 
         draw_text_ex(
-            "Завантаження оновлення...",
+            texts.updating_download,
             x + 20.0,
             y + 40.0,
             TextParams {
@@ -220,7 +220,7 @@ impl GameStateManager {
         );
     }
 
-    fn draw_installing_window(&self, font: &Font) {
+    fn draw_installing_window(&self, font: &Font, texts: &Texts) {
         let (sw, sh) = (screen_width(), screen_height());
         let w = 400.0;
         let h = 100.0;
@@ -231,9 +231,10 @@ impl GameStateManager {
         draw_rectangle(x, y, w, h, Color::from_rgba(30, 30, 40, 255));
         draw_rectangle_lines(x, y, w, h, 3.0, Color::from_rgba(100, 150, 255, 255));
 
+        let tm = measure_text(texts.updating_install, Some(font), 24, 1.0);
         draw_text_ex(
-            "Встановлення...",
-            x + w / 2.0 - 70.0,
+            texts.updating_install,
+            x + (w - tm.width) / 2.0,
             y + h / 2.0 + 8.0,
             TextParams {
                 font: Some(font),
@@ -268,8 +269,8 @@ impl GameStateManager {
         );
 
         // Обрізати помилку до 50 символів
-        let error_text = if error.len() > 50 {
-            format!("{}...", &error[..50])
+        let error_text = if error.chars().count() > 50 {
+            format!("{}...", error.chars().take(50).collect::<String>())
         } else {
             error.to_string()
         };
@@ -369,6 +370,7 @@ impl GameStateManager {
                             return true;
                         }
                         MenuAction::NewGame => {
+                            // TODO #22: Propagate NewGame to main.rs to reset Game state
                             self.menu.state = MenuState::InGame;
                             self.in_game = true;
                             return true;
@@ -386,8 +388,9 @@ impl GameStateManager {
             }
             MenuState::Settings => {
                 if let Some(action) = self.menu.draw_settings_menu(font, texts, settings) {
-                    if action == MenuAction::CloseSettings {
+                    if action == MenuAction::CloseSettings || action == MenuAction::Back || action == MenuAction::Close {
                         self.menu.state = MenuState::MainMenu;
+                        self.menu.settings_menu.category = crate::settings_menu::SettingsCategory::General;
                         save_settings(settings);
                     }
                 }

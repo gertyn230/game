@@ -2,14 +2,17 @@
 
 use crate::game::{Game, MobKind};
 use crate::data::{RECIPES, Recipe, Out, It, TL_DUR};
+use crate::i18n::Texts;
 
 impl Game {
     /// Створити предмет за рецептом
-    pub fn craft(&mut self, i: usize, now: f64) {
+    pub fn craft(&mut self, i: usize, now: f64, texts: &Texts) {
         let Some(r) = RECIPES.get(i) else { return };
         if !self.can_craft(r, now) {
             return;
         }
+        // Bug #56: prune expired fires
+        self.fires.retain(|f| f.2 > now);
         for (it, n) in r.cost {
             self.inv[*it as usize] -= n;
         }
@@ -23,7 +26,8 @@ impl Game {
             Out::Furnace => self.furn.push((self.x, self.y)),
             Out::House => self.houses += 1,
         }
-        self.say(&format!("Готово: {}", r.name), now);
+        let recipe_name = texts.recipe_names.get(i).copied().unwrap_or(r.name);
+        self.say(&format!("{}: {}", texts.crafted_item, recipe_name), now);
     }
 
     /// Список доступних рецептів, відсортованих за важливістю
@@ -50,6 +54,11 @@ impl Game {
 
     /// Чи можна зараз створити цей рецепт
     pub fn can_craft(&self, r: &Recipe, now: f64) -> bool {
+        if let Out::Tool(t) = r.out {
+            if self.tool(t) {
+                return false;
+            }
+        }
         if r.fire && !self.fires.iter().any(|f| f.2 > now && (f.0 - self.x).powi(2) + (f.1 - self.y).powi(2) < 4.0) {
             return false;
         }

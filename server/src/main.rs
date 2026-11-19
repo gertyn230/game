@@ -90,6 +90,7 @@ fn enc(m: &ServerMsg) -> String {
 }
 
 // Constant-time comparison for admin key
+// TODO #103: Use constant-time comparison for all admin key checks
 fn constant_time_compare(a: &str, b: &str) -> bool {
     if a.len() != b.len() {
         return false;
@@ -102,7 +103,18 @@ fn constant_time_compare(a: &str, b: &str) -> bool {
 }
 
 // Check admin authorization from headers
+// TODO #65: Extract real client IP from ConnectInfo<SocketAddr> instead of hardcoding 127.0.0.1
 async fn check_admin_auth(app: &App, headers: &HeaderMap, client_ip: &str) -> Result<(), StatusCode> {
+    // Check rate limiting
+    {
+        let w = app.world.lock().await;
+        if let Some((count, last)) = w.failed_auth_attempts.get(client_ip) {
+            if *count >= 5 && last.elapsed().as_secs() < 300 {
+                return Err(StatusCode::TOO_MANY_REQUESTS);
+            }
+        }
+    }
+
     let admin_key = match &app.admin_key {
         Some(key) => key,
         None => return Err(StatusCode::SERVICE_UNAVAILABLE), // Admin not configured
@@ -130,14 +142,8 @@ async fn check_admin_auth(app: &App, headers: &HeaderMap, client_ip: &str) -> Re
         return Err(StatusCode::UNAUTHORIZED);
     }
 
-    // Check rate limiting
-    let mut w = app.world.lock().await;
-    if let Some((count, last)) = w.failed_auth_attempts.get(client_ip) {
-        if *count >= 5 && last.elapsed().as_secs() < 300 {
-            return Err(StatusCode::TOO_MANY_REQUESTS);
-        }
-    }
     // Clear failed attempts on successful auth
+    let mut w = app.world.lock().await;
     w.failed_auth_attempts.remove(client_ip);
 
     Ok(())
@@ -158,7 +164,7 @@ async fn main() {
     // Ініціалізувати базу даних
     let db = db::init_db().await.expect("Не вдалось підключитись до БД");
 
-    let (tx, _) = broadcast::channel::<String>(32);
+    let (tx, _) = broadcast::channel::<String>(256);
     let app = App {
         world: Arc::new(Mutex::new(World::default())),
         tx,
@@ -182,13 +188,17 @@ async fn main() {
                     let mut w = app.world.lock().await;
                     let players: Vec<PlayerState> = w.players.values().map(|c| c.state.clone()).collect();
                     let board = if tick.is_multiple_of(75) {
+                        let now = chrono::Utc::now().timestamp();
+                        w.bans.retain(|b| b.expires_at.is_none() || b.expires_at.unwrap() > now);
+                        w.mutes.retain(|m| m.expires_at.is_none() || m.expires_at.unwrap() > now);
+                        // TODO #100: Broadcast ServerMsg::Respawn when nodes are pruned from w.dead
                         w.dead.retain(|_, t| t.elapsed().as_secs() < RESPAWN_SECS as u64);
                         let mut sc: Vec<(String, u32)> = w.players.values().map(|c| (c.state.name.clone(), c.score)).collect();
-                        sc.sort_by(|a, b| b.1.cmp(&a.1));
+                        sc.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
                         sc.truncate(10);
                         let mut fi: Vec<(String, f32, u32)> =
                             w.players.values().filter(|c| c.big > 0.0).map(|c| (c.state.name.clone(), c.big, c.fish)).collect();
-                        fi.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+                        fi.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal).then_with(|| a.0.cmp(&b.0)));
                         fi.truncate(5);
                         Some(ServerMsg::Board { score: sc, fishers: fi })
                     } else {
@@ -206,7 +216,6 @@ async fn main() {
 
     let router = Router::new()
         .route("/", get(index))
-        .route("/admin", get(admin))
         .route("/api/players", get(api_players))
         .route("/api/admin/stats", get(api_admin_stats))
         .route("/api/admin/ban", post(api_ban))
@@ -254,12 +263,6 @@ async fn index(State(app): State<App>) -> Html<String> {
     page("Pixel Village: онлайн", &format!("<h1>Онлайн: {}</h1><ul>{rows}</ul>", names.len()))
 }
 
-async fn admin(State(_app): State<App>, _headers: HeaderMap) -> Response {
-    // For /admin page, we'll allow access and let JavaScript handle auth via API calls
-    // This way we can serve the login page without authentication
-    Html(include_str!("../../admin.html")).into_response()
-}
-
 async fn api_version() -> Json<serde_json::Value> {
     // Версія гри - змінюйте при кожному оновленні
     Json(serde_json::json!({
@@ -290,7 +293,10 @@ async fn api_ban(State(app): State<App>, headers: HeaderMap, Json(req): Json<Ban
     let banned_by = req.admin.unwrap_or_else(|| "Адміністратор".to_string());
 
     let now = chrono::Utc::now().timestamp();
-    let expires_at = duration_hours.map(|h| now + h * 3600);
+    let expires_at = duration_hours.map(|h| {
+        let h = h.min(87600);
+        now + h.saturating_mul(3600)
+    });
 
     let ban = Ban {
         player_name: player_name.clone(),
@@ -356,7 +362,10 @@ async fn api_mute(State(app): State<App>, headers: HeaderMap, Json(req): Json<Mu
     let muted_by = req.admin.unwrap_or_else(|| "Адміністратор".to_string());
 
     let now = chrono::Utc::now().timestamp();
-    let expires_at = duration_hours.map(|h| now + h * 3600);
+    let expires_at = duration_hours.map(|h| {
+        let h = h.min(87600);
+        now + h.saturating_mul(3600)
+    });
 
     let mute = Mute {
         player_name: player_name.clone(),
@@ -432,6 +441,7 @@ async fn api_list_bans(State(app): State<App>, headers: HeaderMap) -> Response {
     })).into_response()
 }
 
+// TODO #104: Restrict /api/players to authenticated admins or remove coordinates
 async fn api_players(State(app): State<App>) -> Json<serde_json::Value> {
     let w = app.world.lock().await;
     let players: Vec<serde_json::Value> = w.players.values().map(|c| {
@@ -540,12 +550,11 @@ async fn api_admin_stats(State(app): State<App>, headers: HeaderMap) -> Response
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, State(app): State<App>) -> impl IntoResponse {
-    ws.max_message_size(4096).on_upgrade(move |socket| client_loop(socket, app))
+    ws.max_message_size(262144).on_upgrade(move |socket| client_loop(socket, app))
 }
 
 fn clean_name(raw: &str) -> Option<String> {
-    let s: String = raw.chars().filter(|c| !c.is_control()).take(MAX_NAME_CHARS).collect();
-    let s = s.trim().to_string();
+    let s: String = raw.trim().chars().filter(|c| !c.is_control()).take(MAX_NAME_CHARS).collect();
     if s.is_empty() {
         None
     } else {
@@ -554,8 +563,10 @@ fn clean_name(raw: &str) -> Option<String> {
 }
 
 async fn client_loop(socket: WebSocket, app: App) {
+    // TODO #69: Add ping/pong heartbeat and idle timeout to detect dead connections
     let (mut sink, mut stream) = socket.split();
     let mut rx = app.tx.subscribe();
+    // TODO #101: Use bounded channel to prevent memory DoS
     let (dtx, mut drx) = mpsc::unbounded_channel::<String>();
 
     let (id, welcome_pack) = {
@@ -565,6 +576,7 @@ async fn client_loop(socket: WebSocket, app: App) {
         }
         w.next_id += 1;
         let id = w.next_id;
+        // TODO #13: Don't insert player until Join is received and ban check passes. Reject all messages from unjoined sessions.
         w.players.insert(
             id,
             Conn {
@@ -658,11 +670,13 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
                         if let Some(c) = w.players.get(&id) {
                             reply(c, &ServerMsg::Err { text: reason });
                         }
+                        w.players.remove(&id);
                         return;
                     }
                 }
 
                 // Перевірка муту
+                // TODO #71: Check mute by player identity (IP/session), not by requested name
                 let is_muted = w.mutes.iter().any(|m| {
                     m.player_name == n && (m.expires_at.is_none() || m.expires_at.unwrap() > now)
                 });
@@ -681,8 +695,8 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
         ClientMsg::Move { x, y, face, moving, boat, coat, held } => {
             if x.is_finite() && y.is_finite() {
                 if let Some(c) = w.players.get_mut(&id) {
-                    c.state.x = x.clamp(0.0, WORLD_SIZE);
-                    c.state.y = y.clamp(0.0, WORLD_SIZE);
+                    c.state.x = x.clamp(0.0, WORLD_SIZE - 0.001);
+                    c.state.y = y.clamp(0.0, WORLD_SIZE - 0.001);
                     c.state.face = face.min(3);
                     c.state.moving = moving;
                     c.state.boat = boat;
@@ -693,11 +707,15 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
         }
         ClientMsg::Dead { idx } => {
             if idx < NODE_COUNT_MAX {
+                if w.dead.contains_key(&idx) {
+                    return;
+                }
                 w.dead.insert(idx, Instant::now());
                 let _ = app.tx.send(enc(&ServerMsg::Dead { idx, left: RESPAWN_SECS }));
             }
         }
         ClientMsg::Stats { score, big, fish } => {
+            // TODO #73: Compute scores server-side instead of accepting ClientMsg::Stats
             if let Some(c) = w.players.get_mut(&id) {
                 c.score = score;
                 c.big = if big.is_finite() { big.clamp(0.0, 50.0) } else { 0.0 };
@@ -705,6 +723,7 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
             }
         }
         ClientMsg::Post { item, qty, price } => {
+            // TODO #16: Server should maintain player inventories for secure market transactions
             if item >= ITEM_COUNT || qty == 0 || qty > 999 || price == 0 || price > 100_000 {
                 return;
             }
@@ -740,6 +759,7 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
             if let Some(s) = w.players.get(&offer.seller) {
                 reply(s, &ServerMsg::Sold { id: offer.id, gold: offer.price });
             }
+            // TODO #68: Persist offline sales so sellers receive gold on reconnect
             let _ = app.tx.send(enc(&ServerMsg::Market { offers: w.offers.clone() }));
         }
         ClientMsg::Withdraw { id: oid } => {
@@ -778,6 +798,7 @@ struct TicketCreateReq {
     message: String,
 }
 
+// TODO #74: Ticket creation should use player session auth, not admin key
 async fn api_create_ticket(State(app): State<App>, Json(req): Json<TicketCreateReq>) -> Response {
     // Перевірка ключа (для тестів можна створювати без ключа)
     if let Some(k) = &app.admin_key {

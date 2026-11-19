@@ -116,7 +116,7 @@ impl Menu {
     /// Завантажує фонове зображення для меню
     pub async fn load_background(&mut self) {
         // Вбудована заставка - працює на всіх платформах без папки assets!
-        const BACKGROUND_PNG: &[u8] = include_bytes!("../../assets/menu_background.png");
+        const BACKGROUND_PNG: &[u8] = include_bytes!("../assets/menu_background.png");
 
         match image::load_from_memory(BACKGROUND_PNG) {
             Ok(img) => {
@@ -141,6 +141,10 @@ impl Menu {
     }
 
     pub fn update_particles(&mut self, dt: f32, sw: f32, sh: f32) {
+        if sw <= 0.0 || sh <= 0.0 {
+            return;
+        }
+
         // Оновлення частинок
         for p in &mut self.particles {
             p.x += p.vx * dt;
@@ -187,10 +191,13 @@ impl Menu {
         for i in 0..100 {
             let y = (i as f32 / 100.0) * sh * 0.7;
             let t = i as f32 / 100.0;
-            let r = (sky_top.r as f32 * (1.0 - t) + sky_bottom.r as f32 * t) as u8;
-            let g = (sky_top.g as f32 * (1.0 - t) + sky_bottom.g as f32 * t) as u8;
-            let b = (sky_top.b as f32 * (1.0 - t) + sky_bottom.b as f32 * t) as u8;
-            draw_rectangle(0.0, y, sw, sh * 0.7 / 100.0, Color::from_rgba(r, g, b, 255));
+            let color = Color::new(
+                sky_top.r * (1.0 - t) + sky_bottom.r * t,
+                sky_top.g * (1.0 - t) + sky_bottom.g * t,
+                sky_top.b * (1.0 - t) + sky_bottom.b * t,
+                1.0,
+            );
+            draw_rectangle(0.0, y, sw, sh * 0.7 / 100.0, color);
         }
 
         // Зірки вночі
@@ -360,7 +367,7 @@ impl Menu {
         let title = "🏡 Pixel Village";
         draw_text_ex(
             title,
-            sw / 2.0 - measure_text(title, Some(font), fs as u16 * 2, 1.0).width / 2.0,
+            sw / 2.0 - measure_text(title, Some(font), (fs * 2.5) as u16, 1.0).width / 2.0,
             title_y,
             TextParams {
                 font: Some(font),
@@ -374,7 +381,7 @@ impl Menu {
         let version = format!("v{}", env!("CARGO_PKG_VERSION"));
         draw_text_ex(
             &version,
-            sw / 2.0 - measure_text(&version, Some(font), fs as u16, 1.0).width / 2.0,
+            sw / 2.0 - measure_text(&version, Some(font), (fs * 0.9) as u16, 1.0).width / 2.0,
             title_y + fs * 2.0,
             TextParams {
                 font: Some(font),
@@ -401,7 +408,7 @@ impl Menu {
         let percent_text = format!("{}%", (self.loading_progress * 100.0) as u32);
         draw_text_ex(
             &percent_text,
-            sw / 2.0 - measure_text(&percent_text, Some(font), fs as u16, 1.0).width / 2.0,
+            sw / 2.0 - measure_text(&percent_text, Some(font), (fs * 0.8) as u16, 1.0).width / 2.0,
             bar_y - 10.0,
             TextParams {
                 font: Some(font),
@@ -414,7 +421,7 @@ impl Menu {
         // Повідомлення завантаження
         draw_text_ex(
             &self.loading_message,
-            sw / 2.0 - measure_text(&self.loading_message, Some(font), fs as u16, 1.0).width / 2.0,
+            sw / 2.0 - measure_text(&self.loading_message, Some(font), (fs * 1.1) as u16, 1.0).width / 2.0,
             bar_y + bar_height + 30.0,
             TextParams {
                 font: Some(font),
@@ -444,6 +451,7 @@ impl Menu {
         let (sw, sh) = (screen_width(), screen_height());
         let fs = (sw.min(sh) * 0.04).max(16.0);
 
+        // TODO #82: Call draw_particles in menu render, decouple cloud updates
         // Малюємо фон (або згенеровану заставку, або піксельний фон)
         if let Some(bg) = &self.background {
             draw_texture_ex(
@@ -465,6 +473,7 @@ impl Menu {
         let button_width = 400.0; // Збільшено для довгих слів
         let button_height = 70.0;
         let button_spacing = 25.0;
+        // TODO #33: Dynamically calculate button start_y based on screen height
         let start_y = sh * 0.55;
 
         let buttons = if self.has_save {
@@ -603,6 +612,22 @@ impl Menu {
     }
 
     pub fn draw_settings_menu(&mut self, font: &Font, texts: &Texts, settings: &mut Settings) -> Option<MenuAction> {
+        let (sw, sh) = (screen_width(), screen_height());
+        if let Some(bg) = &self.background {
+            draw_texture_ex(
+                bg,
+                0.0,
+                0.0,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(sw, sh)),
+                    ..Default::default()
+                },
+            );
+        } else {
+            self.draw_pixel_background(sw, sh);
+        }
+
         let (should_close, should_disconnect) = self.settings_menu.draw(font, texts, settings);
 
         if should_disconnect {
@@ -610,7 +635,7 @@ impl Menu {
         }
 
         if should_close {
-            return Some(MenuAction::Back);
+            return Some(MenuAction::CloseSettings);
         }
 
         None
@@ -620,6 +645,7 @@ impl Menu {
 // Допоміжні функції
 
 fn is_button_hovered(x: f32, y: f32, w: f32, h: f32) -> bool {
+    // TODO #32: Check touch positions against button bounds for mobile
     let (mx, my) = mouse_position();
     mx >= x && mx <= x + w && my >= y && my <= y + h
 }

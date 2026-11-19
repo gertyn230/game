@@ -42,6 +42,7 @@ impl Net {
 
         thread::spawn(move || {
             let mut name = name;
+            let mut connected_once = false; // Bug #96
             loop {
                 match connect(url.as_str()) {
                     Ok((mut ws, _)) => {
@@ -52,6 +53,7 @@ impl Net {
                                 name = n;
                             }
                         }
+                        connected_once = true;
                         let _ = in_tx.send(NetEvent::Connected);
                         let join = serde_json::to_string(&ClientMsg::Join {
                             name: name.clone(),
@@ -69,10 +71,14 @@ impl Net {
                                     break 'conn;
                                 }
                             }
+                            // Bug #62: flush pending pong frames
+                            let _ = ws.flush();
                             match ws.read() {
                                 Ok(Message::Text(t)) => {
                                     if let Ok(m) = serde_json::from_str::<ServerMsg>(&t) {
-                                        let _ = in_tx.send(NetEvent::Msg(m));
+                                        if in_tx.send(NetEvent::Msg(m)).is_err() {
+                                            return; // Bug #8: channel closed, stop thread
+                                        }
                                     }
                                 }
                                 Ok(Message::Close(_)) => break 'conn,
@@ -82,17 +88,29 @@ impl Net {
                                 Err(_) => break 'conn,
                             }
                         }
-                        let _ = in_tx.send(NetEvent::Disconnected);
+                        if in_tx.send(NetEvent::Disconnected).is_err() {
+                            return; // Bug #8: channel closed, stop thread
+                        }
                     }
                     Err(_) => {
-                        let _ = in_tx.send(NetEvent::Disconnected);
+                        // Bug #96: only send Disconnected if was connected before
+                        if connected_once {
+                            if in_tx.send(NetEvent::Disconnected).is_err() {
+                                return; // Bug #8: channel closed
+                            }
+                        }
                     }
                 }
-                // Если ждали пробуждения сервера, не спамим подключениями.
+                // Bug #8: check if main thread dropped channels
                 while let Ok(m) = out_rx.try_recv() {
                     if let ClientMsg::Join { name: n, .. } = m {
                         name = n;
                     }
+                }
+                // Check if channel is disconnected
+                match out_rx.try_recv() {
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => return,
+                    _ => {}
                 }
                 thread::sleep(Duration::from_secs(3));
             }

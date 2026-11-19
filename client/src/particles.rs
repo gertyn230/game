@@ -103,16 +103,16 @@ impl Particle {
     }
 
     pub fn update(&mut self, dt: f32) -> bool {
-        self.x += self.vx;
-        self.y += self.vy;
+        self.x += self.vx * dt * 60.0;
+        self.y += self.vy * dt * 60.0;
 
         match self.particle_type {
             ParticleType::Fire | ParticleType::Smoke => {
-                self.vy -= 0.05; // Піднімається вгору
-                self.size += 0.1; // Розширюється
+                self.vy -= 0.05 * dt * 60.0; // Піднімається вгору
+                self.size += 0.1 * dt * 60.0; // Розширюється
             }
             ParticleType::Blood | ParticleType::Dust => {
-                self.vy += 0.1; // Гравітація
+                self.vy += 0.1 * dt * 60.0; // Гравітація
             }
             _ => {}
         }
@@ -125,7 +125,7 @@ impl Particle {
 
     pub fn draw(&self) {
         let mut color = self.color;
-        color.a = self.alpha;
+        color.a = self.color.a * self.alpha;
 
         match self.particle_type {
             ParticleType::Sparkle => {
@@ -157,7 +157,13 @@ impl ParticleSystem {
     }
 
     pub fn emit(&mut self, x: f32, y: f32, particle_type: ParticleType, count: usize) {
+        if self.particles.len() >= 2000 {
+            return;
+        }
         for _ in 0..count {
+            if self.particles.len() >= 2000 {
+                break;
+            }
             self.particles.push(Particle::new(x, y, particle_type));
         }
     }
@@ -184,7 +190,7 @@ impl ParticleSystem {
         for particle in &self.particles {
             let (sx, sy) = world_to_screen(particle.x, particle.y);
             let mut color = particle.color;
-            color.a = particle.alpha;
+            color.a = particle.color.a * particle.alpha;
 
             match particle.particle_type {
                 ParticleType::Sparkle => {

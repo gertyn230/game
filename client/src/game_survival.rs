@@ -11,6 +11,15 @@ impl Game {
             g.hunger = (g.hunger + hunger).min(100.0);
             g.energy = (g.energy + en).min(100.0);
         }
+        // Bug #57: prioritize herbs for healing when HP is low
+        if self.hp < 80.0 && self.inv[It::Herb as usize] > 0 {
+            self.inv[It::Herb as usize] -= 1;
+            self.hp = (self.hp + 20.0).min(100.0);
+            self.say(texts.herbs_heal, now);
+            return;
+        }
+        // Bug #92: don't waste food when full
+        if self.hunger >= 100.0 { self.say(texts.not_hungry, now); return; }
         if self.inv[It::Roast as usize] > 0 {
             self.inv[It::Roast as usize] -= 1;
             h(self, 70.0, 25.0);
@@ -23,11 +32,11 @@ impl Game {
         } else if self.inv[It::Berry as usize] > 0 {
             self.inv[It::Berry as usize] -= 1;
             h(self, 25.0, 10.0);
-            self.say("Ягоди смачні!", now);
+            self.say(texts.berries_tasty, now);
         } else if self.inv[It::Mushroom as usize] > 0 {
             self.inv[It::Mushroom as usize] -= 1;
             h(self, 30.0, 12.0);
-            self.say("Гриби ситні!", now);
+            self.say(texts.mushrooms_filling, now);
         } else if self.inv[It::Food as usize] > 0 {
             self.inv[It::Food as usize] -= 1;
             h(self, 20.0, 8.0);
@@ -42,10 +51,10 @@ impl Game {
             self.hp -= 4.0;
             self.say(texts.raw_fish_bad, now);
         } else if self.inv[It::Herb as usize] > 0 {
-            // Трави лікують але не годують
+            // Fallback healing when HP is fine
             self.inv[It::Herb as usize] -= 1;
             self.hp = (self.hp + 20.0).min(100.0);
-            self.say("Трави зцілюють рани!", now);
+            self.say(texts.herbs_heal, now);
         }
     }
 

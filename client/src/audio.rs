@@ -81,8 +81,8 @@ impl AudioManager {
             return;
         }
         if let Some(sound) = self.sounds.get(name) {
-            play_sound_once(sound);
             macroquad::audio::set_sound_volume(sound, self.sound_volume);
+            play_sound_once(sound);
         }
     }
 

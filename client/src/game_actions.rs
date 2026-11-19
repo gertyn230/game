@@ -37,6 +37,10 @@ impl Game {
             self.say(texts.already_dug, now);
             return;
         }
+        // Bug #53: record dig count
+        self.dug.insert((tx, ty), (e + 1, now));
+        // Bug #90: check energy
+        if self.energy < 2.0 { self.say(texts.too_tired, now); return; }
         self.last_hit = now;
         self.energy -= 2.0;
         self.use_tool(Tl::Shovel, now, texts);
@@ -82,7 +86,8 @@ impl Game {
                 let (x, y) = (x0 + a, y0 + b);
                 let t = self.map.terr_at(x, y);
                 let ok = if self.in_boat {
-                    (t == GRASS || t == SAND) && self.map.node_at(x, y).is_none()
+                    // Bug #54: allow exit on FORD and bridges too
+                    (t == GRASS || t == SAND || t == FORD || self.bridges.contains(&(x, y))) && self.map.node_at(x, y).is_none()
                 } else {
                     t == WATER && !self.bridges.contains(&(x, y))
                 };

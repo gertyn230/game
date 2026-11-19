@@ -49,38 +49,38 @@ pub fn draw_tile(map: &Map, tx: i32, ty: i32, sx: f32, sy: f32, ts: f32, u: f32,
             rc(sx, sy, u, 3.0, 5.0, 2.0, 2.0, hx(0xb8a88a));
             rc(sx, sy, u, 10.0, 9.0, 2.0, 2.0, hx(0xb8a88a));
         }
-        if bridge {
-            rc(sx, sy, u, 0.0, 0.0, 16.0, 16.0, hx(0x9a6b3a));
-            for y in [3.0, 8.0, 13.0] {
-                rc(sx, sy, u, 0.0, y, 16.0, 1.0, hx(0x7a5230));
-            }
-            rc(sx, sy, u, 0.0, 0.0, 2.0, 16.0, hx(0x5e3f20));
-            rc(sx, sy, u, 14.0, 0.0, 2.0, 16.0, hx(0x5e3f20));
-        }
-        return;
-    }
-    if t == SAND {
+    } else if t == SAND {
         draw_rectangle(sx, sy, ts + 1.0, ts + 1.0, hx(if h.is_multiple_of(2) { 0xe3d5a1 } else { 0xdccb94 }));
         if h.is_multiple_of(7) {
             rc(sx, sy, u, ((h >> 3) % 12) as f32, ((h >> 5) % 12) as f32, 2.0, 1.0, hx(0xc9b982));
         }
-        return;
+    } else {
+        let bm = biome(tx, ty);
+        let (a, b) = match bm {
+            4 => (0xc2b280, 0xb8a876),
+            3 => (0x4a6741, 0x3f5837),
+            2 => (0x8f9a74, 0x869068),
+            1 => (0x5b9a50, 0x508c47),
+            _ => (0x76b35c, 0x6aa653),
+        };
+        draw_rectangle(sx, sy, ts + 1.0, ts + 1.0, hx(if !h.is_multiple_of(3) { a } else { b }));
+        if h.is_multiple_of(5) {
+            rc(sx, sy, u, ((h >> 3) % 12) as f32, ((h >> 5) % 12) as f32, 2.0, 3.0, hx(0x5f9a4a));
+        }
+        if bm == 0 && h.is_multiple_of(11) {
+            rc(sx, sy, u, ((h >> 4) % 12) as f32 + 1.0, ((h >> 6) % 12) as f32 + 1.0, 2.0, 2.0, hx(0xf7e96b));
+        }
+        if bm == 0 && h.is_multiple_of(17) {
+            rc(sx, sy, u, ((h >> 5) % 12) as f32 + 1.0, ((h >> 7) % 12) as f32 + 1.0, 2.0, 2.0, hx(0xf08fb0));
+        }
     }
-    let bm = biome(tx, ty);
-    let (a, b) = match bm {
-        2 => (0x8f9a74, 0x869068),
-        1 => (0x5b9a50, 0x508c47),
-        _ => (0x76b35c, 0x6aa653),
-    };
-    draw_rectangle(sx, sy, ts + 1.0, ts + 1.0, hx(if !h.is_multiple_of(3) { a } else { b }));
-    if h.is_multiple_of(5) {
-        rc(sx, sy, u, ((h >> 3) % 12) as f32, ((h >> 5) % 12) as f32, 2.0, 3.0, hx(0x5f9a4a));
-    }
-    if bm == 0 && h.is_multiple_of(11) {
-        rc(sx, sy, u, ((h >> 4) % 12) as f32 + 1.0, ((h >> 6) % 12) as f32 + 1.0, 2.0, 2.0, hx(0xf7e96b));
-    }
-    if bm == 0 && h.is_multiple_of(17) {
-        rc(sx, sy, u, ((h >> 5) % 12) as f32 + 1.0, ((h >> 7) % 12) as f32 + 1.0, 2.0, 2.0, hx(0xf08fb0));
+    if bridge {
+        rc(sx, sy, u, 0.0, 0.0, 16.0, 16.0, hx(0x9a6b3a));
+        for y in [3.0, 8.0, 13.0] {
+            rc(sx, sy, u, 0.0, y, 16.0, 1.0, hx(0x7a5230));
+        }
+        rc(sx, sy, u, 0.0, 0.0, 2.0, 16.0, hx(0x5e3f20));
+        rc(sx, sy, u, 14.0, 0.0, 2.0, 16.0, hx(0x5e3f20));
     }
 }
 
@@ -91,39 +91,71 @@ pub fn draw_node(n: &Node, sx: f32, sy: f32, u: f32, now: f64) {
         Kind::Tree => {
             rc(sx, sy, u, 3.0, 13.0, 10.0, 2.0, sh);
             if dead {
-                rc(sx, sy, u, 6.0, 10.0, 4.0, 4.0, hx(0x6b4423));
+                // Stump with bark rings
+                rc(sx, sy, u, 5.0, 10.0, 6.0, 4.0, hx(0x6b4423));
                 rc(sx, sy, u, 6.0, 10.0, 4.0, 1.0, hx(0x9a6b3a));
+                rc(sx, sy, u, 7.0, 11.0, 2.0, 2.0, hx(0xb89a72)); // inner ring
+                rc(sx, sy, u, 5.0, 13.0, 1.0, 1.0, hx(0x4d2f17)); // root left
+                rc(sx, sy, u, 10.0, 13.0, 1.0, 1.0, hx(0x4d2f17)); // root right
             } else {
-                rc(sx, sy, u, 7.0, 8.0, 3.0, 7.0, hx(0x6b4423));
-                rc(sx, sy, u, 9.0, 8.0, 1.0, 7.0, hx(0x4d2f17));
-                rc(sx, sy, u, 3.0, 7.0, 10.0, 3.0, hx(0x256427));
-                rc(sx, sy, u, 2.0, 3.0, 12.0, 6.0, hx(0x2f7d32));
-                rc(sx, sy, u, 4.0, 1.0, 8.0, 4.0, hx(0x3f9a43));
-                rc(sx, sy, u, 5.0, 2.0, 3.0, 2.0, hx(0x62b865));
+                // Roots at base
+                rc(sx, sy, u, 5.0, 14.0, 2.0, 1.0, hx(0x5a3818));
+                rc(sx, sy, u, 10.0, 14.0, 2.0, 1.0, hx(0x5a3818));
+                // Trunk with bark texture
+                rc(sx, sy, u, 7.0, 7.0, 3.0, 8.0, hx(0x6b4423));
+                rc(sx, sy, u, 9.0, 7.0, 1.0, 8.0, hx(0x4d2f17)); // dark bark edge
+                rc(sx, sy, u, 7.0, 9.0, 1.0, 1.0, hx(0x5a3818)); // bark knot
+                rc(sx, sy, u, 8.0, 12.0, 1.0, 1.0, hx(0x5a3818)); // bark knot
+                // Canopy layers (bottom to top for depth)
+                rc(sx, sy, u, 2.0, 7.0, 12.0, 3.0, hx(0x1f5422)); // darkest base
+                rc(sx, sy, u, 1.0, 4.0, 14.0, 5.0, hx(0x2a6e2e)); // main canopy
+                rc(sx, sy, u, 3.0, 2.0, 10.0, 4.0, hx(0x2f7d32)); // mid canopy
+                rc(sx, sy, u, 4.0, 1.0, 8.0, 3.0, hx(0x3f9a43)); // upper canopy
+                rc(sx, sy, u, 5.0, 0.0, 6.0, 2.0, hx(0x4fb54f)); // top tuft
+                // Leaf highlights (sunlit)
+                rc(sx, sy, u, 4.0, 2.0, 3.0, 2.0, hx(0x62b865));
+                rc(sx, sy, u, 9.0, 3.0, 2.0, 1.0, hx(0x55aa55));
+                rc(sx, sy, u, 6.0, 0.0, 2.0, 1.0, hx(0x72c872));
             }
         }
         Kind::Rock | Kind::Coal | Kind::CuOre | Kind::FeOre | Kind::AgOre | Kind::AuOre => {
             rc(sx, sy, u, 2.0, 13.0, 12.0, 2.0, sh);
             if dead {
-                rc(sx, sy, u, 5.0, 12.0, 6.0, 2.0, hx(0x77777f));
+                // Rubble: a few scattered fragments
+                rc(sx, sy, u, 4.0, 12.0, 4.0, 2.0, hx(0x77777f));
+                rc(sx, sy, u, 9.0, 13.0, 3.0, 1.0, hx(0x6d6d76));
+                rc(sx, sy, u, 5.0, 12.0, 2.0, 1.0, hx(0x9a9aa4)); // highlight chip
             } else {
-                rc(sx, sy, u, 2.0, 7.0, 12.0, 7.0, hx(0x6d6d76));
-                rc(sx, sy, u, 3.0, 5.0, 9.0, 6.0, hx(0x8d8d96));
-                rc(sx, sy, u, 4.0, 5.0, 4.0, 3.0, hx(0xb4b4be));
+                // Main rock body
+                rc(sx, sy, u, 2.0, 8.0, 12.0, 6.0, hx(0x6d6d76));
+                rc(sx, sy, u, 3.0, 5.0, 10.0, 6.0, hx(0x8d8d96));
+                rc(sx, sy, u, 4.0, 4.0, 8.0, 4.0, hx(0x9a9aa4));
+                // Dark base
                 rc(sx, sy, u, 2.0, 12.0, 12.0, 2.0, hx(0x55555c));
+                // Highlight on top-left for 3D feel
+                rc(sx, sy, u, 4.0, 4.0, 3.0, 2.0, hx(0xc8c8d2));
+                rc(sx, sy, u, 3.0, 6.0, 2.0, 1.0, hx(0xb4b4be));
+                // Crack details
+                rc(sx, sy, u, 7.0, 6.0, 1.0, 3.0, hx(0x55555c));
+                rc(sx, sy, u, 8.0, 8.0, 1.0, 2.0, hx(0x55555c));
+                rc(sx, sy, u, 10.0, 7.0, 1.0, 4.0, hx(0x4a4a52));
                 if n.kind.is_ore() {
-                    let (c1, c2) = match n.kind {
-                        Kind::Coal => (0x1d1d22, 0x1d1d22),
-                        Kind::CuOre => (0xd9823a, 0x4fb09a),
-                        Kind::FeOre => (0xc4623a, 0x8a4a2a),
-                        Kind::AgOre => (0xe0e0e8, 0xa0a0a8),
-                        Kind::AuOre => (0xffdd00, 0xffaa00),
-                        _ => (0x9a9aa4, 0x7a7a7c),
+                    let (c1, c2, c3) = match n.kind {
+                        Kind::Coal => (0x1d1d22, 0x1d1d22, 0x333338),
+                        Kind::CuOre => (0xd9823a, 0x4fb09a, 0xe8a050),
+                        Kind::FeOre => (0xc4623a, 0x8a4a2a, 0xd87a4a),
+                        Kind::AgOre => (0xe0e0e8, 0xa0a0a8, 0xf0f0f8),
+                        Kind::AuOre => (0xffdd00, 0xffaa00, 0xffee55),
+                        _ => (0x9a9aa4, 0x7a7a7c, 0xb0b0b8),
                     };
-                    rc(sx, sy, u, 4.0, 6.0, 2.0, 2.0, hx(c1));
-                    rc(sx, sy, u, 9.0, 5.0, 3.0, 2.0, hx(c1));
-                    rc(sx, sy, u, 6.0, 10.0, 3.0, 2.0, hx(c1));
-                    rc(sx, sy, u, 10.0, 10.0, 2.0, 2.0, hx(c2));
+                    // Ore veins - larger and more prominent
+                    rc(sx, sy, u, 4.0, 5.0, 3.0, 2.0, hx(c1));
+                    rc(sx, sy, u, 5.0, 7.0, 2.0, 1.0, hx(c2));
+                    rc(sx, sy, u, 9.0, 5.0, 3.0, 3.0, hx(c1));
+                    rc(sx, sy, u, 10.0, 5.0, 1.0, 1.0, hx(c3)); // sparkle
+                    rc(sx, sy, u, 5.0, 10.0, 4.0, 2.0, hx(c1));
+                    rc(sx, sy, u, 6.0, 10.0, 1.0, 1.0, hx(c3)); // sparkle
+                    rc(sx, sy, u, 10.0, 9.0, 2.0, 2.0, hx(c2));
                 }
             }
         }
@@ -132,65 +164,140 @@ pub fn draw_node(n: &Node, sx: f32, sy: f32, u: f32, now: f64) {
             if dead {
                 rc(sx, sy, u, 5.0, 11.0, 6.0, 3.0, hx(0x3f8f3a));
             } else {
-                rc(sx, sy, u, 2.0, 8.0, 12.0, 6.0, hx(0x2a6e2e));
-                rc(sx, sy, u, 3.0, 5.0, 10.0, 6.0, hx(0x3f9a43));
-                rc(sx, sy, u, 4.0, 5.0, 4.0, 2.0, hx(0x62b865));
+                // Fuller, rounder bush with layers
+                rc(sx, sy, u, 3.0, 9.0, 10.0, 5.0, hx(0x226628)); // dark base
+                rc(sx, sy, u, 2.0, 7.0, 12.0, 5.0, hx(0x2a6e2e)); // main body
+                rc(sx, sy, u, 3.0, 5.0, 10.0, 5.0, hx(0x3f9a43)); // upper
+                rc(sx, sy, u, 4.0, 4.0, 8.0, 3.0, hx(0x4aaa4e)); // top highlight
+                // Leaf detail highlights
+                rc(sx, sy, u, 4.0, 5.0, 2.0, 1.0, hx(0x62b865));
+                rc(sx, sy, u, 9.0, 6.0, 2.0, 1.0, hx(0x55aa55));
+                // Shadow on bottom-right
+                rc(sx, sy, u, 9.0, 11.0, 3.0, 2.0, hx(0x1f5422));
+                // Berries nestled in leaves
                 for (ox, oy) in [(5.0, 8.0), (10.0, 10.0), (8.0, 6.0)] {
                     rc(sx, sy, u, ox, oy, 2.0, 2.0, hx(0xd94f4f));
+                    rc(sx, sy, u, ox, oy, 1.0, 1.0, hx(0xe86868)); // berry highlight
                 }
             }
         }
-        _ if dead => {}
+        Kind::Stick | Kind::Pebble | Kind::Fiber if dead => {}
         Kind::Stick => {
-            rc(sx, sy, u, 3.0, 10.0, 8.0, 1.0, hx(0x8b5a2b));
-            rc(sx, sy, u, 5.0, 8.0, 5.0, 1.0, hx(0x8b5a2b));
-            rc(sx, sy, u, 3.0, 10.0, 3.0, 1.0, hx(0xb07a45));
+            // Slight shadow
+            rc(sx, sy, u, 3.0, 12.0, 9.0, 1.0, ha(0x000000, 0.12));
+            // Main stick at slight angle
+            rc(sx, sy, u, 3.0, 10.0, 9.0, 1.0, hx(0x8b5a2b));
+            rc(sx, sy, u, 4.0, 9.0, 6.0, 1.0, hx(0x8b5a2b));
+            // Highlight on top edge
+            rc(sx, sy, u, 3.0, 10.0, 4.0, 1.0, hx(0xb07a45));
+            rc(sx, sy, u, 5.0, 9.0, 2.0, 1.0, hx(0xb07a45));
+            // Branching twig
+            rc(sx, sy, u, 8.0, 8.0, 1.0, 2.0, hx(0x7a4f22));
+            rc(sx, sy, u, 9.0, 7.0, 1.0, 1.0, hx(0x7a4f22));
+            // Bark texture dot
+            rc(sx, sy, u, 6.0, 10.0, 1.0, 1.0, hx(0x6b4423));
         }
         Kind::Pebble => {
-            rc(sx, sy, u, 4.0, 10.0, 4.0, 3.0, hx(0x9a9aa4));
-            rc(sx, sy, u, 5.0, 10.0, 2.0, 1.0, hx(0xcfcfd8));
-            rc(sx, sy, u, 9.0, 9.0, 3.0, 2.0, hx(0x9a9aa4));
+            // Shadow under pebbles
+            rc(sx, sy, u, 4.0, 13.0, 5.0, 1.0, ha(0x000000, 0.12));
+            rc(sx, sy, u, 9.0, 12.0, 4.0, 1.0, ha(0x000000, 0.10));
+            // Main pebble
+            rc(sx, sy, u, 4.0, 10.0, 4.0, 3.0, hx(0x8a8a94));
+            rc(sx, sy, u, 4.0, 10.0, 3.0, 2.0, hx(0x9a9aa4)); // lighter face
+            rc(sx, sy, u, 5.0, 10.0, 2.0, 1.0, hx(0xcfcfd8)); // highlight
+            rc(sx, sy, u, 7.0, 12.0, 1.0, 1.0, hx(0x6a6a74)); // dark edge
+            // Second smaller pebble
+            rc(sx, sy, u, 9.0, 10.0, 3.0, 2.0, hx(0x8a8a94));
+            rc(sx, sy, u, 9.0, 10.0, 2.0, 1.0, hx(0xb0b0ba)); // highlight
+            // Tiny chip
+            rc(sx, sy, u, 7.0, 9.0, 1.0, 1.0, hx(0x9a9aa4));
         }
         Kind::Fiber => {
-            rc(sx, sy, u, 5.0, 7.0, 1.0, 6.0, hx(0x9ad06a));
-            rc(sx, sy, u, 7.0, 6.0, 1.0, 7.0, hx(0xb8e68a));
-            rc(sx, sy, u, 9.0, 8.0, 1.0, 5.0, hx(0x9ad06a));
-            rc(sx, sy, u, 6.0, 6.0, 1.0, 1.0, hx(0xe8d98a));
+            // Shadow under grass
+            rc(sx, sy, u, 4.0, 13.0, 8.0, 1.0, ha(0x000000, 0.10));
+            // Varied height grass blades
+            rc(sx, sy, u, 4.0, 7.0, 1.0, 6.0, hx(0x88c05a));
+            rc(sx, sy, u, 5.0, 9.0, 1.0, 4.0, hx(0x9ad06a));
+            rc(sx, sy, u, 6.0, 5.0, 1.0, 8.0, hx(0x78b04a));
+            rc(sx, sy, u, 7.0, 6.0, 1.0, 7.0, hx(0xb8e68a)); // bright blade
+            rc(sx, sy, u, 8.0, 8.0, 1.0, 5.0, hx(0x9ad06a));
+            rc(sx, sy, u, 9.0, 7.0, 1.0, 6.0, hx(0x88c05a));
+            rc(sx, sy, u, 10.0, 9.0, 1.0, 4.0, hx(0x9ad06a));
+            rc(sx, sy, u, 11.0, 8.0, 1.0, 5.0, hx(0x78b04a));
+            // Seed heads on taller blades
+            rc(sx, sy, u, 6.0, 4.0, 1.0, 1.0, hx(0xe8d98a));
+            rc(sx, sy, u, 7.0, 5.0, 1.0, 1.0, hx(0xe8d98a));
+            rc(sx, sy, u, 4.0, 6.0, 1.0, 1.0, hx(0xd8c87a));
         }
         Kind::BerryBush => {
             rc(sx, sy, u, 2.0, 13.0, 12.0, 2.0, sh);
             if dead {
-                rc(sx, sy, u, 5.0, 11.0, 6.0, 3.0, hx(0x3f8f3a));
+                rc(sx, sy, u, 4.0, 11.0, 8.0, 3.0, hx(0x2f6f2a));
+                rc(sx, sy, u, 5.0, 11.0, 6.0, 2.0, hx(0x3f8f3a));
             } else {
-                rc(sx, sy, u, 2.0, 8.0, 12.0, 6.0, hx(0x3f9a43));
-                rc(sx, sy, u, 3.0, 5.0, 10.0, 6.0, hx(0x62b865));
-                // Ягоди червоні
-                for (ox, oy) in [(4.0, 7.0), (8.0, 9.0), (10.0, 6.0), (6.0, 10.0)] {
-                    rc(sx, sy, u, ox, oy, 2.0, 2.0, hx(0xff3366));
+                // Пишний кущ з ягодами
+                rc(sx, sy, u, 3.0, 9.0, 10.0, 5.0, hx(0x1f5a22)); // темна база
+                rc(sx, sy, u, 2.0, 7.0, 12.0, 5.0, hx(0x2f7d32)); // основне тіло
+                rc(sx, sy, u, 3.0, 5.0, 10.0, 5.0, hx(0x3f9a43)); // верх
+                rc(sx, sy, u, 4.0, 4.0, 8.0, 3.0, hx(0x50b050)); // хайлайт
+                rc(sx, sy, u, 5.0, 4.0, 3.0, 1.0, hx(0x62c065)); // блік
+                // Великі яскраві ягоди з бліками
+                for (ox, oy) in [(4.0, 7.0), (8.0, 9.0), (10.0, 6.0), (6.0, 10.0), (3.0, 9.0)] {
+                    rc(sx, sy, u, ox, oy, 2.0, 2.0, hx(0xe82255)); // ягода
+                    rc(sx, sy, u, ox, oy, 1.0, 1.0, hx(0xff5588)); // блік
                 }
+                // Листочки між ягодами
+                rc(sx, sy, u, 6.0, 6.0, 2.0, 1.0, hx(0x62b865));
+                rc(sx, sy, u, 11.0, 8.0, 1.0, 1.0, hx(0x55aa55));
             }
         }
         Kind::Mushroom => {
             if !dead {
-                // Гриб з капелюшком
-                rc(sx, sy, u, 6.0, 9.0, 2.0, 4.0, hx(0xeeeecc)); // ніжка
-                rc(sx, sy, u, 4.0, 7.0, 6.0, 3.0, hx(0xcc6633)); // капелюшок
-                rc(sx, sy, u, 5.0, 7.0, 4.0, 1.0, hx(0xaa4411)); // темніша частина
-                rc(sx, sy, u, 5.0, 8.0, 1.0, 1.0, hx(0xffffff)); // плямка
-                rc(sx, sy, u, 8.0, 8.0, 1.0, 1.0, hx(0xffffff)); // плямка
+                // Тінь під грибом
+                rc(sx, sy, u, 4.0, 13.0, 8.0, 1.0, ha(0x000000, 0.12));
+                // Травинки біля основи
+                rc(sx, sy, u, 3.0, 11.0, 1.0, 2.0, hx(0x66aa44));
+                rc(sx, sy, u, 11.0, 12.0, 1.0, 1.0, hx(0x66aa44));
+                // Ніжка гриба
+                rc(sx, sy, u, 6.0, 9.0, 3.0, 4.0, hx(0xeeeecc));
+                rc(sx, sy, u, 6.0, 9.0, 1.0, 4.0, hx(0xf5f5dd)); // блік
+                rc(sx, sy, u, 8.0, 10.0, 1.0, 3.0, hx(0xd8d8b8)); // тінь
+                // Капелюшок гриба — округлий
+                rc(sx, sy, u, 3.0, 7.0, 9.0, 3.0, hx(0xcc5522)); // основа
+                rc(sx, sy, u, 4.0, 6.0, 7.0, 2.0, hx(0xdd6633)); // верх
+                rc(sx, sy, u, 5.0, 5.0, 5.0, 2.0, hx(0xe07744)); // купол
+                // Білі плямки (мухомор-стиль)
+                rc(sx, sy, u, 5.0, 6.0, 1.0, 1.0, hx(0xffeedd));
+                rc(sx, sy, u, 8.0, 7.0, 1.0, 1.0, hx(0xffeedd));
+                rc(sx, sy, u, 6.0, 8.0, 1.0, 1.0, hx(0xffeedd));
+                rc(sx, sy, u, 10.0, 8.0, 1.0, 1.0, hx(0xffeedd));
+                // Пластинки під капелюшком
+                rc(sx, sy, u, 4.0, 9.0, 2.0, 1.0, hx(0xeeddbb));
+                rc(sx, sy, u, 9.0, 9.0, 2.0, 1.0, hx(0xeeddbb));
             }
         }
         Kind::Herb => {
             if !dead {
-                // Лікарські трави - зелені рослини
-                rc(sx, sy, u, 4.0, 8.0, 1.0, 5.0, hx(0x66cc66));
-                rc(sx, sy, u, 6.0, 7.0, 1.0, 6.0, hx(0x66cc66));
-                rc(sx, sy, u, 8.0, 9.0, 1.0, 4.0, hx(0x66cc66));
-                rc(sx, sy, u, 10.0, 8.0, 1.0, 5.0, hx(0x66cc66));
-                // Квітки на верху
-                rc(sx, sy, u, 4.0, 6.0, 1.0, 1.0, hx(0xffff99));
-                rc(sx, sy, u, 6.0, 5.0, 1.0, 1.0, hx(0xffff99));
-                rc(sx, sy, u, 10.0, 6.0, 1.0, 1.0, hx(0xffff99));
+                // Тінь під рослинами
+                rc(sx, sy, u, 3.0, 13.0, 9.0, 1.0, ha(0x000000, 0.10));
+                // Стебла різної висоти
+                rc(sx, sy, u, 4.0, 7.0, 1.0, 6.0, hx(0x55bb55));
+                rc(sx, sy, u, 6.0, 6.0, 1.0, 7.0, hx(0x66cc66));
+                rc(sx, sy, u, 8.0, 8.0, 1.0, 5.0, hx(0x55bb55));
+                rc(sx, sy, u, 10.0, 7.0, 1.0, 6.0, hx(0x66cc66));
+                // Листочки на стеблах
+                rc(sx, sy, u, 3.0, 9.0, 1.0, 2.0, hx(0x44aa44));
+                rc(sx, sy, u, 5.0, 8.0, 1.0, 2.0, hx(0x44aa44));
+                rc(sx, sy, u, 7.0, 10.0, 1.0, 2.0, hx(0x44aa44));
+                rc(sx, sy, u, 9.0, 9.0, 1.0, 2.0, hx(0x44aa44));
+                rc(sx, sy, u, 11.0, 8.0, 1.0, 2.0, hx(0x44aa44));
+                // Яскраві квіточки різних кольорів
+                rc(sx, sy, u, 4.0, 5.0, 2.0, 2.0, hx(0xffee55)); // жовта
+                rc(sx, sy, u, 4.0, 5.0, 1.0, 1.0, hx(0xffff88)); // блік
+                rc(sx, sy, u, 6.0, 4.0, 2.0, 2.0, hx(0xee88cc)); // рожева
+                rc(sx, sy, u, 6.0, 4.0, 1.0, 1.0, hx(0xffaadd)); // блік
+                rc(sx, sy, u, 10.0, 5.0, 2.0, 2.0, hx(0xaabbff)); // блакитна
+                rc(sx, sy, u, 10.0, 5.0, 1.0, 1.0, hx(0xccddff)); // блік
             }
         }
     }
@@ -226,8 +333,48 @@ pub fn draw_mob(m: &Mob, sx: f32, sy: f32, u: f32, now: f64) {
     if m.dead > 0.0 {
         if !m.cut {
             rc(sx, sy, u, -5.0, 2.0, 10.0, 2.0, ha(0, 0.25));
-            rc(sx, sy, u, -5.0, -1.0, 10.0, 4.0, if m.kind == MobKind::Wolf { hx(0x555a66) } else { hx(0xd9c7a6) });
-            rc(sx, sy, u, -1.0, 0.0, 3.0, 2.0, hx(0xaa3333));
+            // Різні туші для кожної тварини
+            match m.kind {
+                MobKind::Bear => {
+                    rc(sx, sy, u, -7.0, -2.0, 14.0, 5.0, hx(0x5a4030));
+                    rc(sx, sy, u, -6.0, -1.0, 10.0, 3.0, hx(0x6b4f3a));
+                    rc(sx, sy, u, 5.0, -2.0, 4.0, 3.0, hx(0x4a3425)); // голова
+                    rc(sx, sy, u, -1.0, 0.0, 3.0, 2.0, hx(0xaa3333));
+                }
+                MobKind::Wolf => {
+                    rc(sx, sy, u, -5.0, -1.0, 10.0, 4.0, hx(0x4a4f58));
+                    rc(sx, sy, u, -4.0, 0.0, 8.0, 2.0, hx(0x5c616e));
+                    rc(sx, sy, u, 4.0, -2.0, 3.0, 3.0, hx(0x3e424c)); // голова
+                    rc(sx, sy, u, -1.0, 0.0, 2.0, 2.0, hx(0xaa3333));
+                }
+                MobKind::Deer => {
+                    rc(sx, sy, u, -6.0, -1.0, 12.0, 4.0, hx(0x9a7a50));
+                    rc(sx, sy, u, -5.0, 0.0, 9.0, 2.0, hx(0xa0835d));
+                    rc(sx, sy, u, 5.0, -3.0, 4.0, 3.0, hx(0x8b6f47)); // голова
+                    rc(sx, sy, u, 6.0, -5.0, 1.0, 2.0, hx(0x654321)); // ріг
+                    rc(sx, sy, u, -1.0, 0.0, 2.0, 2.0, hx(0xaa3333));
+                }
+                MobKind::Fox => {
+                    rc(sx, sy, u, -5.0, -1.0, 10.0, 4.0, hx(0xc85a1a));
+                    rc(sx, sy, u, -4.0, 0.0, 7.0, 2.0, hx(0xd85f1f));
+                    rc(sx, sy, u, -6.0, -1.0, 3.0, 2.0, hx(0xff8c42)); // хвіст
+                    rc(sx, sy, u, -7.0, -1.0, 1.0, 1.0, hx(0xffffff)); // білий кінчик
+                    rc(sx, sy, u, 4.0, -2.0, 3.0, 3.0, hx(0xd85f1f)); // голова
+                    rc(sx, sy, u, -1.0, 0.0, 2.0, 2.0, hx(0xaa3333));
+                }
+                MobKind::Rabbit => {
+                    rc(sx, sy, u, -4.0, -1.0, 8.0, 3.0, hx(0xc8b090));
+                    rc(sx, sy, u, -3.0, 0.0, 6.0, 2.0, hx(0xcbb99a));
+                    rc(sx, sy, u, 3.0, -2.0, 2.0, 2.0, hx(0xd9c7a6)); // голова
+                    rc(sx, sy, u, -5.0, -1.0, 2.0, 2.0, hx(0xefe3cc)); // хвостик
+                }
+                MobKind::Pet => {
+                    rc(sx, sy, u, -5.0, -1.0, 10.0, 4.0, hx(0x8a7050));
+                    rc(sx, sy, u, -4.0, 0.0, 8.0, 2.0, hx(0x9a7b55));
+                    rc(sx, sy, u, 4.0, -2.0, 3.0, 3.0, hx(0x6b5238)); // голова
+                    rc(sx, sy, u, 3.0, -2.0, 2.0, 2.0, hx(0xdd3333)); // сердечко
+                }
+            }
         }
         return;
     }
@@ -243,66 +390,138 @@ pub fn draw_mob(m: &Mob, sx: f32, sy: f32, u: f32, now: f64) {
         MobKind::Rabbit => {
             let hop = if m.mv { ((now * 12.5).sin().abs() * 3.0).round() as f32 } else { 0.0 };
             let ear = ((now / 0.5) as i64 % 2) as f32;
+            // Тінь
             draw_rectangle(sx - 4.0 * u, sy + 3.0 * u, 8.0 * u, 2.0 * u, ha(0, 0.25 - hop * 0.04));
+            // Хвостик — пухнастий
+            q(0xefe3cc, -5.0, -2.0 - hop, 2.0, 2.0);
+            q(0xfff5e0, -5.0, -2.0 - hop, 1.0, 1.0);
+            // Лапки
             q(0xb8a583, -3.0, 1.0 - hop, 3.0, 2.0);
-            q(0xcbb99a, -4.0, -3.0 - hop, 8.0, 5.0);
-            q(0xefe3cc, -2.0, -hop, 5.0, 2.0);
-            q(0xd9c7a6, 2.0, -5.0 - hop, 4.0, 4.0);
-            q(0xd9c7a6, 3.0, -9.0 - hop + ear, 1.0, 4.0);
-            q(0xe8a0a0, 4.0, -9.0 - hop, 1.0, 4.0);
-            q(0x222222, 5.0, -4.0 - hop, 1.0, 1.0);
-            q(0xe8a0a0, 6.0, -3.0 - hop, 1.0, 1.0);
-            q(0xffffff, -5.0, -3.0 - hop, 2.0, 2.0);
             q(0xb8a583, 2.0, 1.0 - hop, 2.0, 2.0);
+            // Тіло
+            q(0xcbb99a, -4.0, -3.0 - hop, 8.0, 5.0);
+            q(0xd9c7a6, -3.0, -2.0 - hop, 6.0, 3.0); // світліший живіт
+            q(0xefe3cc, -2.0, -hop, 5.0, 2.0); // пузико
+            // Голова
+            q(0xd9c7a6, 2.0, -5.0 - hop, 5.0, 4.0);
+            q(0xe8d8c0, 3.0, -5.0 - hop, 3.0, 2.0); // блік на голові
+            // Вуха
+            q(0xd9c7a6, 3.0, -9.0 - hop + ear, 1.0, 4.0);
+            q(0xe8a0a0, 4.0, -9.0 - hop, 1.0, 4.0); // рожеве вушко
+            // Мордочка
+            q(0x222222, 5.0, -4.0 - hop, 1.0, 1.0); // оченя
+            q(0xe8a0a0, 6.0, -3.0 - hop, 1.0, 1.0); // носик
+            // Вусики
+            q(0xc0a888, 7.0, -3.0 - hop, 1.0, 1.0);
         }
         MobKind::Deer => {
-            // Олень - більший за кролика, коричневий
             let (lf, rf) = if m.mv { (ph, 1.0 - ph) } else { (0.0, 0.0) };
+            // Тінь
             draw_rectangle(sx - 7.0 * u, sy + 4.0 * u, 14.0 * u, 3.0 * u, ha(0, 0.25));
-            q(0x8b6f47, -6.0, 2.0, 2.0, 2.0 + lf);
-            q(0x8b6f47, -3.0, 2.0, 2.0, 2.0 + rf);
-            q(0x8b6f47, 2.0, 2.0, 2.0, 2.0 + rf);
-            q(0x8b6f47, 5.0, 2.0, 2.0, 2.0 + lf);
-            q(0xa0835d, -7.0, -5.0, 13.0, 7.0); // тіло
-            q(0xc4a678, -6.0, -4.0, 10.0, 3.0); // живіт
-            q(0xa0835d, 5.0, -7.0, 6.0, 6.0); // голова
-            q(0x8b6f47, 9.0, -9.0, 2.0, 5.0); // вуха
-            q(0x222222, 11.0, -6.0, 1.0, 1.0); // око
-            q(0x654321, 6.0, -12.0, 1.0, 3.0); // ріг лівий
-            q(0x654321, 8.0, -12.0, 1.0, 3.0); // ріг правий
+            // Ноги — тонкі та граціозні
+            q(0x7a5f3a, -6.0, 2.0, 2.0, 3.0 + lf);
+            q(0x7a5f3a, -3.0, 2.0, 2.0, 3.0 + rf);
+            q(0x7a5f3a, 2.0, 2.0, 2.0, 3.0 + rf);
+            q(0x7a5f3a, 5.0, 2.0, 2.0, 3.0 + lf);
+            // Копитця
+            q(0x4a3a2a, -6.0, 4.0 + lf, 2.0, 1.0);
+            q(0x4a3a2a, -3.0, 4.0 + rf, 2.0, 1.0);
+            q(0x4a3a2a, 2.0, 4.0 + rf, 2.0, 1.0);
+            q(0x4a3a2a, 5.0, 4.0 + lf, 2.0, 1.0);
+            // Тіло
+            q(0xa0835d, -7.0, -5.0, 13.0, 7.0);
+            q(0xb89a72, -6.0, -4.0, 10.0, 4.0); // світліший бік
+            q(0xc4a678, -5.0, -3.0, 8.0, 2.0); // живіт
+            // Білі плямки на спині
+            q(0xd4c0a0, -4.0, -4.0, 2.0, 1.0);
+            q(0xd4c0a0, -1.0, -5.0, 1.0, 1.0);
+            q(0xd4c0a0, 2.0, -4.0, 2.0, 1.0);
+            // Голова
+            q(0xa0835d, 5.0, -7.0, 6.0, 6.0);
+            q(0xb89a72, 6.0, -6.0, 4.0, 3.0); // блік
+            // Вуха
+            q(0x8b6f47, 9.0, -9.0, 2.0, 3.0);
+            q(0xe8c0a0, 10.0, -8.0, 1.0, 1.0); // рожева серединка
+            // Оченя
+            q(0x222222, 11.0, -6.0, 1.0, 1.0);
+            q(0x444444, 11.0, -7.0, 1.0, 1.0); // вія
+            // Роги — гілкові
+            q(0x654321, 6.0, -12.0, 1.0, 5.0); // основа
+            q(0x7a5a3a, 5.0, -13.0, 1.0, 2.0); // гілка
+            q(0x7a5a3a, 7.0, -14.0, 1.0, 2.0); // гілка
+            q(0x654321, 8.0, -12.0, 1.0, 5.0); // основа
+            q(0x7a5a3a, 9.0, -13.0, 1.0, 2.0); // гілка
         }
         MobKind::Fox => {
-            // Лисиця - руда, пухнастий хвіст
             let (lf, rf) = if m.mv { (ph * 0.8, (1.0 - ph) * 0.8) } else { (0.0, 0.0) };
             let tail_wag = ((now / 0.2) as i64 % 2) as f32;
+            // Тінь
             draw_rectangle(sx - 5.0 * u, sy + 3.0 * u, 10.0 * u, 2.0 * u, ha(0, 0.23));
+            // Лапки
             q(0xd85f1f, -4.0, 2.0, 2.0, 2.0 + lf);
             q(0xd85f1f, -1.0, 2.0, 2.0, 2.0 + rf);
             q(0xd85f1f, 1.0, 2.0, 2.0, 2.0 + rf);
             q(0xd85f1f, 4.0, 2.0, 2.0, 2.0 + lf);
-            q(0xff8c42, -8.0, -5.0 - tail_wag, 4.0, 3.0); // пухнастий хвіст
-            q(0xffffff, -9.0, -4.0 - tail_wag, 2.0, 2.0); // білий кінчик хвоста
-            q(0xd85f1f, -5.0, -3.0, 9.0, 5.0); // тіло
-            q(0xffffff, -4.0, -2.0, 7.0, 2.0); // білий живіт
-            q(0xd85f1f, 3.0, -5.0, 4.0, 4.0); // голова
-            q(0xd85f1f, 5.0, -8.0, 2.0, 3.0); // вухо
-            q(0x222222, 7.0, -4.0, 1.0, 1.0); // око
+            // Пухнастий хвіст — 3 шари
+            q(0xcc5518, -9.0, -6.0 - tail_wag, 5.0, 2.0); // основа
+            q(0xff8c42, -8.0, -5.0 - tail_wag, 4.0, 3.0); // середина
+            q(0xffa060, -7.0, -4.0 - tail_wag, 2.0, 2.0); // хайлайт
+            q(0xffffff, -10.0, -5.0 - tail_wag, 2.0, 2.0); // білий кінчик
+            // Тіло
+            q(0xd85f1f, -5.0, -3.0, 9.0, 5.0);
+            q(0xe87830, -4.0, -3.0, 7.0, 3.0); // світліший верх
+            // Білий живіт
+            q(0xffffff, -4.0, -1.0, 7.0, 2.0);
+            q(0xfff5ee, -3.0, 0.0, 5.0, 1.0); // тінь на пузі
+            // Голова — гостра мордочка
+            q(0xd85f1f, 3.0, -5.0, 5.0, 4.0);
+            q(0xe87830, 4.0, -5.0, 3.0, 2.0); // блік
+            q(0xffffff, 6.0, -3.0, 2.0, 2.0); // білі щоки
+            // Вуха — гострі
+            q(0xc04010, 5.0, -8.0, 2.0, 3.0);
+            q(0xd85f1f, 5.0, -7.0, 1.0, 2.0); // серединка
+            // Мордочка
+            q(0x222222, 7.0, -4.0, 1.0, 1.0); // оченя
+            q(0x111111, 8.0, -2.0, 1.0, 1.0); // носик
         }
         MobKind::Bear => {
-            // Ведмідь - великий, коричневий, загрозливий
             let (lf, rf) = if m.mv { (ph * 0.5, (1.0 - ph) * 0.5) } else { (0.0, 0.0) };
+            // Велика тінь
             draw_rectangle(sx - 9.0 * u, sy + 6.0 * u, 18.0 * u, 3.0 * u, ha(0, 0.3));
-            q(0x4a3425, -8.0, 3.0, 3.0, 3.0 + lf);
-            q(0x4a3425, -3.0, 3.0, 3.0, 3.0 + rf);
-            q(0x4a3425, 2.0, 3.0, 3.0, 3.0 + rf);
-            q(0x4a3425, 6.0, 3.0, 3.0, 3.0 + lf);
-            q(0x6b4f3a, -9.0, -6.0, 17.0, 9.0); // велике тіло
-            q(0x8b6f47, -8.0, -5.0, 14.0, 5.0); // світліший живіт
-            q(0x6b4f3a, 7.0, -8.0, 8.0, 7.0); // велика голова
-            q(0x4a3425, 9.0, -10.0, 2.0, 2.0); // вухо ліве
-            q(0x4a3425, 12.0, -10.0, 2.0, 2.0); // вухо праве
-            q(0xff4040, 13.0, -6.0, 2.0, 1.0); // червоні очі
-            q(0x222222, 14.0, -4.0, 2.0, 1.0); // ніс
+            // Масивні лапи
+            q(0x3a2418, -8.0, 3.0, 3.0, 3.0 + lf);
+            q(0x3a2418, -3.0, 3.0, 3.0, 3.0 + rf);
+            q(0x3a2418, 2.0, 3.0, 3.0, 3.0 + rf);
+            q(0x3a2418, 6.0, 3.0, 3.0, 3.0 + lf);
+            // Кігті
+            q(0xd0d0d0, -8.0, 5.0 + lf, 1.0, 1.0);
+            q(0xd0d0d0, -3.0, 5.0 + rf, 1.0, 1.0);
+            q(0xd0d0d0, 4.0, 5.0 + rf, 1.0, 1.0);
+            q(0xd0d0d0, 8.0, 5.0 + lf, 1.0, 1.0);
+            // Тіло — масивне
+            q(0x5a4030, -9.0, -6.0, 17.0, 9.0); // темна основа
+            q(0x6b4f3a, -8.0, -5.0, 15.0, 7.0); // основне тіло
+            q(0x7a5f4a, -7.0, -4.0, 12.0, 4.0); // світліший бік
+            // Горб на спині (ведмідь!)
+            q(0x5a4030, -4.0, -7.0, 8.0, 2.0);
+            q(0x6b4f3a, -3.0, -8.0, 6.0, 2.0);
+            // Велика голова
+            q(0x5a4030, 7.0, -9.0, 9.0, 8.0);
+            q(0x6b4f3a, 8.0, -8.0, 7.0, 6.0); // блік
+            // Вуха — круглі
+            q(0x4a3425, 9.0, -11.0, 2.0, 2.0);
+            q(0x4a3425, 13.0, -11.0, 2.0, 2.0);
+            q(0x6b5238, 10.0, -11.0, 1.0, 1.0); // серединки
+            q(0x6b5238, 13.0, -11.0, 1.0, 1.0);
+            // Загрозливі червоні очі
+            q(0xff3030, 13.0, -7.0, 2.0, 1.0);
+            q(0xffaa00, 13.0, -7.0, 1.0, 1.0); // блік ока
+            // Ніс і пащу
+            q(0x222222, 15.0, -5.0, 2.0, 1.0); // ніс
+            q(0x3a2418, 14.0, -3.0, 3.0, 1.0); // пащу
+            // Ікла
+            q(0xeeeeee, 14.0, -2.0, 1.0, 1.0);
+            q(0xeeeeee, 16.0, -2.0, 1.0, 1.0);
         }
         MobKind::Wolf | MobKind::Pet => {
             let pet = m.kind == MobKind::Pet;
@@ -310,23 +529,44 @@ pub fn draw_mob(m: &Mob, sx: f32, sy: f32, u: f32, now: f64) {
             let (lf, rf) = if m.mv { (ph, 1.0 - ph) } else { (0.0, 0.0) };
             let wag = if pet { ((now / 0.13) as i64 % 2) as f32 } else { 0.0 };
             let bob = if m.mv { 0.0 } else { ((now / 0.8) as i64 % 2) as f32 };
+            // Тінь
             draw_rectangle(sx - 6.0 * u, sy + 4.0 * u, 12.0 * u, 2.0 * u, ha(0, 0.28));
+            // Лапи
             q(dk, -5.0, 2.0, 2.0, 2.0 + lf);
             q(dk, -2.0, 2.0, 2.0, 2.0 + rf);
             q(dk, 1.0, 2.0, 2.0, 2.0 + rf);
             q(dk, 3.0, 2.0, 2.0, 2.0 + lf);
+            // Хвіст
             q(fur, -9.0, -6.0 - wag, 3.0, 2.0);
+            q(if pet { 0xc8a870 } else { fur }, -10.0, -6.0 - wag, 1.0, 1.0); // кінчик
+            // Тіло
             q(fur, -6.0, -4.0, 11.0, 6.0);
-            q(f2, -5.0, -5.0, 8.0, 2.0);
-            q(dk, -5.0, 1.0, 9.0, 1.0);
+            q(f2, -5.0, -5.0, 8.0, 2.0); // спина
+            q(dk, -5.0, 1.0, 9.0, 1.0); // тінь живота
+            // Світліший живіт
+            q(if pet { 0xd0bb90 } else { 0x8a8f9a }, -4.0, -1.0, 7.0, 2.0);
+            // Голова
             q(fur, 4.0, -6.0 + bob, 5.0, 5.0);
+            q(f2, 5.0, -6.0 + bob, 3.0, 3.0); // блік
+            // Мордочка
             q(f2, 8.0, -3.0 + bob, 3.0, 2.0);
-            q(0x111111, 10.0, -3.0 + bob, 1.0, 1.0);
+            q(0x111111, 10.0, -3.0 + bob, 1.0, 1.0); // ніс
+            // Вуха
             q(fur, 5.0, -8.0 + bob, 2.0, 2.0);
             q(dk, 7.0, -8.0 + bob, 1.0, 2.0);
+            // Очі
             q(if pet { 0x222222 } else { 0xff4040 }, 7.0, -5.0 + bob, 1.0, 1.0);
+            if !pet {
+                // Вовчі зуби
+                q(0xdddddd, 9.0, -1.0 + bob, 1.0, 1.0);
+                q(0xdddddd, 11.0, -1.0 + bob, 1.0, 1.0);
+            }
             if pet {
+                // Сердечко
                 q(0xdd3333, 3.0, -2.0, 2.0, 2.0);
+                q(0xff5555, 3.0, -2.0, 1.0, 1.0); // блік
+                // Язичок
+                q(0xff6666, 10.0, -1.0 + bob, 1.0, 2.0);
             }
         }
     }
@@ -338,10 +578,19 @@ pub fn draw_fx_particles(fx: &Fx, sx: f32, sy: f32, u: f32, now: f64) {
     if !(0.0..1.0).contains(&k) {
         return;
     }
-    for i in 0..5 {
-        let x = sx + ((i as f32 - 2.0) * 4.0 * k) * u;
-        let y = sy - 6.0 * k * u + ((i % 2) as f32 * 3.0 * k * k) * u;
-        draw_rectangle(x, y, 2.0 * u, 2.0 * u, hx(fx.col));
+    let base_col = fx.col;
+    let light = ((base_col >> 16) & 0xFF).min(255).wrapping_add(40).min(255) << 16
+              | ((base_col >> 8) & 0xFF).min(255).wrapping_add(40).min(255) << 8
+              | (base_col & 0xFF).min(255).wrapping_add(40).min(255);
+    for i in 0..7 {
+        let spread = (i as f32 - 3.0) * 3.5 * k;
+        let rise = -8.0 * k + ((i % 3) as f32 * 2.5 * k * k);
+        let size = (2.0 - k * 1.2).max(0.5);
+        let alpha = (1.0 - k).max(0.0);
+        let x = sx + spread * u;
+        let y = sy + rise * u;
+        let col = if i % 2 == 0 { base_col } else { light };
+        draw_rectangle(x, y, size * u, size * u, ha(col, alpha));
     }
 }
 
@@ -491,9 +740,10 @@ pub fn person(x: f32, y: f32, k: f32, t: f64, lk: &Look) -> (f32, f32) {
     }
     // инструмент в руке / взмах
     let kind = lk.swing.map(|s| s.0).unwrap_or(match lk.held {
-        1 => 3,
-        2 => 1,
-        3 => 2,
+        1 => 1,
+        2 => 2,
+        3 => 3,
+        4 => 4,
         _ => 0,
     });
     if kind > 0 {

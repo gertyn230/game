@@ -124,6 +124,8 @@ impl Updater {
     }
 
     fn is_newer_version(current: &str, new: &str) -> bool {
+        let current = current.trim_start_matches(|c: char| c == 'v' || c == 'V');
+        let new = new.trim_start_matches(|c: char| c == 'v' || c == 'V');
         match (semver::Version::parse(current), semver::Version::parse(new)) {
             (Ok(cur), Ok(new_ver)) => new_ver > cur,
             _ => new > current, // fallback
@@ -256,13 +258,15 @@ impl Updater {
         fs::rename(&current_exe, &old_exe)
             .map_err(|e| format!("Rename current: {}", e))?;
 
-        // Перейменувати new → поточний
-        match fs::rename(new_exe_path, &current_exe) {
-            Ok(_) => {}
+        // Скопіювати new → поточний
+        match fs::copy(new_exe_path, &current_exe) {
+            Ok(_) => {
+                let _ = fs::remove_file(new_exe_path);
+            }
             Err(e) => {
                 // Rollback
                 let _ = fs::rename(&old_exe, &current_exe);
-                return Err(format!("Rename new: {}", e));
+                return Err(format!("Copy new: {}", e));
             }
         }
 
@@ -295,6 +299,7 @@ impl Updater {
     }
 
     pub fn retry(&self) {
+        // TODO #99: Track whether failure was during check or download, retry appropriately
         *self.state.lock().unwrap() = UpdateState::Idle;
         self.check_for_updates();
     }

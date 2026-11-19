@@ -18,8 +18,9 @@ pub struct ServerConfig {
 
 pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
     // Use persistent file database by default for production
+    std::fs::create_dir_all("data").ok();
     let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite:///data/game.db?mode=rwc".to_string());
+        .unwrap_or_else(|_| "sqlite://./data/game.db?mode=rwc".to_string());
 
     let pool = SqlitePool::connect(&db_url).await?;
 

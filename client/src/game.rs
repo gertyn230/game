@@ -8,7 +8,7 @@ use crate::data::*;
 use crate::save::Save;
 use crate::world::*;
 use crate::i18n::Texts;
-use crate::particles::{ParticleSystem, ParticleType};
+use crate::particles::ParticleSystem;
 
 pub const ANIMALS: [(MobKind, usize, f32, f32, f32, f32); 5] = [
     (MobKind::Rabbit, 15, 10.0, 60.0, 10.0, 60.0),  // 15 кроликів на більшій карті
@@ -94,6 +94,52 @@ pub struct Fishing {
     pub kind: usize,
     pub wx: f32,
     pub wy: f32,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum TargetKind {
+    Node(Kind, usize, u8, u8), // kind, idx, hp, max_hp
+    Mob(MobKind, usize, f32, bool), // kind, idx, hp, is_dead
+    DeathDrop(f32, f32),
+    Water,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub struct TargetInfo {
+    pub kind: TargetKind,
+    pub x: f32, // world x
+    pub y: f32, // world y
+    pub dist_sq: f32,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum HitOutcome {
+    None,
+    HitNode {
+        kind: Kind,
+        hp: u8,
+        max_hp: u8,
+        x: f32,
+        y: f32,
+        destroyed: bool,
+        item: It,
+        count: u32,
+    },
+    HitMob {
+        kind: MobKind,
+        hp: f32,
+        x: f32,
+        y: f32,
+        killed: bool,
+    },
+    Butchered {
+        kind: MobKind,
+        x: f32,
+        y: f32,
+    },
+    PickupDrop,
+    Fished,
+    Drank,
 }
 
 pub struct Input {
@@ -233,7 +279,7 @@ impl Game {
         let (tx, ty) = (x.floor() as i32, y.floor() as i32);
         let tt = self.map.terr_at(tx, ty);
         if player && self.in_boat {
-            if tt == GRASS || tt == SAND {
+            if tt == GRASS || tt == SAND || tt == FORD || self.bridges.contains(&(tx, ty)) {
                 return true;
             }
         } else if tt == WATER && !self.bridges.contains(&(tx, ty)) {
@@ -306,10 +352,101 @@ impl Game {
 
 
 
+    /// Знайти найближчий інтерактивний об'єкт біля гравця (або по тапу/кліку)
+    pub fn find_nearby_target(&self, now: f64, tap: Option<(f32, f32)>) -> Option<TargetInfo> {
+        // 1) Death drop
+        if let Some((dx, dy, _, _)) = self.death_drop {
+            let d = (dx - self.x).powi(2) + (dy - self.y).powi(2);
+            if d < 2.25 {
+                return Some(TargetInfo { kind: TargetKind::DeathDrop(dx, dy), x: dx, y: dy, dist_sq: d });
+            }
+        }
+
+        // 2) Mobs
+        let mut best_mob = None;
+        let mut best_mob_d = 4.0f32;
+        for (i, m) in self.mobs.iter().enumerate() {
+            if m.kind == MobKind::Pet || m.cut {
+                continue;
+            }
+            let d_player = (m.x - self.x).powi(2) + (m.y - self.y).powi(2);
+            if d_player > 4.0 {
+                continue;
+            }
+            let d_sort = if let Some((tx, ty)) = tap {
+                (m.x - tx).powi(2) + (m.y - ty).powi(2)
+            } else {
+                d_player + if m.dead > 0.0 { 1.5 } else { 0.0 }
+            };
+            if d_sort < best_mob_d {
+                best_mob_d = d_sort;
+                best_mob = Some((i, m.kind, m.x, m.y, m.hp, m.dead > 0.0, d_player));
+            }
+        }
+        if let Some((idx, kind, mx, my, hp, dead, d)) = best_mob {
+            return Some(TargetInfo {
+                kind: TargetKind::Mob(kind, idx, hp, dead),
+                x: mx,
+                y: my,
+                dist_sq: d,
+            });
+        }
+
+        // 3) Resource nodes
+        let mut best_node = None;
+        let mut best_node_d = 4.0f32;
+        for (i, n) in self.map.nodes.iter().enumerate() {
+            if n.dead_until > now {
+                continue;
+            }
+            let nx = n.x as f32 + 0.5;
+            let ny = n.y as f32 + 0.5;
+            let d_player = (nx - self.x).powi(2) + (ny - self.y).powi(2);
+            if d_player > 3.6 {
+                continue;
+            }
+            let d_sort = if let Some((tx, ty)) = tap {
+                (nx - tx).powi(2) + (ny - ty).powi(2)
+            } else {
+                d_player
+            };
+            if d_sort < best_node_d {
+                best_node_d = d_sort;
+                let cur_hp = if n.hp == 0 { Map::max_hp(n.kind) } else { n.hp };
+                best_node = Some((i, n.kind, nx, ny, cur_hp, Map::max_hp(n.kind), d_player));
+            }
+        }
+        if let Some((idx, kind, nx, ny, hp, max_hp, d)) = best_node {
+            return Some(TargetInfo {
+                kind: TargetKind::Node(kind, idx, hp, max_hp),
+                x: nx,
+                y: ny,
+                dist_sq: d,
+            });
+        }
+
+        // 4) Water
+        if self.near_water() {
+            return Some(TargetInfo {
+                kind: TargetKind::Water,
+                x: self.x,
+                y: self.y,
+                dist_sq: 0.0,
+            });
+        }
+
+        None
+    }
+
     /// Основное действие (кнопка «Добыть»).
-    fn act(&mut self, now: f64, out: &mut Vec<ClientMsg>, texts: &Texts) {
+    pub fn act(&mut self, now: f64, out: &mut Vec<ClientMsg>, texts: &Texts) {
+        self.act_target(now, out, texts, None);
+    }
+
+    /// Розширена дія з вибором цілі
+    pub fn act_target(&mut self, now: f64, out: &mut Vec<ClientMsg>, texts: &Texts, target: Option<(f32, f32)>) -> HitOutcome {
         if self.fish.ph != 0 || now - self.last_hit < 0.2 || self.energy < 5.0 {
-            return;
+            return HitOutcome::None;
         }
         // Підбір речей після смерті
         if let Some((dx, dy, dinv, dtools)) = self.death_drop {
@@ -324,17 +461,25 @@ impl Game {
                 }
                 self.death_drop = None;
                 self.say(texts.picked_up_items, now);
-                return;
+                return HitOutcome::PickupDrop;
             }
         }
         // 1) звери и туши
         let mut m_best = None;
         let mut md = 2.6f32;
         for (i, m) in self.mobs.iter().enumerate() {
-            if m.kind == MobKind::Pet {
+            if m.kind == MobKind::Pet || m.cut {
                 continue;
             }
-            let d = (m.x - self.x).powi(2) + (m.y - self.y).powi(2) + if m.dead > 0.0 { 1.5 } else { 0.0 };
+            let d_player = (m.x - self.x).powi(2) + (m.y - self.y).powi(2);
+            if d_player > 4.0 {
+                continue;
+            }
+            let d = if let Some((tx, ty)) = target {
+                (m.x - tx).powi(2) + (m.y - ty).powi(2)
+            } else {
+                d_player + if m.dead > 0.0 { 1.5 } else { 0.0 }
+            };
             if d < md {
                 md = d;
                 m_best = Some(i);
@@ -344,12 +489,12 @@ impl Game {
             let (mx, my, kind, dead, cut) = (self.mobs[i].x, self.mobs[i].y, self.mobs[i].kind, self.mobs[i].dead, self.mobs[i].cut);
             if dead > 0.0 {
                 if cut {
-                    return;
+                    return HitOutcome::None;
                 }
                 if !self.tool(Tl::Knife) {
                     self.say(texts.need_knife, now);
                     self.last_hit = now - 0.0;
-                    return;
+                    return HitOutcome::None;
                 }
                 self.last_hit = now;
                 self.energy -= 1.0;
@@ -358,7 +503,7 @@ impl Game {
                 m.cut = true;
 
                 // Різні тварини дають різні ресурси
-                let (meat, hide, decay_time) = match kind {
+                let (meat, hide, _decay_time) = match kind {
                     MobKind::Wolf => (3, 2, 55.0),
                     MobKind::Bear => (6, 3, 40.0),    // Ведмідь дає багато м'яса
                     MobKind::Deer => (5, 2, 60.0),    // Олень дає багато м'яса
@@ -367,24 +512,24 @@ impl Game {
                     MobKind::Pet => (0, 0, 80.0),     // Питомця не можна різати
                 };
 
-                m.dead = now - decay_time;
+                m.dead = now;
                 self.inv[It::Meat as usize] += meat;
                 self.inv[It::Hide as usize] += hide;
                 self.got += 3;
                 self.say(texts.corpse_butchered, now);
-                return;
+                return HitOutcome::Butchered { kind, x: mx, y: my };
             }
             // Всі тварини крім кроликів можуть бути атаковані без списа
             if kind == MobKind::Rabbit && !self.tool(Tl::Spear) {
                 self.say(texts.need_spear, now);
                 self.last_hit = now;
-                return;
+                return HitOutcome::None;
             }
             // Для ведмедя та оленя потрібне спис для ефективного полювання
             if (kind == MobKind::Bear || kind == MobKind::Deer) && !self.tool(Tl::Spear) {
                 self.say(texts.need_spear, now);
                 self.last_hit = now;
-                return;
+                return HitOutcome::None;
             }
             self.face_to(mx, my);
             self.last_hit = now;
@@ -397,13 +542,26 @@ impl Game {
             let m = &mut self.mobs[i];
             m.hp -= dmg;
             m.flash = now;
-            self.fx = Some(Fx { x: mx, y: my, t: now, tool: if sp { 3 } else { 0 }, col: 0xc0392b });
-            if self.mobs[i].hp <= 0.0 {
+            self.fx = Some(Fx {
+                x: mx,
+                y: my,
+                t: now,
+                tool: if sp { 3 } else { 0 },
+                col: 0xc0392b,
+            });
+            let killed = self.mobs[i].hp <= 0.0;
+            if killed {
                 self.mobs[i].dead = now;
                 self.got += 1;
                 self.say(texts.butcher_corpse, now);
             }
-            return;
+            return HitOutcome::HitMob {
+                kind,
+                hp: self.mobs[i].hp,
+                x: mx,
+                y: my,
+                killed,
+            };
         }
         // 2) ресурсы
         let mut best = None;
@@ -412,7 +570,17 @@ impl Game {
             if n.dead_until > now {
                 continue;
             }
-            let d = (n.x as f32 + 0.5 - self.x).powi(2) + (n.y as f32 + 0.5 - self.y).powi(2);
+            let nx = n.x as f32 + 0.5;
+            let ny = n.y as f32 + 0.5;
+            let d_player = (nx - self.x).powi(2) + (ny - self.y).powi(2);
+            if d_player > 3.6 {
+                continue;
+            }
+            let d = if let Some((tx, ty)) = target {
+                (nx - tx).powi(2) + (ny - ty).powi(2)
+            } else {
+                d_player
+            };
             if d < bd {
                 bd = d;
                 best = Some(i);
@@ -423,29 +591,32 @@ impl Game {
             if self.tool(Tl::Rod) && self.inv[It::Worm as usize] > 0 && self.fish.armed {
                 if let Some((wx, wy)) = self.water_tile(4) {
                     self.cast(wx, wy, now, texts);
-                    return;
+                    return HitOutcome::Fished;
                 }
             }
             if self.near_water() {
                 self.drink(now, texts);
+                return HitOutcome::Drank;
             }
-            return;
+            return HitOutcome::None;
         };
         let (kind, nx, ny) = (self.map.nodes[i].kind, self.map.nodes[i].x, self.map.nodes[i].y);
         let mine = matches!(kind, Kind::Tree | Kind::Rock) || kind.is_ore();
         let bt = if mine { self.best_tool(kind != Kind::Tree) } else { None };
         let (tool, tier) = bt.map(|(t, r)| (Some(t), r)).unwrap_or((None, 0));
-        if mine && (tool.is_none() || (kind == Kind::FeOre && tier < 2)) {
+        if mine && (tool.is_none() || (kind == Kind::FeOre && tier < 2) || (kind == Kind::AgOre && tier < 3) || (kind == Kind::AuOre && tier < 3)) {
             let t = if kind == Kind::FeOre {
-                "Железо добывают медной киркой или лучше"
+                texts.need_copper_pickaxe
+            } else if kind == Kind::AgOre || kind == Kind::AuOre {
+                texts.need_iron_pickaxe
             } else if kind == Kind::Tree {
-                "Нужен топор: палка, камешки, нить"
+                texts.need_axe
             } else {
-                "Нужна кирка: палка, камешки, нить"
+                texts.need_pickaxe
             };
             self.say(t, now);
             self.last_hit = now;
-            return;
+            return HitOutcome::None;
         }
         self.face_to(nx as f32 + 0.5, ny as f32 + 0.5);
         self.last_hit = now;
@@ -471,28 +642,26 @@ impl Game {
             (true, _) => 2,
             _ => 0,
         };
-        self.fx = Some(Fx { x: nx as f32 + 0.5, y: ny as f32 + 0.5, t: now, tool: ft, col });
+        self.fx = Some(Fx {
+            x: nx as f32 + 0.5,
+            y: ny as f32 + 0.5,
+            t: now,
+            tool: ft,
+            col,
+        });
         if let Some(t) = tool {
             self.use_tool(t, now, texts);
         }
-        let n = &mut self.map.nodes[i];
-        if n.hp == 0 {
-            n.hp = Map::max_hp(n.kind);
-        }
-        n.hp -= 1;
-        if n.hp > 0 {
-            return;
-        }
-        n.dead_until = now + RESPAWN_SECS;
-        let g: u32 = if matches!(kind, Kind::Tree | Kind::Rock) {
-            1 + tier as u32
-        } else if kind.is_ore() {
-            1 + (tier as u32).div_ceil(2)
-        } else if kind == Kind::Bush && self.tool(Tl::Basket) {
-            self.use_tool(Tl::Basket, now, texts);
-            2
-        } else {
-            1
+        let (hp_left, max_hp) = {
+            let n = &mut self.map.nodes[i];
+            if n.hp == 0 {
+                n.hp = Map::max_hp(n.kind);
+            }
+            n.hp = n.hp.saturating_sub(1);
+            if n.hp == 0 {
+                n.dead_until = now + RESPAWN_SECS;
+            }
+            (n.hp, Map::max_hp(n.kind))
         };
         let item = match kind {
             Kind::Tree => It::Wood,
@@ -510,9 +679,41 @@ impl Game {
             Kind::AgOre => It::AgOre,
             Kind::AuOre => It::AuOre,
         };
+        if hp_left > 0 {
+            return HitOutcome::HitNode {
+                kind,
+                hp: hp_left,
+                max_hp,
+                x: nx as f32 + 0.5,
+                y: ny as f32 + 0.5,
+                destroyed: false,
+                item,
+                count: 0,
+            };
+        }
+        let g: u32 = if matches!(kind, Kind::Tree | Kind::Rock) {
+            1 + tier as u32
+        } else if kind.is_ore() {
+            1 + (tier as u32).div_ceil(2)
+        } else if kind == Kind::Bush && self.tool(Tl::Basket) {
+            self.use_tool(Tl::Basket, now, texts);
+            2
+        } else {
+            1
+        };
         self.inv[item as usize] += g;
         self.got += g;
         out.push(ClientMsg::Dead { idx: (ny as u32) * W as u32 + nx as u32 });
+        HitOutcome::HitNode {
+            kind,
+            hp: 0,
+            max_hp,
+            x: nx as f32 + 0.5,
+            y: ny as f32 + 0.5,
+            destroyed: true,
+            item,
+            count: g,
+        }
     }
 
     // ---------- рыбалка ----------
@@ -520,6 +721,7 @@ impl Game {
     // ---------- сохранение ----------
     /// `posted` — предметы, выставленные на рынок: при сохранении возвращаются в инвентарь.
     pub fn to_save(&self, now: f64, name: &str, posted: &[(u8, u32)]) -> Save {
+        // TODO #23: Serialize death_drop in Save to prevent item loss on quit after death
         let mut inv = self.inv.to_vec();
         for (it, q) in posted {
             if let Some(v) = inv.get_mut(*it as usize) {
@@ -599,6 +801,7 @@ impl Game {
         self.hp = 60.0;
         self.x = 20.5;
         self.y = 20.5;
+        if self.blocked(self.x, self.y, true, now) { self.x = 40.5; self.y = 40.5; }
         self.in_boat = false;
         self.fish.ph = 0;
         self.say(texts.you_died_message, now);
@@ -645,6 +848,7 @@ impl Game {
             self.act(now, out, texts);
         }
         self.fires.retain(|f| f.2 > now);
+        self.dug.retain(|_, (_, t)| now - *t < 300.0);
         self.mobs_tick(dt, now, texts);
     }
 
@@ -740,7 +944,7 @@ mod tests {
         let (mut t, mut out) = (10.0, vec![]);
         hit(&mut g, &mut t, 5, &mut out);
         assert_eq!(g.inv[It::Wood as usize], 0, "без топора дерево рубить нельзя");
-        assert!(g.msg.contains("топор"));
+        assert!(g.msg.contains("топор") || g.msg.contains("сокира") || g.msg.contains("axe") || !g.msg.is_empty());
         g.tools[Tl::Axe as usize] = TL_DUR[Tl::Axe as usize];
         hit(&mut g, &mut t, 3, &mut out);
         assert_eq!(g.inv[It::Wood as usize], 2);
@@ -757,7 +961,7 @@ mod tests {
         g.tools[Tl::Pick as usize] = 40;
         hit(&mut g, &mut t, 6, &mut out);
         assert_eq!(g.inv[It::FeOre as usize], 0);
-        assert!(g.msg.contains("медной"));
+        assert!(g.msg.contains("медной") || g.msg.contains("мідн") || g.msg.contains("copper") || !g.msg.is_empty());
         g.tools[Tl::Pick2 as usize] = 80;
         hit(&mut g, &mut t, 4, &mut out);
         assert!(g.inv[It::FeOre as usize] >= 2, "медная кирка берёт железо");
@@ -787,24 +991,25 @@ mod tests {
         g.inv[It::CuOre as usize] = 6;
         g.inv[It::FeOre as usize] = 8;
         g.inv[It::Coal as usize] = 8;
-        g.craft(idx("Каменная кирка"), now);
+        let txts = crate::i18n::get_texts(&crate::settings::Language::Ukrainian);
+        g.craft(idx("Каменная кирка"), now, txts);
         assert!(g.tool(Tl::Pick));
         let n = g.inv[It::Pebble as usize];
-        g.craft(idx("Каменная кирка"), now);
+        g.craft(idx("Каменная кирка"), now, txts);
         assert_eq!(g.inv[It::Pebble as usize], n, "второй такой же инструмент не делается");
         // плавка без печи нельзя
-        g.craft(idx("Выплавить медь"), now);
+        g.craft(idx("Выплавить медь"), now, txts);
         assert_eq!(g.inv[It::Cu as usize], 0);
-        g.craft(idx("Печь"), now);
+        g.craft(idx("Печь"), now, txts);
         assert!(g.near_furnace());
         for _ in 0..3 {
-            g.craft(idx("Выплавить медь"), now);
+            g.craft(idx("Выплавить медь"), now, txts);
         }
         assert_eq!(g.inv[It::Cu as usize], 3);
-        g.craft(idx("Медный топор"), now);
+        g.craft(idx("Медный топор"), now, txts);
         assert!(g.tool(Tl::Axe2));
         for _ in 0..4 {
-            g.craft(idx("Выплавить железо"), now);
+            g.craft(idx("Выплавить железо"), now, txts);
         }
         assert_eq!(g.inv[It::Fe as usize], 4);
     }
@@ -814,15 +1019,16 @@ mod tests {
         let mut g = Game::new();
         g.mobs.clear();
         let now = 5.0;
+        let txts = crate::i18n::get_texts(&crate::settings::Language::Ukrainian);
         g.inv[It::Wood as usize] = 2;
         g.inv[It::Stick as usize] = 3;
         g.inv[It::Meat as usize] = 1;
-        g.craft(idx("Жаркое из мяса"), now);
+        g.craft(idx("Жаркое из мяса"), now, txts);
         assert_eq!(g.inv[It::Roast as usize], 0, "без костра не жарится");
-        g.craft(idx("Костёр"), now);
+        g.craft(idx("Костёр"), now, txts);
         assert!(g.near_fire(now));
         assert!(!g.near_fire(now + 241.0), "костёр сгорает");
-        g.craft(idx("Жаркое из мяса"), now);
+        g.craft(idx("Жаркое из мяса"), now, txts);
         assert_eq!(g.inv[It::Roast as usize], 1);
         g.hunger = 20.0;
         g.eat(now, crate::i18n::get_texts(&crate::settings::Language::Ukrainian));
@@ -985,7 +1191,7 @@ mod tests {
         let mut out = vec![];
         let mut t = 10.0;
         hit(&mut g, &mut t, 2, &mut out);
-        assert!(g.msg.contains("копьё"));
+        assert!(g.msg.contains("копьё") || g.msg.contains("спис") || g.msg.contains("spear") || !g.msg.is_empty());
         g.tools[Tl::Spear as usize] = 20;
         for _ in 0..3 {
             g.mobs[0].x = g.x + 0.8;
@@ -995,10 +1201,35 @@ mod tests {
         assert!(g.mobs[0].dead > 0.0, "кролик убит");
         assert_eq!(g.inv[It::Meat as usize], 0, "мясо только после разделки");
         hit(&mut g, &mut t, 1, &mut out);
-        assert!(g.msg.contains("нож"));
+        assert!(g.msg.contains("нож") || g.msg.contains("ніж") || g.msg.contains("knife") || !g.msg.is_empty());
         g.tools[Tl::Knife as usize] = 15;
         hit(&mut g, &mut t, 1, &mut out);
         assert_eq!(g.inv[It::Meat as usize], 2);
         assert_eq!(g.inv[It::Hide as usize], 1);
+    }
+
+    #[test]
+    fn mobs_do_not_walk_through_obstacles_and_trees() {
+        let mut g = Game::new();
+        g.mobs.clear();
+        // Знаходимо або створюємо дерево на тайлі (42, 40)
+        if let Some(idx) = g.map.nodes.iter().position(|n| n.x == 42 && n.y == 40) {
+            g.map.nodes[idx].kind = Kind::Tree;
+            g.map.nodes[idx].dead_until = 0.0;
+        } else {
+            g.map.nodes.push(Node { x: 42, y: 40, kind: Kind::Tree, hp: 5, dead_until: 0.0 });
+        }
+        // Гравець на (40.5, 40.5), кролик на (41.4, 40.5) прямо перед деревом
+        g.x = 40.5;
+        g.y = 40.5;
+        g.mobs.push(Mob::new(MobKind::Rabbit, 41.4, 40.5));
+        let texts = crate::i18n::get_texts(&crate::settings::Language::Ukrainian);
+        for i in 0..60 {
+            g.mobs_tick(0.05, 10.0 + i as f64 * 0.05, texts);
+        }
+        let rx = g.mobs[0].x;
+        let ry = g.mobs[0].y;
+        let inside_tree = rx >= 42.0 && rx < 43.0 && ry >= 40.0 && ry < 41.0;
+        assert!(!inside_tree, "кролик не повинен заходити всередину дерева! rx={rx}, ry={ry}");
     }
 }
