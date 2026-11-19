@@ -275,3 +275,31 @@ pub async fn delete_promocode(pool: &SqlitePool, code: &str) -> Result<(), sqlx:
     Ok(())
 }
 
+pub async fn redeem_promocode(pool: &SqlitePool, code: &str) -> Result<Option<String>, sqlx::Error> {
+    let row = sqlx::query("SELECT reward, used, limit_uses, active FROM promocodes WHERE code = ?")
+        .bind(code)
+        .fetch_optional(pool)
+        .await?;
+
+    if let Some(r) = row {
+        let active: i64 = r.get("active");
+        let used: i64 = r.get("used");
+        let limit_uses: i64 = r.get("limit_uses");
+        let reward: String = r.get("reward");
+
+        if active == 0 || used >= limit_uses {
+            return Ok(None);
+        }
+
+        sqlx::query("UPDATE promocodes SET used = used + 1 WHERE code = ?")
+            .bind(code)
+            .execute(pool)
+            .await?;
+
+        Ok(Some(reward))
+    } else {
+        Ok(None)
+    }
+}
+
+

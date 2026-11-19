@@ -235,6 +235,8 @@ async fn main() {
         .route("/api/admin/promo/create", post(api_create_promo))
         .route("/api/admin/promo/toggle", post(api_toggle_promo))
         .route("/api/admin/promo/delete", post(api_delete_promo))
+        .route("/api/promo/redeem", post(api_redeem_promo))
+        .route("/api/ticket/create", post(api_create_ticket))
         .route("/api/admin/config", get(api_get_config))
         .route("/api/admin/config/set", post(api_set_config))
         .route("/api/version", get(api_version))
@@ -808,25 +810,72 @@ async fn api_admin_logs(State(app): State<App>, headers: HeaderMap, Query(q): Qu
 
 #[derive(serde::Deserialize)]
 struct TicketCreateReq {
-    key: String,
+    #[allow(dead_code)]
+    key: Option<String>,
     player: String,
     ticket_type: String,
     subject: String,
     message: String,
 }
 
-// TODO #74: Ticket creation should use player session auth, not admin key
 async fn api_create_ticket(State(app): State<App>, Json(req): Json<TicketCreateReq>) -> Response {
-    // Перевірка ключа (для тестів можна створювати без ключа)
-    if let Some(k) = &app.admin_key {
-        if &req.key != k {
-            return (StatusCode::UNAUTHORIZED, "Потрібен ключ").into_response();
-        }
+    let player = req.player.trim().to_string();
+    let ticket_type = req.ticket_type.trim().to_string();
+    let subject = req.subject.trim().to_string();
+    let message = req.message.trim().to_string();
+
+    if player.is_empty() || message.is_empty() {
+        return (StatusCode::BAD_REQUEST, "Вкажіть нікнейм та текст повідомлення").into_response();
     }
 
-    match db::create_ticket(&app.db, &req.player, &req.ticket_type, &req.subject, &req.message).await {
-        Ok(id) => Json(serde_json::json!({"id": id, "status": "created"})).into_response(),
+    match db::create_ticket(&app.db, &player, &ticket_type, &subject, &message).await {
+        Ok(id) => Json(serde_json::json!({
+            "success": true,
+            "id": id,
+            "status": "created",
+            "message": "Тікет успішно надіслано"
+        })).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка: {}", e)).into_response()
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct PromoRedeemReq {
+    code: String,
+    player: Option<String>,
+}
+
+async fn api_redeem_promo(State(app): State<App>, Json(req): Json<PromoRedeemReq>) -> Response {
+    let code = req.code.trim().to_uppercase();
+    if code.is_empty() {
+        return Json(serde_json::json!({ "success": false, "message": "Введіть промокод" })).into_response();
+    }
+    let player = req.player.unwrap_or_else(|| "Гравець".to_string());
+
+    match db::redeem_promocode(&app.db, &code).await {
+        Ok(Some(reward)) => {
+            let _ = db::add_log(&app.db, &player, &format!("Активовано промокод {}: {}", code, reward)).await;
+
+            // If player is currently online, send celebratory in-game announcement
+            {
+                let w = app.world.lock().await;
+                if let Some((_, c)) = w.players.iter().find(|(_, c)| c.state.name == player) {
+                    let msg = format!("🎁 Промокод активовано! Отримано: {}", reward);
+                    reply(c, &ServerMsg::Err { text: msg });
+                }
+            }
+
+            Json(serde_json::json!({
+                "success": true,
+                "reward": reward,
+                "message": format!("Промокод активовано! Отримано: {}", reward)
+            })).into_response()
+        }
+        Ok(None) => Json(serde_json::json!({
+            "success": false,
+            "message": "Промокод недійсний, вимкнений або вичерпано ліміт"
+        })).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка БД: {}", e)).into_response()
     }
 }
 

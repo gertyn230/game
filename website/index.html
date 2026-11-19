@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pixel Village — Офіційний сайт піксельної онлайн гри</title>
+<meta name="description" content="Pixel Village — затишна піксельна мультиплеєрна гра з риболовлею, будівництвом, крафтом та торгівлею. Грайте на Windows та Android разом із друзями!">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏡%3C/text%3E%3C/svg%3E">
+<style>
+:root {
+  --bg-dark: #080b12;
+  --bg-card: rgba(18, 24, 38, 0.75);
+  --bg-card-hover: rgba(26, 35, 54, 0.9);
+  --bg-input: #0c121e;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-focus: #10b981;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --accent-green: #10b981;
+  --accent-green-glow: rgba(16, 185, 129, 0.35);
+  --accent-blue: #38bdf8;
+  --accent-blue-glow: rgba(56, 189, 248, 0.3);
+  --accent-amber: #f59e0b;
+  --accent-rose: #f43f5e;
+  --accent-purple: #8b5cf6;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg-dark);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Background Atmosphere Glows */
+.bg-glow-1 {
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, rgba(56, 189, 248, 0.08) 50%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+.bg-glow-2 {
+  position: absolute;
+  top: 700px;
+  right: -150px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Navbar */
+nav {
+  height: 72px;
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  background: rgba(8, 11, 18, 0.7);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+}
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: #fff;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+.brand-badge {
+  font-size: 10.5px;
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.nav-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+.nav-link:hover { color: #fff; }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Container */
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+  position: relative;
+  z-index: 10;
+}
+
+/* Hero Section */
+.hero {
+  padding: 70px 0 50px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.server-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 6px 14px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 24px;
+  box-shadow: 0 0 20px var(--accent-green-glow);
+}
+.status-pulsing-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  box-shadow: 0 0 10px var(--accent-green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.hero h1 {
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin-bottom: 18px;
+  background: linear-gradient(180deg, #ffffff 40%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero p {
+  font-size: 18px;
+  color: var(--text-muted);
+  max-width: 680px;
+  margin-bottom: 36px;
+  font-weight: 400;
+}
+
+/* Download Cards Grid */
+.download-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  width: 100%;
+  max-width: 720px;
+  margin-bottom: 50px;
+}
+.dl-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+.dl-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 16px 32px rgba(0,0,0,0.4);
+}
+.dl-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+}
+.dl-card.win::before { background: var(--accent-blue); }
+.dl-card.android::before { background: var(--accent-green); }
+
+.dl-icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+.dl-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.dl-desc {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 18px;
+}
+.btn-dl {
+  width: 100%;
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 14.5px;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s;
+}
+.btn-dl-win {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #fff;
+  box-shadow: 0 4px 14px var(--accent-blue-glow);
+}
+.btn-dl-win:hover {
+  background: #0284c7;
+  transform: scale(1.02);
+}
+.btn-dl-android {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #04251a;
+  box-shadow: 0 4px 14px var(--accent-green-glow);
+}
+.btn-dl-android:hover {
+  background: #10b981;
+  transform: scale(1.02);
+}
+
+/* Interactive Tabs Section (Promocodes & Tickets) */
+.interact-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 24px;
+  margin-bottom: 70px;
+}
+.card-box {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 28px;
+}
+.box-title {
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.box-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+/* Forms */
+.form-group {
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+input, select, textarea {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  padding: 10px 14px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+.btn-submit {
+  width: 100%;
+  padding: 11px 18px;
+  background: var(--accent-green);
+  color: #062419;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.btn-submit:hover {
+  background: #0ea572;
+  box-shadow: 0 0 15px var(--accent-green-glow);
+}
+
+/* Features Grid */
+.features-section {
+  padding: 30px 0 70px;
+}
+.section-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+.section-title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+.section-subtitle {
+  font-size: 15px;
+  color: var(--text-muted);
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+.f-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.f-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.f-icon {
+  font-size: 32px;
+  margin-bottom: 14px;
+}
+.f-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.f-card p {
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+/* Toast */
+#toastBox {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast {
+  background: #1e293b;
+  color: #fff;
+  border: 1px solid var(--border);
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: slideIn 0.2s ease forwards;
+}
+.toast.success { border-left: 4px solid var(--accent-green); }
+.toast.error { border-left: 4px solid var(--accent-rose); }
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Footer */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 36px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+footer a {
+  color: var(--accent-blue);
+  text-decoration: none;
+}
+footer a:hover { text-decoration: underline; }
+
+@media (max-width: 768px) {
+  .hero h1 { font-size: 38px; }
+  .hero p { font-size: 16px; }
+  nav { padding: 0 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-glow-1"></div>
+<div class="bg-glow-2"></div>
+
+<!-- Navigation -->
+<nav>
+  <a href="/" class="nav-brand">
+    <span>🏡 Pixel Village</span>
+    <span class="brand-badge">v1.7.5</span>
+  </a>
+  <div class="nav-links">
+    <a href="#downloads" class="nav-link">Завантажити</a>
+    <a href="#features" class="nav-link">Особливості</a>
+    <a href="#promo" class="nav-link">Промокоди</a>
+    <a href="#support" class="nav-link">Підтримка</a>
+    <a href="https://admin.pixel-village.online" target="_blank" class="nav-btn">
+      <span>🔐</span> Адмінка
+    </a>
+  </div>
+</nav>
+
+<div class="container">
+  <!-- Hero Section -->
+  <section class="hero" id="downloads">
+    <div class="server-status-badge">
+      <div class="status-pulsing-dot" id="srvDot"></div>
+      <span id="srvStatus">Сервер онлайн:</span>
+      <strong style="color:var(--accent-green);font-family:var(--font-mono);" id="srvOnlineCount">... гравців</strong>
+      <span style="color:var(--text-dim);font-size:11px;" id="srvPing">(--ms)</span>
+    </div>
+
+    <h1>Затишне піксельне село,<br>де грають разом</h1>
+    <p>
+      Видобувайте ресурси, ловіть рідкісну рибу, приручайте вовків, будуйте мости та торгуйте на ринку з іншими гравцями у реальному часі.
+    </p>
+
+    <!-- Download Options -->
+    <div class="download-grid">
+      <div class="dl-card win">
+        <div class="dl-icon">💻</div>
+        <div class="dl-title">Windows PC</div>
+        <div class="dl-desc">Windows 10 / 11 • Автономний .exe • 64-bit</div>
+        <a href="https://github.com/gertyn230/game/releases/latest/download/PixelVillage-windows-x86_64.exe" class="btn-dl btn-dl-win">
+          ⬇️ Завантажити для Windows
+        </a>
+      </div>
+
+      <div class="dl-card android">
+        <div class="dl-icon">📱</div>
+        <div class="dl-title">Android</div>
+        <div class="dl-desc">Android 6.0+ • Сенсорне керування • APK</div>
+        <a href="https://github.com/gertyn230/game/releases/latest/download/PixelVillage-android.apk" class="btn-dl btn-dl-android">
+          ⬇️ Завантажити APK
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Promocodes & Support Section -->
+  <section class="interact-section">
+    <!-- Promocodes Card -->
+    <div class="card-box" id="promo">
+      <div class="box-title">
+        <span>🎁</span> Активація промокоду
+      </div>
+      <div class="box-subtitle">
+        Введіть секретний код від адміністратора та отримайте монети або рідкісні предмети
+      </div>
+
+      <form id="promoForm">
+        <div class="form-group">
+          <label>Ваш нікнейм у грі</label>
+          <input type="text" id="promoNick" placeholder="Steve_99" required>
+        </div>
+        <div class="form-group">
+          <label>Промокод</label>
+          <input type="text" id="promoCode" placeholder="WELCOME2026" style="text-transform:uppercase;" required>
+        </div>
+        <button type="submit" class="btn-submit" id="btnRedeemPromo">
+          🎁 Отримати нагороду
+        </button>
+      </form>
+    </div>
+
+    <!-- Support Tickets Card -->
+    <div class="card-box" id="support">
+      <div class="box-title">
+        <span>🎫</span> Зв'язок з адміністрацією
+      </div>
+      <div class="box-subtitle">
+        Знайшли баг чи маєте круту ідею? Надішліть тікет прямо в адмін-панель
+      </div>
+
+      <form id="ticketForm">
+        <div style="display:flex;gap:12px;">
+          <div class="form-group" style="flex:1;">
+            <label>Ваш нікнейм</label>
+            <input type="text" id="tNick" placeholder="Гравець" required>
+          </div>
+          <div class="form-group" style="width:140px;">
+            <label>Категорія</label>
+            <select id="tType">
+              <option value="Баг">🐛 Баг</option>
+              <option value="Пропозиція">💡 Пропозиція</option>
+              <option value="Питання">❓ Питання</option>
+              <option value="Скарresource">⚠️ Скарга</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Тема звернення</label>
+          <input type="text" id="tSubj" placeholder="Коротко про проблему..." required>
+        </div>
+        <div class="form-group">
+          <label>Опис ситуації</label>
+          <textarea id="tMsg" rows="3" placeholder="Детально опишіть, що сталося..." required></textarea>
+        </div>
+        <button type="submit" class="btn-submit" id="btnSubmitTicket">
+          🚀 Надіслати тікет
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features-section" id="features">
+    <div class="section-header">
+      <div class="section-title">✨ Особливості гри Pixel Village</div>
+      <div class="section-subtitle">Створено з любов'ю до класичних піксельних пісочниць</div>
+    </div>
+
+    <div class="features-grid">
+      <div class="f-card">
+        <div class="f-icon">👥</div>
+        <h3>Живий мультиплеєр</h3>
+        <p>Спільний світ з іншими живими гравцями. Досліджуйте карту, зустрічайтеся біля багаття та спілкуйтеся.</p>
+      </div>
+
+      <div class="f-card">
+        <div class="f-icon">🎣</div>
+        <h3>Глибока риболовля</h3>
+        <p>Міні-гра на реакцію з різними видами риби. Ловіть трофейних гігантів та змагайтеся в таблиці лідерів.</p>
+      </div>
+
+      <div class="f-card">
+        <div class="f-icon">🐺</div>
+        <h3>Улюбленці та приручення</h3>
+        <p>Знайдіть дикого вовка, пригостіть свіжим м'ясом — і він стане вашим вірним супутником у мандрах.</p>
+      </div>
+
+      <div class="f-card">
+        <div class="f-icon">🛶</div>
+        <h3>Човни та водні подорожі</h3>
+        <p>Крафтіть власний човен з дощок та ниток, перетинайте глибокі річки та будуйте дерев'яні мости.</p>
+      </div>
+
+      <div class="f-card">
+        <div class="f-icon">🛒</div>
+        <h3>Внутрішній ринок</h3>
+        <p>Вільна економіка між гравцями. Виставляйте зайву рибу та ресурси на продаж за золоті монети.</p>
+      </div>
+
+      <div class="f-card">
+        <div class="f-icon">🛡️</div>
+        <h3>Захист та модерація</h3>
+        <p>Сервер захищений від чітів, має живий радар та оперативну підтримку адміністраторів.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Toast Container -->
+<div id="toastBox"></div>
+
+<footer>
+  <div class="container">
+    <p>© 2026 Pixel Village Multiplayer. Усі права захищено.</p>
+    <p style="margin-top:6px;">
+      <a href="https://admin.pixel-village.online" target="_blank">Панель Адміністратора</a> • 
+      <a href="https://github.com/gertyn230/game" target="_blank">GitHub Репозиторій</a> • 
+      <a href="https://github.com/gertyn230/game/releases" target="_blank">Релізи та оновлення</a>
+    </p>
+  </div>
+</footer>
+
+<script>
+var API_URL = 'https://api.pixel-village.online';
+
+function toast(msg, type = 'success') {
+  var b = document.getElementById('toastBox');
+  var t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.innerHTML = '<span>' + (type === 'success' ? '✅' : '❌') + '</span><span>' + msg + '</span>';
+  b.appendChild(t);
+  setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transform = 'translateY(10px)';
+    t.style.transition = 'all 0.2s';
+    setTimeout(() => t.remove(), 200);
+  }, 4000);
+}
+
+// 1. Live Server Status
+function checkServer() {
+  var start = performance.now();
+  fetch(API_URL + '/api/players')
+    .then(r => r.json())
+    .then(data => {
+      var ping = Math.round(performance.now() - start);
+      document.getElementById('srvPing').textContent = '(' + ping + 'ms)';
+      var cnt = data.count || (data.players ? data.players.length : 0);
+      document.getElementById('srvOnlineCount').textContent = cnt + ' ' + (cnt === 1 ? 'гравець' : (cnt >= 2 && cnt <= 4 ? 'гравці' : 'гравців'));
+      document.getElementById('srvDot').style.background = '#10b981';
+      document.getElementById('srvStatus').textContent = 'Сервер онлайн:';
+    })
+    .catch(() => {
+      document.getElementById('srvOnlineCount').textContent = '—';
+      document.getElementById('srvDot').style.background = '#f43f5e';
+      document.getElementById('srvStatus').textContent = 'Оновлення сервера...';
+      document.getElementById('srvPing').textContent = '';
+    });
+}
+checkServer();
+setInterval(checkServer, 5000);
+
+// 2. Promocode Redemption
+document.getElementById('promoForm').onsubmit = async function(e) {
+  e.preventDefault();
+  var nick = document.getElementById('promoNick').value.trim();
+  var code = document.getElementById('promoCode').value.trim().toUpperCase();
+  var btn = document.getElementById('btnRedeemPromo');
+  btn.disabled = true;
+
+  try {
+    var res = await fetch(API_URL + '/api/promo/redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code, player: nick })
+    });
+    var data = await res.json();
+    if (data.success) {
+      toast('🎉 ' + data.message, 'success');
+      document.getElementById('promoCode').value = '';
+    } else {
+      toast(data.message || 'Промокод недійсний', 'error');
+    }
+  } catch (err) {
+    toast('Помилка з\'єднання з сервером', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+// 3. Support Tickets Submission
+document.getElementById('ticketForm').onsubmit = async function(e) {
+  e.preventDefault();
+  var nick = document.getElementById('tNick').value.trim();
+  var type = document.getElementById('tType').value;
+  var subj = document.getElementById('tSubj').value.trim();
+  var msg = document.getElementById('tMsg').value.trim();
+  var btn = document.getElementById('btnSubmitTicket');
+  btn.disabled = true;
+
+  try {
+    var res = await fetch(API_URL + '/api/ticket/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player: nick, ticket_type: type, subject: subj, message: msg })
+    });
+    var data = await res.json();
+    if (data.status === 'created' || data.success) {
+      toast('Тікет успішно надіслано адміністратору! Дякуємо за відгук.', 'success');
+      document.getElementById('tSubj').value = '';
+      document.getElementById('tMsg').value = '';
+    } else {
+      toast('Не вдалося надіслати тікет', 'error');
+    }
+  } catch (err) {
+    toast('Помилка відправки тікета', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+};
+</script>
+</body>
+</html>
