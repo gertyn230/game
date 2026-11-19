@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+LICENSE
+README.md
+
+# CI/CD
+.github
+
+# Build artifacts
+target/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+
+# Local env files
+.env
+.env.local
+*.local
+
+# Node modules (if any)
+node_modules/
+
+# Assets not needed in Docker
+assets/
+client/assets/
+
+# Test files
+tests/
+*_test.rs

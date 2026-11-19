@@ -25,6 +25,16 @@ fn is_button_hovered(x: f32, y: f32, w: f32, h: f32) -> bool {
     touches().iter().any(|t| t.position.x >= x && t.position.x <= x + w && t.position.y >= y && t.position.y <= y + h)
 }
 
+fn is_button_clicked(x: f32, y: f32, w: f32, h: f32) -> bool {
+    let (mx, my) = mouse_position();
+    let mouse_clicked = is_mouse_button_pressed(MouseButton::Left) && mx >= x && mx <= x + w && my >= y && my <= y + h;
+    let touch_clicked = touches().iter().any(|t| {
+        (t.phase == TouchPhase::Started || t.phase == TouchPhase::Ended) &&
+        t.position.x >= x && t.position.x <= x + w && t.position.y >= y && t.position.y <= y + h
+    });
+    mouse_clicked || touch_clicked
+}
+
 /// Малює сучасну темну скляну панель з неоновим акцентом
 fn draw_modern_panel(x: f32, y: f32, w: f32, h: f32) {
     // М'яка темна тінь
@@ -137,7 +147,8 @@ impl SettingsMenu {
         }
         text_c(font, "✕", close_btn_x + close_btn_size / 2.0, close_btn_y + close_btn_size * 0.72, fs * 1.1, if close_hovered { hx(0xff6b6b) } else { ha(0xffffff, 0.6) });
 
-        let mut should_close = close_hovered && is_mouse_button_pressed(MouseButton::Left);
+        let close_clicked = is_button_clicked(close_btn_x, close_btn_y, close_btn_size, close_btn_size);
+        let mut should_close = close_clicked;
 
         // Сучасні вкладки налаштувань (Tabs)
         let tab_y = title_y + fs * 1.8;
@@ -182,7 +193,7 @@ impl SettingsMenu {
             };
             text_c(font, &tab_title, tx + tab_w / 2.0, tab_y + tab_h * 0.65, fs * 0.95, tab_color);
 
-            if hovered && is_mouse_button_pressed(MouseButton::Left) {
+            if is_button_clicked(tx, tab_y, tab_w, tab_h) {
                 self.category = *cat;
                 self.rebinding = None;
             }
@@ -207,7 +218,7 @@ impl SettingsMenu {
         let btn_hovered = is_button_hovered(bottom_btn_x, bottom_btn_y, bottom_btn_w, bottom_btn_h);
         draw_modern_button(font, bottom_btn_x, bottom_btn_y, bottom_btn_w, bottom_btn_h, texts.close, fs * 0.95, btn_hovered, false);
 
-        if btn_hovered && is_mouse_button_pressed(MouseButton::Left) {
+        if is_button_clicked(bottom_btn_x, bottom_btn_y, bottom_btn_w, bottom_btn_h) {
             should_close = true;
         }
 
@@ -258,7 +269,7 @@ impl SettingsMenu {
 
             text_c(font, name, bx + lang_btn_w / 2.0, lang_y + lang_btn_h * 0.6, fs * 0.95, if selected { WHITE } else { Color::from_rgba(203, 213, 225, 255) });
 
-            if hovered && is_mouse_button_pressed(MouseButton::Left) {
+            if is_button_clicked(bx, lang_y, lang_btn_w, lang_btn_h) {
                 settings.language = *lang;
                 save_settings(settings);
             }
@@ -290,7 +301,7 @@ impl SettingsMenu {
         let ch_hovered = is_button_hovered(change_btn_x, change_btn_y, change_btn_w, change_btn_h);
         draw_modern_button(font, change_btn_x, change_btn_y, change_btn_w, change_btn_h, texts.click_to_change, fs * 0.8, ch_hovered, false);
 
-        if (srv_hovered || ch_hovered) && is_mouse_button_pressed(MouseButton::Left) {
+        if is_button_clicked(rect.x, srv_card_y, srv_card_w, srv_card_h) || is_button_clicked(change_btn_x, change_btn_y, change_btn_w, change_btn_h) {
             settings.server_type = settings.server_type.next();
             save_settings(settings);
         }
@@ -448,7 +459,7 @@ impl SettingsMenu {
             };
             text_c(font, key_label, key_box_x + key_box_w / 2.0, key_box_y + key_box_h * 0.68, fs * 0.88, if is_rebinding_this { WHITE } else { Color::from_rgba(56, 189, 248, 255) });
 
-            if card_hovered && is_mouse_button_pressed(MouseButton::Left) {
+            if is_button_clicked(bx, by, item_w, item_h) {
                 if self.rebinding == Some(action) {
                     self.rebinding = None;
                 } else {
@@ -466,7 +477,7 @@ impl SettingsMenu {
         let r_hovered = is_button_hovered(reset_btn_x, reset_btn_y, reset_btn_w, reset_btn_h);
         draw_modern_button(font, reset_btn_x, reset_btn_y, reset_btn_w, reset_btn_h, &format!("🔄 {}", texts.reset_defaults), fs * 0.82, r_hovered, false);
 
-        if r_hovered && is_mouse_button_pressed(MouseButton::Left) {
+        if is_button_clicked(reset_btn_x, reset_btn_y, reset_btn_w, reset_btn_h) {
             settings.keybindings = Default::default();
             save_settings(settings);
             self.rebinding = None;
@@ -477,7 +488,7 @@ impl SettingsMenu {
     fn draw_modern_toggle(&self, _font: &Font, _texts: &Texts, x: f32, y: f32, enabled: bool) -> (bool, bool) {
         let tw = 50.0;
         let th = 26.0;
-        let hovered = is_button_hovered(x, y, tw, th);
+        let _hovered = is_button_hovered(x, y, tw, th);
 
         // Капсула
         let bg = if enabled {
@@ -494,7 +505,7 @@ impl SettingsMenu {
         let cy = y + th / 2.0;
         draw_circle(cx, cy, r, WHITE);
 
-        if hovered && is_mouse_button_pressed(MouseButton::Left) {
+        if is_button_clicked(x, y, tw, th) {
             (true, !enabled)
         } else {
             (false, enabled)
@@ -528,12 +539,17 @@ impl SettingsMenu {
         let pct_str = format!("{}: {}%", label, (value * 100.0) as i32);
         text(font, &pct_str, x, y - 2.0, fs * 0.8, Color::from_rgba(203, 213, 225, 255));
 
-        // Клік або перетягування
+        // Клік або перетягування (миша або сенсор)
         let hit_rect = Rect::new(x - 10.0, sy - 15.0, width + 20.0, sh + 30.0);
         if is_mouse_button_down(MouseButton::Left) {
             let (mx, my) = mouse_position();
             if hit_rect.contains(vec2(mx, my)) {
                 value = ((mx - x) / width).clamp(0.0, 1.0);
+            }
+        }
+        for t in touches() {
+            if hit_rect.contains(t.position) {
+                value = ((t.position.x - x) / width).clamp(0.0, 1.0);
             }
         }
 

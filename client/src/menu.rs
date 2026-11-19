@@ -498,8 +498,7 @@ impl Menu {
             let x = (sw - button_width) / 2.0;
 
             let hovered = is_button_hovered(x, y, button_width, button_height);
-            let clicked = hovered && (is_mouse_button_pressed(MouseButton::Left) ||
-                touches().iter().any(|t| t.phase == TouchPhase::Started));
+            let clicked = is_button_clicked(x, y, button_width, button_height);
 
             // Піксельна тінь
             draw_rectangle(x + 6.0, y + 6.0, button_width, button_height, Color::from_rgba(20, 20, 30, 180));
@@ -645,7 +644,18 @@ impl Menu {
 // Допоміжні функції
 
 fn is_button_hovered(x: f32, y: f32, w: f32, h: f32) -> bool {
-    // TODO #32: Check touch positions against button bounds for mobile
     let (mx, my) = mouse_position();
-    mx >= x && mx <= x + w && my >= y && my <= y + h
+    let mouse_hover = mx >= x && mx <= x + w && my >= y && my <= y + h;
+    let touch_hover = touches().iter().any(|t| t.position.x >= x && t.position.x <= x + w && t.position.y >= y && t.position.y <= y + h);
+    mouse_hover || touch_hover
+}
+
+fn is_button_clicked(x: f32, y: f32, w: f32, h: f32) -> bool {
+    let (mx, my) = mouse_position();
+    let mouse_clicked = is_mouse_button_pressed(MouseButton::Left) && mx >= x && mx <= x + w && my >= y && my <= y + h;
+    let touch_clicked = touches().iter().any(|t| {
+        (t.phase == TouchPhase::Started || t.phase == TouchPhase::Ended) &&
+        t.position.x >= x && t.position.x <= x + w && t.position.y >= y && t.position.y <= y + h
+    });
+    mouse_clicked || touch_clicked
 }

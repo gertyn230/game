@@ -5,6 +5,23 @@ use crate::i18n::{get_texts, Texts};
 use crate::updater::{Updater, UpdateState, UpdateInfo};
 use macroquad::prelude::*;
 
+fn is_rect_hovered(x: f32, y: f32, w: f32, h: f32) -> bool {
+    let (mx, my) = mouse_position();
+    let mouse_hover = mx >= x && mx <= x + w && my >= y && my <= y + h;
+    let touch_hover = touches().iter().any(|t| t.position.x >= x && t.position.x <= x + w && t.position.y >= y && t.position.y <= y + h);
+    mouse_hover || touch_hover
+}
+
+fn is_rect_clicked(x: f32, y: f32, w: f32, h: f32) -> bool {
+    let (mx, my) = mouse_position();
+    let mouse_clicked = is_mouse_button_pressed(MouseButton::Left) && mx >= x && mx <= x + w && my >= y && my <= y + h;
+    let touch_clicked = touches().iter().any(|t| {
+        (t.phase == TouchPhase::Started || t.phase == TouchPhase::Ended) &&
+        t.position.x >= x && t.position.x <= x + w && t.position.y >= y && t.position.y <= y + h
+    });
+    mouse_clicked || touch_clicked
+}
+
 pub struct GameStateManager {
     pub menu: Menu,
     pub in_game: bool,
@@ -111,16 +128,14 @@ impl GameStateManager {
         }
 
         // Кнопки
-        let btn_w = 200.0;
+        let btn_w = 200.0f32.min((w - 60.0) / 2.0);
         let btn_h = 50.0;
         let btn_y = y + h - 80.0;
         let install_x = x + (w - btn_w * 2.0 - 20.0) / 2.0;
         let later_x = install_x + btn_w + 20.0;
 
         // Кнопка "Встановити"
-        let mouse_pos = mouse_position();
-        let mouse_on_install = mouse_pos.0 >= install_x && mouse_pos.0 <= install_x + btn_w
-            && mouse_pos.1 >= btn_y && mouse_pos.1 <= btn_y + btn_h;
+        let mouse_on_install = is_rect_hovered(install_x, btn_y, btn_w, btn_h);
 
         let install_color = if mouse_on_install {
             Color::from_rgba(80, 180, 80, 255)
@@ -142,13 +157,12 @@ impl GameStateManager {
             },
         );
 
-        if mouse_on_install && is_mouse_button_pressed(MouseButton::Left) {
+        if is_rect_clicked(install_x, btn_y, btn_w, btn_h) {
             let _ = self.updater.download_and_install();
         }
 
         // Кнопка "Пізніше"
-        let mouse_on_later = mouse_pos.0 >= later_x && mouse_pos.0 <= later_x + btn_w
-            && mouse_pos.1 >= btn_y && mouse_pos.1 <= btn_y + btn_h;
+        let mouse_on_later = is_rect_hovered(later_x, btn_y, btn_w, btn_h);
 
         let later_color = if mouse_on_later {
             Color::from_rgba(100, 100, 120, 255)
@@ -170,7 +184,7 @@ impl GameStateManager {
             },
         );
 
-        if mouse_on_later && is_mouse_button_pressed(MouseButton::Left) {
+        if is_rect_clicked(later_x, btn_y, btn_w, btn_h) {
             self.updater.dismiss();
         }
     }
@@ -288,17 +302,14 @@ impl GameStateManager {
         );
 
         // Кнопки
-        let btn_w = 150.0;
+        let btn_w = 150.0f32.min((w - 60.0) / 2.0);
         let btn_h = 40.0;
         let btn_y = y + h - 60.0;
         let retry_x = x + (w - btn_w * 2.0 - 20.0) / 2.0;
         let cancel_x = retry_x + btn_w + 20.0;
 
-        let mouse_pos = mouse_position();
-
         // Кнопка "Повторити"
-        let mouse_on_retry = mouse_pos.0 >= retry_x && mouse_pos.0 <= retry_x + btn_w
-            && mouse_pos.1 >= btn_y && mouse_pos.1 <= btn_y + btn_h;
+        let mouse_on_retry = is_rect_hovered(retry_x, btn_y, btn_w, btn_h);
 
         let retry_color = if mouse_on_retry {
             Color::from_rgba(80, 180, 80, 255)
@@ -320,13 +331,12 @@ impl GameStateManager {
             },
         );
 
-        if mouse_on_retry && is_mouse_button_pressed(MouseButton::Left) {
+        if is_rect_clicked(retry_x, btn_y, btn_w, btn_h) {
             self.updater.retry();
         }
 
         // Кнопка "Пізніше"
-        let mouse_on_cancel = mouse_pos.0 >= cancel_x && mouse_pos.0 <= cancel_x + btn_w
-            && mouse_pos.1 >= btn_y && mouse_pos.1 <= btn_y + btn_h;
+        let mouse_on_cancel = is_rect_hovered(cancel_x, btn_y, btn_w, btn_h);
 
         let cancel_color = if mouse_on_cancel {
             Color::from_rgba(100, 100, 120, 255)
@@ -348,7 +358,7 @@ impl GameStateManager {
             },
         );
 
-        if mouse_on_cancel && is_mouse_button_pressed(MouseButton::Left) {
+        if is_rect_clicked(cancel_x, btn_y, btn_w, btn_h) {
             self.updater.dismiss();
         }
     }

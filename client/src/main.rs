@@ -1029,7 +1029,12 @@ async fn main() {
             text(&font, disconnect_text, disconnect_btn_x + (disconnect_btn_width - disconnect_text_w) / 2.0,
                 disconnect_btn_y + disconnect_btn_height * 0.7, fs * 0.75, WHITE);
 
-            if disconnect_hovered && is_mouse_button_pressed(MouseButton::Left) {
+            let disconnect_clicked = (disconnect_hovered && is_mouse_button_pressed(MouseButton::Left))
+                || touches().iter().any(|t| (t.phase == TouchPhase::Started || t.phase == TouchPhase::Ended)
+                    && t.position.x >= disconnect_btn_x && t.position.x <= disconnect_btn_x + disconnect_btn_width
+                    && t.position.y >= disconnect_btn_y && t.position.y <= disconnect_btn_y + disconnect_btn_height);
+
+            if disconnect_clicked {
                 // Відкриваємо меню налаштувань
                 // TODO #76: Should actually disconnect from server
                 ui.menu = true;
