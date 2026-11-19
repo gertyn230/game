@@ -42,8 +42,8 @@ impl Default for ServerType {
 impl ServerType {
     pub fn url(&self) -> &str {
         match self {
-            ServerType::Server1 => "wss://pixelvillage.h2945829.stratoserver.net/ws",
-            ServerType::Server2 => "wss://pixelvillage2.h2945829.stratoserver.net/ws",
+            ServerType::Server1 => "wss://api.pixel-village.online/ws",
+            ServerType::Server2 => "wss://game-n6ay.onrender.com/ws",
         }
     }
 
@@ -56,8 +56,8 @@ impl ServerType {
 
     pub fn name(&self) -> &str {
         match self {
-            ServerType::Server1 => "Сервер 1 (EU)",
-            ServerType::Server2 => "Сервер 2 (EU)",
+            ServerType::Server1 => "Основний (pixel-village.online)",
+            ServerType::Server2 => "Резервний (Render Cloud)",
         }
     }
 }
