@@ -10,6 +10,12 @@ api.pixel-village.online {
         respond 204
     }
 
+        handle_path /api/render/* {
+        reverse_proxy https://game-n6ay.onrender.com {
+            header_up Host game-n6ay.onrender.com
+        }
+    }
+
     reverse_proxy game-server:8080 {
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
