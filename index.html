@@ -1,0 +1,977 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pixel Village — Build your own little world</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏡</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=DM+Sans:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+:root{--sheet:#f4f8f5;--soft:#e3eee7;--ink:#10261c;--mute:#52665a;--leaf:#4fae5a;--river:#38a3e0;--sun:#ffc83d;--line:rgba(16,38,28,.15);--tint:transparent;--bg:#bfe6f5;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--sheet:#0f1b16;--soft:#18271f;--ink:#e9f2ec;--mute:#9fb5a7;--line:rgba(233,242,236,.16);--tint:rgba(70,85,165,.5);--bg:#16202c}}
+:root[data-theme="dark"]{--sheet:#0f1b16;--soft:#18271f;--ink:#e9f2ec;--mute:#9fb5a7;--line:rgba(233,242,236,.16);--tint:rgba(70,85,165,.5);--bg:#16202c}
+html{scroll-behavior:smooth;scroll-padding-top:calc(env(safe-area-inset-top,0px) + 80px)}
+body{font:500 17px/1.65 'DM Sans',system-ui,sans-serif;color:var(--ink);background:var(--bg);overflow-x:hidden}
+h1,h2,h3,.logo,.tab,.big{font-family:'Bricolage Grotesque','DM Sans',system-ui,sans-serif}
+#w{position:fixed;inset:0;width:100%;height:100%;image-rendering:pixelated;z-index:-2}
+#t{position:fixed;inset:0;z-index:-1;pointer-events:none;background:var(--tint);mix-blend-mode:multiply}
+a:focus-visible,button:focus-visible{outline:3px solid var(--sun);outline-offset:3px}
+.nav{position:fixed;top:0;left:0;right:0;z-index:20;padding:calc(env(safe-area-inset-top,0px) + 10px) 5vw 10px;display:flex;align-items:center;gap:28px;color:#fff;text-shadow:0 1px 12px rgba(8,35,28,.55);transition:background .25s,color .25s,box-shadow .25s}
+.nav.s{background:var(--sheet);color:var(--ink);text-shadow:none;box-shadow:0 1px 0 var(--line)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;color:inherit;text-decoration:none;letter-spacing:-.01em}
+.nav ul{display:flex;gap:6px;list-style:none;margin-left:auto}
+.nav li a{color:inherit;text-decoration:none;font-weight:700;font-size:16px;padding:8px 14px;border-radius:999px}
+.nav li a:hover{background:rgba(255,255,255,.2)}.nav.s li a:hover{background:var(--soft)}
+.nav li a.go{background:var(--sun);color:#10261c;text-shadow:none}
+#mb{display:none;margin-left:auto;background:none;border:2px solid currentColor;color:inherit;border-radius:999px;font:700 15px 'DM Sans';padding:6px 16px;cursor:pointer}
+.lang{display:flex;gap:6px;margin-left:auto}
+.lang button{background:rgba(255,255,255,.16);border:1.5px solid rgba(255,255,255,.4);color:#fff;border-radius:6px;font:600 14px 'DM Sans';padding:6px 10px;cursor:pointer;transition:all .2s}
+.lang button:hover{background:rgba(255,255,255,.25);transform:scale(1.05)}
+.lang button.active{background:var(--sun);color:#10261c;border-color:var(--sun)}
+.nav.s .lang button{color:var(--ink);border-color:var(--line);background:var(--soft)}
+.nav.s .lang button:hover{background:var(--sheet);border-color:var(--mute)}
+.nav.s .lang button.active{background:var(--sun);color:#10261c;border-color:var(--sun)}
+@media(max-width:860px){#mb{display:block}.lang{margin-left:0;order:-1}.nav ul{display:none;position:absolute;top:100%;left:0;right:0;flex-direction:column;padding:12px 5vw 20px;background:var(--sheet);color:var(--ink);text-shadow:none;box-shadow:0 12px 24px rgba(0,0,0,.15)}.nav.o ul{display:flex}.nav.o{background:var(--sheet);color:var(--ink);text-shadow:none}}
+.btn{display:inline-flex;align-items:center;height:54px;padding:0 28px;border-radius:999px;font:700 17px 'Bricolage Grotesque',sans-serif;text-decoration:none;border:0;cursor:pointer;transition:transform .15s}
+.btn:hover{transform:translateY(-2px)}
+.btn.p{background:var(--sun);color:#10261c}.btn.g{background:rgba(255,255,255,.16);color:#fff;border:2px solid rgba(255,255,255,.75);backdrop-filter:blur(6px)}
+.hero{min-height:100vh;min-height:100svh;display:flex;align-items:center;padding:120px 5vw 70px;position:relative}
+.hero:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(7,38,30,.55),rgba(7,38,30,0) 62%);pointer-events:none}
+.hero>div{position:relative;max-width:760px}
+h1{font-weight:800;font-size:clamp(46px,8.6vw,118px);line-height:.92;letter-spacing:-.025em;color:#fff;text-transform:uppercase;text-shadow:0 4px 30px rgba(8,35,28,.5)}
+.sub{font-size:clamp(19px,2.2vw,25px);line-height:1.4;color:#fff;margin:26px 0 32px;max-width:24em;text-shadow:0 2px 16px rgba(8,35,28,.6)}
+.acts{display:flex;gap:14px;flex-wrap:wrap}
+@keyframes rise{from{opacity:0;transform:translateY(26px)}}
+.hero h1{animation:rise .8s both}.hero .sub{animation:rise .8s .12s both}.hero .acts{animation:rise .8s .24s both}
+@media(max-width:900px){.hero{align-items:flex-end;padding-bottom:64px}.hero:before{background:linear-gradient(0deg,rgba(7,38,30,.6),rgba(7,38,30,0) 70%)}}
+.win{height:62vh;display:flex;align-items:flex-end;padding:0 5vw 40px;color:#fff;font:700 clamp(20px,2.6vw,32px)/1.25 'Bricolage Grotesque',sans-serif;text-shadow:0 2px 20px rgba(8,35,28,.65)}
+.win p{max-width:18em}
+@media(max-width:700px){.win{height:42vh}}
+.sheet{background:var(--sheet);border-radius:36px 36px 0 0;padding:clamp(60px,9vw,120px) 5vw;position:relative}
+.sheet+.sheet{border-radius:0;padding-top:0}
+.in{max-width:1120px;margin:0 auto}
+h2{font-weight:700;font-size:clamp(34px,5.4vw,68px);line-height:1;letter-spacing:-.025em;max-width:13em}
+.lead{font-size:19px;color:var(--mute);max-width:52ch}
+.two{display:grid;grid-template-columns:1.1fr 1fr;gap:6vw;align-items:start}
+dl>div{display:grid;grid-template-columns:120px 1fr;gap:16px;border-top:1px solid var(--line);padding:16px 0}
+dt{font:700 17px 'Bricolage Grotesque',sans-serif}dd{color:var(--mute)}
+.bento{display:grid;gap:16px;grid-template-columns:repeat(6,1fr);margin-top:44px}
+.t{border-radius:26px;padding:28px;overflow:hidden;background:var(--soft)}
+.t h3{font-size:28px;line-height:1.1;letter-spacing:-.015em;margin-bottom:8px}.t p{color:var(--mute);max-width:36ch}
+.t canvas.m{margin-top:22px;border-radius:14px}
+.t.a{grid-column:span 4;grid-row:span 2}.t.b{grid-column:span 2;background:color-mix(in srgb,var(--sun) 30%,var(--sheet));border-radius:26px 26px 26px 80px}
+.t.c{grid-column:span 2;background:color-mix(in srgb,var(--leaf) 26%,var(--sheet))}
+.t.d{grid-column:span 3;background:color-mix(in srgb,var(--river) 24%,var(--sheet))}.t.e{grid-column:span 3;border-radius:80px 26px 26px 26px}
+.t .ic{image-rendering:pixelated;display:block;margin-bottom:14px}
+canvas.m,#big{width:100%;height:auto;aspect-ratio:160/100;display:block;image-rendering:pixelated}
+.ex{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr);gap:5vw;align-items:center;margin-top:44px}
+.tab{display:block;width:100%;text-align:left;background:none;border:0;border-left:4px solid var(--line);padding:10px 0 10px 20px;font-weight:700;font-size:clamp(22px,3vw,34px);letter-spacing:-.02em;color:var(--mute);cursor:pointer}
+.tab[aria-selected=true]{color:var(--ink);border-color:var(--sun)}
+#bn{font:700 26px 'Bricolage Grotesque';margin:28px 0 4px}#bd{color:var(--mute)}
+#big{border-radius:28px;aspect-ratio:320/200;box-shadow:0 24px 50px -20px rgba(8,35,28,.45)}
+.gal{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:44px}
+.gal figure:nth-child(1),.gal figure:nth-child(5){grid-column:span 2}
+.gal canvas{border-radius:20px}.gal figcaption{padding:10px 4px 0;color:var(--mute);font-size:15px}
+.log{margin-top:40px}.log>div{display:grid;grid-template-columns:130px 1fr;gap:20px;border-top:1px solid var(--line);padding:22px 0}
+.log time{color:var(--mute);font-weight:700}.log h3{font-size:24px;letter-spacing:-.01em}.log p{color:var(--mute);margin-top:4px}
+.dl{display:flex;align-items:center;gap:20px;border-top:1px solid var(--line);padding:24px 0}
+.dl h3{font-size:28px;flex:1}.dl span{color:var(--mute)}
+.dl .btn{height:48px;background:var(--ink);color:var(--sheet)}.dl .btn[aria-disabled=true]{opacity:.4;pointer-events:none}
+.soc a{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);padding:18px 0;color:var(--ink);text-decoration:none;font:700 clamp(32px,6vw,72px)/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.03em;transition:color .15s,padding .2s}
+.soc a:hover{color:var(--leaf);padding-left:14px}.soc a small{font:500 16px 'DM Sans';color:var(--mute);letter-spacing:0}
+footer{background:var(--sheet);padding:30px 5vw 60px;color:var(--mute);font-size:15px}
+.sheet.last{padding-bottom:40px}
+@media(max-width:860px){.two,.ex{grid-template-columns:1fr}.bento{grid-template-columns:1fr}.t.a,.t.b,.t.c,.t.d,.t.e{grid-column:auto;grid-row:auto}.gal{grid-template-columns:1fr 1fr}.gal figure:nth-child(n){grid-column:auto}.gal figure:nth-child(1){grid-column:span 2}.log>div{grid-template-columns:1fr;gap:4px}.dl{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+
+/* Server status pill in hero */
+.srv-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(16, 38, 28, 0.75);
+  backdrop-filter: blur(12px);
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font-size: 14.5px;
+  font-weight: 600;
+  margin-top: 26px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  width: fit-content;
+}
+.srv-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981;
+  animation: pulse-dot 2s infinite;
+}
+.srv-dot.offline {
+  background: #ef4444;
+  box-shadow: 0 0 10px #ef4444;
+}
+@keyframes pulse-dot { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.25); opacity: 0.75; } }
+.srv-sep { opacity: 0.35; }
+.srv-ping { color: #38bdf8; font-family: monospace; font-size: 13px; }
+
+/* Promo & Support boxes */
+.promo-box, .support-box {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: clamp(20px, 3.5vw, 36px);
+  margin-top: 28px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 180px;
+  gap: 16px;
+}
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 800px) {
+  .form-grid, .form-grid-2 { grid-template-columns: 1fr; }
+}
+.form-group label {
+  display: block;
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+  background: var(--sheet);
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  outline: none;
+  transition: all .2s;
+  box-sizing: border-box;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color: var(--leaf);
+  box-shadow: 0 0 0 3px rgba(79, 174, 90, 0.2);
+}
+.feedback-msg {
+  display: none;
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  animation: rise .3s ease;
+}
+.feedback-msg.success {
+  display: block;
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.feedback-msg.error {
+  display: block;
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.toast-float {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--ink);
+  color: var(--sheet);
+  padding: 14px 22px;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  z-index: 1000;
+  display: none;
+  font-weight: 700;
+  font-size: 14.5px;
+  border-left: 5px solid var(--sun);
+  animation: rise .3s ease;
+}
+
+</style>
+</head>
+<body>
+<canvas id="w"></canvas><div id="t"></div>
+<header class="nav" id="nav">
+<a class="logo" href="#home"><canvas class="ic" data-i="0" data-s="1"></canvas>Pixel Village</a>
+<div class="lang">
+<button onclick="setLang('uk')" class="active" data-lang="uk">🇺🇦 UA</button>
+<button onclick="setLang('en')" data-lang="en">🇬🇧 EN</button>
+<button onclick="setLang('ru')" data-lang="ru">🇷🇺 RU</button>
+</div>
+<button id="mb" aria-label="Menu">Menu</button>
+<ul>
+<li><a href="#home">Головна</a></li>
+<li><a href="#about">Про гру</a></li>
+<li><a href="#features">Особливості</a></li>
+<li><a href="#promo">🎁 Промокоди</a></li>
+<li><a href="#support">📩 Підтримка</a></li>
+<li><a href="#updates">Оновлення</a></li>
+<li><a class="go" href="#download">Завантажити</a></li>
+<li><a style="background:rgba(16,185,129,.18);color:#10b981;border:1.5px solid #10b981;padding:6px 14px;border-radius:999px;font-weight:700" href="https://admin.pixel-village.online/?key=9e960ddbafbd5e768358eab8fd8c416b1fd130e624949ded5d1bbbe6a80bcd91" target="_blank" title="Панель адміністратора">🛡️ Адмінка</a></li>
+</ul>
+</header>
+<main>
+<section class="hero" id="home"><div>
+<h1>Build your own little world</h1>
+<p class="sub">Створюй свій власний пікселізований світ з будинками, дорогами та жителями</p>
+<div class="acts"><a class="btn p" href="#download">Грати зараз</a><a class="btn g" href="#explore">Дослідити</a></div>
+<div class="srv-badge" id="srvBadge">
+  <span class="srv-dot"></span>
+  <span id="srvStatusText">Сервер онлайн</span>
+  <span class="srv-sep">•</span>
+  <span>Гравців у грі: <b id="srvOnline">0</b></span>
+  <span class="srv-ping" id="srvPing">(...)</span>
+</div>
+</div></section>
+
+<div class="win"><p>Будуй будинки, дороги та мости. Все під твоїм контролем.</p></div>
+<section class="sheet" id="about"><div class="in two">
+<h2>Твоє пікселізоване село</h2>
+<div><p class="lead">Pixel Village — це гра де ти створюєш своє власне село. Будуй будинки, прокладай дороги, саджай поля та спостерігай як жителі гуляють вулицями. Без таймерів, без поспіху — будуй у своєму темпі.</p>
+<dl style="margin-top:30px"><div><dt>Біоми</dt><dd>Луки, ліс, сніг та ферма</dd></div><div><dt>Платформи</dt><dd>Windows, macOS, Linux, Android, iOS</dd></div><div><dt>Стиль</dt><dd>Пікселізована графіка та розслаблений геймплей</dd></div></dl></div>
+</div></section>
+
+<section class="sheet" id="features"><div class="in">
+<h2>What you can do in your village</h2>
+<div class="bento">
+<div class="t a"><h3>Build anything, tile by tile</h3><p>Homes, roads, bridges and gardens. Rearrange them whenever you like.</p><canvas class="m" data-x="15.5" data-y="9.5"></canvas></div>
+<div class="t b"><canvas class="ic" data-i="3" data-s="4"></canvas><h3>Villagers</h3><p>They walk the roads, cross bridges and make the place feel lived in.</p></div>
+<div class="t c"><canvas class="ic" data-i="1" data-s="4"></canvas><h3>Farm</h3><p>Plant crop rows and stack hay by the farmhouse.</p></div>
+<div class="t d"><canvas class="ic" data-i="4" data-s="3"></canvas><h3>Day and night</h3><p>Warm afternoons give way to calm, moonlit evenings.</p></div>
+<div class="t e"><canvas class="ic" data-i="5" data-s="3"></canvas><h3>Share your world</h3><p>Take screenshots and trade ideas with other builders.</p></div>
+</div></div></section>
+
+<div class="win"><p>Cross the river and the map changes.</p></div>
+<section class="sheet" id="explore"><div class="in">
+<h2>Four biomes, one map</h2>
+<div class="ex"><div role="tablist">
+<button class="tab" role="tab" aria-selected="true">Meadow village</button>
+<button class="tab" role="tab" aria-selected="false">Whispering forest</button>
+<button class="tab" role="tab" aria-selected="false">Snowy peaks</button>
+<button class="tab" role="tab" aria-selected="false">Golden farmlands</button>
+<p id="bn">Meadow village</p><p id="bd">Rooftops, a market road and neighbours out for a walk.</p></div>
+<canvas id="big"></canvas></div>
+</div></section>
+
+
+<div class="win"><p>Використовуй промокоди та розвивай своє поселення швидше.</p></div>
+<section class="sheet" id="promo"><div class="in">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
+    <span style="font-size:36px">🎁</span>
+    <div>
+      <h2 style="font-size:clamp(28px,4vw,44px)">Активація промокоду</h2>
+      <p class="lead">Введіть ваш нікнейм у грі та промокод, щоб отримати ресурси чи золото прямо на сервері!</p>
+    </div>
+  </div>
+  <div class="promo-box">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Ваш нікнейм у грі</label>
+        <input type="text" id="promoNick" placeholder="Наприклад: Player1" maxlength="16">
+      </div>
+      <div class="form-group">
+        <label>Секретний промокод</label>
+        <input type="text" id="promoCode" placeholder="START2026" maxlength="32">
+      </div>
+      <div class="form-group" style="display:flex;align-items:flex-end">
+        <button class="btn p" id="btnRedeem" style="width:100%;height:48px;justify-content:center">Активувати</button>
+      </div>
+    </div>
+    <div id="promoMsg" class="feedback-msg"></div>
+  </div>
+</div></section>
+
+<section class="sheet" id="support"><div class="in">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
+    <span style="font-size:36px">📩</span>
+    <div>
+      <h2 style="font-size:clamp(28px,4vw,44px)">Підтримка та Баг-репорти</h2>
+      <p class="lead">Знайшли баг або маєте пропозицію для гри? Напишіть нам — тікет миттєво з'явиться в панелі адміністратора.</p>
+    </div>
+  </div>
+  <div class="support-box">
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label>Ваш нікнейм</label>
+        <input type="text" id="tNick" placeholder="Player1" maxlength="16">
+      </div>
+      <div class="form-group">
+        <label>Тип звернення</label>
+        <select id="tType">
+          <option value="bug">🐛 Помилка / Баг</option>
+          <option value="idea">💡 Пропозиція для гри</option>
+          <option value="question">❓ Запитання / Допомога</option>
+          <option value="report">⚠️ Скарга на гравця</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:14px">
+      <label>Тема повідомлення</label>
+      <input type="text" id="tSubj" placeholder="Коротко про тему" maxlength="100">
+    </div>
+    <div class="form-group" style="margin-top:14px">
+      <label>Детальний опис</label>
+      <textarea id="tMsg" rows="4" placeholder="Опишіть ситуацію максимально детально..."></textarea>
+    </div>
+    <div style="margin-top:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <button class="btn p" id="btnSubmitTicket" style="height:48px">Надіслати тікет</button>
+      <div id="ticketMsg" class="feedback-msg" style="margin-top:0"></div>
+    </div>
+  </div>
+</div></section>
+
+<section class="sheet" id="updates"><div class="in">
+<h2>Latest updates</h2>
+<div class="log">
+<div><time>Nov 12, 2026</time><div><h3>v1.6.0 — Переробка меню налаштувань</h3><p>Повністю переписане меню з 4 категоріями: Мова, Аудіо, Керування, Графіка. Покращена структура коду та модульність.</p></div></div>
+<div><time>Nov 12, 2026</time><div><h3>v1.4.0 — Система модерації</h3><p>Додано повну систему банів та мутів: /ban, /tempban, /unban, /mute, /unmute. Історія модерації зберігається в базі даних.</p></div></div>
+<div><time>Nov 11, 2026</time><div><h3>v1.3.16 — API для статистики</h3><p>Додано API endpoint для реал-тайм статистики адмінки з автоматичним оновленням даних.</p></div></div>
+<div><time>Nov 11, 2026</time><div><h3>v1.3.15 — Адмін-панель</h3><p>Додано адмінку з інформацією про пристрої гравців (OS, версія, розмір екрану) та статистикою по платформам.</p></div></div>
+<div><time>Nov 11, 2026</time><div><h3>v1.3.11 — Підтримка iOS</h3><p>Повністю налаштована збірка для iOS! Тепер гра доступна на iPhone та iPad через IPA файл.</p></div></div>
+<div><time>Nov 11, 2026</time><div><h3>Підтримка всіх платформ</h3><p>Гра тепер доступна для Windows, macOS, Linux, Android та iOS. Автоматична збірка для 5 платформ.</p></div></div>
+<div><time>Nov 11, 2026</time><div><h3>Система автооновлення</h3><p>Гра автоматично оновлюється при запуску. Просто натисніть "Встановити" коли з'явиться повідомлення про нову версію.</p></div></div>
+</div></div></section>
+
+
+<section class="sheet" id="download"><div class="in">
+<h2>Download the game</h2>
+<div style="margin-top:36px">
+<div class="dl"><h3>Windows</h3><span>Desktop build • EXE</span><a class="btn" href="https://github.com/gertyn230/game-releases/releases/latest/download/PixelVillage.exe">Download</a></div>
+<div class="dl"><h3>macOS</h3><span>Desktop build • DMG</span><a class="btn" href="https://github.com/gertyn230/game-releases/releases/latest/download/PixelVillage-macOS.dmg">Download</a></div>
+<div class="dl"><h3>Linux</h3><span>Desktop build • Binary</span><a class="btn" href="https://github.com/gertyn230/game-releases/releases/latest/download/PixelVillage">Download</a></div>
+<div class="dl"><h3>Android</h3><span>Mobile build • APK</span><a class="btn" href="https://github.com/gertyn230/game-releases/releases/latest/download/PixelVillage-android.apk">Download</a></div>
+<div class="dl"><h3>iOS</h3><span>Mobile build • IPA</span><a class="btn" href="https://github.com/gertyn230/game-releases/releases/latest/download/PixelVillage-iOS.ipa">Download</a></div>
+</div></div></section>
+
+<section class="sheet last" id="community"><div class="in">
+<h2>Join the community</h2>
+<div class="soc" style="margin-top:36px">
+<a href="https://discord.gg/atJW5ArM3R">Discord<small data-i18n="community_discord_desc">Chat and share</small></a>
+<a href="https://t.me/pixel_village">Telegram<small data-i18n="community_telegram_desc">News and updates</small></a>
+<a href="https://admin.pixel-village.online/?key=9e960ddbafbd5e768358eab8fd8c416b1fd130e624949ded5d1bbbe6a80bcd91" target="_blank" style="border-color:#10b981">🛡️ Адмін-панель<small>Управління сервером та модерація</small></a>
+</div></div></section>
+</main>
+<footer>© 2026 Pixel Village</footer>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const C=$('#w'),X0=C.getContext('2d');
+let X=X0,W=1,H=1,S=3,cam={x:14.5,y:9.5},tgt={x:14.5,y:9.5},OX=0,OY=0,LV=false,T=0,mx=-9e3,my=-9e3;
+const N=22,RM=matchMedia('(prefers-reduced-motion:reduce)').matches;
+const hs=(x,y,s=0)=>{const n=Math.sin(x*127.1+y*311.7+s*74.7)*43758.5453;return n-Math.floor(n)};
+/* ---------- pixel sprite engine (no anti-aliasing) ---------- */
+const sh=(c,k)=>'#'+[1,3,5].map(i=>Math.max(0,Math.min(255,parseInt(c.substr(i,2),16)+k)).toString(16).padStart(2,'0')).join('');
+const R=(q,c,x,y,w,h)=>{q.fillStyle=c;q.fillRect(x,y,w,h)};
+const D=(q,c,cx,cy,r)=>{q.fillStyle=c;for(let j=-r;j<=r;j++){const k=Math.round(Math.sqrt(r*r+r*.7-j*j));q.fillRect(cx-k,cy+j,2*k+1,1)}};
+const G=(q,c,p)=>{q.fillStyle=c;const ys=p.filter((_,i)=>i%2),y0=Math.floor(Math.min(...ys)),y1=Math.ceil(Math.max(...ys));
+for(let y=y0;y<y1;y++){const xs=[],m=y+.5;for(let i=0;i<p.length;i+=2){const ax=p[i],ay=p[i+1],bx=p[(i+2)%p.length],by=p[(i+3)%p.length];if((ay<=m&&by>m)||(by<=m&&ay>m))xs.push(ax+(m-ay)/(by-ay)*(bx-ax))}
+xs.sort((a,b)=>a-b);for(let i=0;i+1<xs.length;i+=2){const a=Math.round(xs[i]);q.fillRect(a,y,Math.round(xs[i+1])-a,1)}}};
+function outline(q,w,h){const d=q.getImageData(0,0,w,h),a=d.data,o=new Uint8ClampedArray(a),al=(x,y)=>x<0||y<0||x>=w||y>=h?0:a[(y*w+x)*4+3];
+for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(!al(x,y)&&(al(x-1,y)||al(x+1,y)||al(x,y-1)||al(x,y+1))){const i=(y*w+x)*4;o[i]=31;o[i+1]=26;o[i+2]=46;o[i+3]=255}
+d.data.set(o);q.putImageData(d,0,0)}
+function mk(w,h,fn,ol=1){const c=document.createElement('canvas');c.width=w;c.height=h;const q=c.getContext('2d');q.translate(1,1);fn(q);q.setTransform(1,0,0,1,0,0);if(ol)outline(q,w,h);return c}
+const inD=(x,y,m)=>Math.abs(x+.5-16)/16+Math.abs(y+.5-8)/8<m;
+function ground(base,seed,extra){return mk(34,18,q=>{G(q,base,[16,0,32,8,16,16,0,8]);
+for(let y=0;y<8;y++){R(q,sh(base,16),15-2*y,y,2,1);R(q,sh(base,-8),15+2*y,y,2,1);R(q,sh(base,-16),2*y+1,y+8,2,1);R(q,sh(base,-26),46-2*y-16,y+8,2,1)}
+for(let k=0;k<16;k++){const x=hs(k,seed)*28+2|0,y=hs(k,seed,2)*12+2|0;if(inD(x,y,.8)){R(q,sh(base,-18),x,y,1,2);R(q,sh(base,16),x+1,y,1,1)}}
+if(extra)extra(q)},0)}
+function waterS(f){return mk(34,18,q=>{G(q,'#3f9fe0',[16,0,32,8,16,16,0,8]);for(let y=0;y<16;y++)for(let x=0;x<32;x++)if(inD(x,y,.92)){const w=((x>>1)+y*3+f*4)%14;if(w==0)R(q,'#9bdcff',x,y,2,1);else if(w==7&&y%2)R(q,'#2c85c8',x,y,2,1)}
+for(let y=0;y<8;y++){R(q,'#6cc0f2',15-2*y,y,2,1);R(q,'#2c85c8',46-2*y-16,y+8,2,1)}},0)}
+const plotX=q=>{for(const m of[-1,0,1])for(let t=-4;t<=4;t++){const x=16+t*3-m*6|0,y=8+t*1.5+m*3|0;if(inD(x,y,.7)){R(q,'#4fae44',x,y-1,1,3);R(q,'#7fd45c',x-1,y,3,1)}}};
+const zc={meadow:['#8ed16b','#86c964','#96d874'],forest:['#6dbd5c','#65b556','#76c866'],snow:['#f6fafd','#eaf2f8','#e0ebf4'],farm:['#92d06a','#8ac864','#9ad672']};
+const GR={};for(const z in zc)GR[z]=zc[z].map((c,i)=>ground(c,i+1));
+const SND=['#f0dca4','#e8d198'].map((c,i)=>ground(c,i+7)),RD=['#dcc08e','#d2b682'].map((c,i)=>ground(c,i+9)),PLT=['#a2724a','#966a44'].map((c,i)=>ground(c,i+3,plotX));
+const WS=[0,1,2,3].map(waterS);
+const SL=hh=>mk(18,10+hh,q=>G(q,'#8d6b46',[0,0,16,8,16,8+hh,0,hh]),0),SR=hh=>mk(18,10+hh,q=>G(q,'#74552f',[0,8,16,0,16,hh,0,8+hh]),0);
+const SL4=SL(4),SR4=SR(4),SL20=SL(20),SR20=SR(20);
+const BR=mk(36,30,q=>{G(q,'#8a5a34',[1,11,17,19,17,23,1,15]);G(q,'#6e4627',[17,19,33,11,33,15,17,23]);G(q,'#c48a52',[17,3,33,11,17,19,1,11]);
+for(let y=3;y<19;y++)for(let x=1;x<33;x++)if(inD(x-1,y-3,.9)&&(((x>>1)+y)>>1)%2)R(q,'#b27643',x,y,1,1)});
+const RF=[['#e5604f','#b94536'],['#4f9bd6','#386fa3'],['#e8aa3a','#bd822c']];
+const HSP=RF.map(p=>mk(42,40,q=>{const cx=20,by=30,yr=by-12;
+G(q,'#f5ead0',[cx-13,by,cx,by+6,cx,by-6,cx-13,by-12]);G(q,'#d9c8a0',[cx,by+6,cx+13,by,cx+13,by-12,cx,by-6]);
+R(q,'#e8d8b0',cx-13,by-1,13,1);
+G(q,'#7a4b2a',[cx+4,by+4,cx+7,by+3,cx+7,by-4,cx+4,by-3]);
+G(q,'#9fd8f0',[cx-9,by-7,cx-5,by-5,cx-5,by-1,cx-9,by-3]);R(q,'#fff',cx-8,by-6,1,2);
+R(q,'#8b5a3c',cx+6,yr-13,4,7);R(q,'#a9724c',cx+6,yr-13,4,2);
+G(q,p[0],[cx-16,yr,cx,yr+8,cx,yr-15,cx+1,yr-15]);G(q,p[1],[cx,yr+8,cx+16,yr,cx+1,yr-15,cx,yr-15]);
+R(q,sh(p[0],28),cx-12,yr-2,1,2);R(q,sh(p[0],28),cx-6,yr-6,1,2)}));
+const TG=[['#2f8a3d','#42a44a','#6cc864'],['#27743a','#37903f','#56ab55'],['#3a9a46','#52b653','#7ed572']];
+const TRE=TG.map(g=>mk(28,36,q=>{R(q,'#6b4426',11,22,4,11);R(q,'#8a5a34',11,22,2,11);D(q,g[0],7,17,7);D(q,g[0],19,16,7);D(q,g[0],13,12,10);D(q,g[1],11,13,8);D(q,g[2],9,9,4);D(q,g[1],18,17,3)}));
+const PIN=mk(26,40,q=>{R(q,'#6b4426',10,31,4,7);for(let i=2;i>=0;i--){const ay=2+i*9,by=ay+15,w=8+i*3;G(q,'#2c6b57',[12,ay,12+w,by,12-w,by]);G(q,'#3d8a6c',[12,ay,12,by,12-w,by]);G(q,'#f4f9fc',[12,ay,12+w*.45,ay+6.5,12-w*.45,ay+6.5])}});
+const HAY=mk(16,13,q=>{R(q,'#e3bb55',1,3,12,8);R(q,'#f3d982',1,3,12,3);R(q,'#b8913a',1,7,12,1);R(q,'#b8913a',1,10,12,1);R(q,'#e3bb55',0,5,1,4);R(q,'#e3bb55',13,5,1,4)});
+const BSH=mk(20,14,q=>{D(q,'#2f8a3d',5,8,4);D(q,'#2f8a3d',13,8,4);D(q,'#42a44a',9,6,5);D(q,'#7ed572',7,4,2);R(q,'#ff7aa8',12,5,1,1)});
+const walkS=(c,h,f)=>mk(12,17,q=>{const sk='#f1c58f';R(q,h,3,0,4,2);R(q,sk,3,2,4,3);R(q,c,2,5,6,5);R(q,sh(c,-35),2,9,6,1);R(q,sk,1,6,1,3);R(q,sk,8,6,1,3);
+R(q,'#2f3350',3,10,2,f?3:2);R(q,'#2f3350',5,10,2,f?2:3)});
+const CLD=[mk(50,22,q=>{D(q,'#fff',10,12,6);D(q,'#fff',22,9,8);D(q,'#fff',34,12,7);R(q,'#fff',10,12,28,6);R(q,'#d3e8f6',6,17,36,2)},0),mk(36,16,q=>{D(q,'#fff',9,8,5);D(q,'#fff',19,6,6);R(q,'#fff',9,8,16,5);R(q,'#d3e8f6',5,12,24,2)},0)];
+const ICN=[HSP[0],HAY,TRE[0],walkS('#e4572e','#3b2a20',0),mk(20,20,q=>{D(q,'#ffd84a',9,9,5);D(q,'#fff2a6',8,7,2);R(q,'#ffd84a',8,0,3,2);R(q,'#ffd84a',8,16,3,2);R(q,'#ffd84a',0,8,2,3);R(q,'#ffd84a',16,8,2,3);R(q,'#ffd84a',2,2,2,2);R(q,'#ffd84a',14,2,2,2);R(q,'#ffd84a',2,14,2,2);R(q,'#ffd84a',14,14,2,2)}),
+mk(20,18,q=>{D(q,'#e8505b',5,5,3);D(q,'#e8505b',12,5,3);G(q,'#e8505b',[1,6,16,6,8.5,15]);R(q,'#ff9aa2',3,3,2,1)})];
+/* ---------- world ---------- */
+const wat=(x,y)=>Math.abs(x-(y*.5+7))<1.2,brg=(x,y)=>y==10&&wat(x,y);
+const road=(x,y)=>y==10||(x==16&&y>=7&&y<=14)||(x==7&&y>=10&&y<=20);
+const plot=(x,y)=>x>=4&&x<=9&&y>=15&&y<=19&&x!=7;
+const sand=(x,y)=>wat(x+1,y)||wat(x-1,y)||wat(x,y+1)||wat(x,y-1);
+const zone=(x,y)=>x>=15&&y<=6?'snow':x<=8&&y<=9?'forest':x<=10&&y>=13?'farm':'meadow';
+const pick=(a,x,y,s)=>a[hs(x,y,s)*a.length|0];
+const gsp=(x,y)=>road(x,y)?pick(RD,x,y,9):plot(x,y)?PLT[(x+y)%2]:(sand(x,y)&&zone(x,y)!='snow')?pick(SND,x,y,2):pick(GR[zone(x,y)],x,y,1);
+const OM=Array.from({length:N*N},()=>[]),blk=new Uint8Array(N*N);
+const add=(x,y,o,b=1)=>{o.x=x;o.y=y;o.hv=0;OM[y*N+x].push(o);if(b)blk[y*N+x]=1};
+[[14,8,0],[17,8,1],[19,12,2],[15,12,1],[18,14,0],[18,4,1],[2,15,2],[5,6,0]].forEach(([x,y,k])=>add(x,y,{t:'h',k}));
+[[3,18],[10,17]].forEach(([x,y])=>add(x,y,{t:'y'}));
+for(let y=0;y<N;y++)for(let x=0;x<N;x++){if(blk[y*N+x]||wat(x,y)||road(x,y)||plot(x,y)||sand(x,y))continue;
+const z=zone(x,y),r=hs(x,y,3),p={forest:.42,snow:.2,meadow:.07,farm:.03}[z];
+if(r<p)add(x,y,z=='snow'?{t:'p'}:{t:'t',k:z=='forest'?1+(hs(x,y,6)<.5|0):0});
+else if(z=='meadow'&&r<p+.07)add(x,y,{t:'b'});
+else if(z=='meadow'&&r<p+.2)add(x,y,{t:'f',c:['#ff7aa8','#ffd84a','#ffffff','#b58cff'][hs(x,y,4)*4|0]},0)}
+const ok=(x,y)=>x>=0&&y>=0&&x<N&&y<N&&!blk[y*N+x]&&(!wat(x,y)||y==10);
+const SC=['#e4572e','#2e86c1','#f4b942','#8e5ea2','#e56b9b','#3a9d6a','#f3f3f3'],HC=['#3b2a20','#8a5a2b','#d9a441','#2a2a35'];
+const WK=[];[[16,9],[15,10],[7,12],[16,13],[6,14],[17,5],[9,10],[18,10],[16,7]].forEach(([x,y],i)=>{if(ok(x,y)){const c=SC[i%7],h=HC[i%4];WK.push({x,y,tx:x,ty:y,f:1,dx:1,dy:0,s:i*2,sp:[walkS(c,h,0),walkS(c,h,1)]})}});
+function step(w,dt){w.f+=dt*.9;if(w.f<1)return;w.x=w.tx;w.y=w.ty;w.f=0;
+const D4=[[1,0],[-1,0],[0,1],[0,-1]].filter(([a,b])=>ok(w.x+a,w.y+b));if(!D4.length)return;
+const k=D4.find(d=>d[0]==w.dx&&d[1]==w.dy),nb=D4.filter(d=>!(d[0]==-w.dx&&d[1]==-w.dy)),pl=nb.length?nb:D4;
+const c=k&&Math.random()<.7?k:pl[Math.random()*pl.length|0];w.dx=c[0];w.dy=c[1];w.tx=w.x+c[0];w.ty=w.y+c[1]}
+/* ---------- drawing ---------- */
+const P=(x,y)=>[Math.round((x-y-cam.x+cam.y)*16+W/2+OX),Math.round((x+y-cam.x-cam.y)*8+H/2+OY)];
+const shadow=(cx,cy,rx)=>{X.fillStyle='rgba(30,40,70,.2)';X.fillRect(cx-rx,cy-1,2*rx,3);X.fillRect(cx-rx+2,cy-2,2*rx-4,1);X.fillRect(cx-rx+2,cy+2,2*rx-4,1)};
+function tile(x,y,cx,cy){const tx=cx-17,ty=cy-9;
+if(wat(x,y)){X.drawImage(WS[(T*3|0)%4],tx,ty+4);if(brg(x,y))X.drawImage(BR,cx-18,cy-14);return}
+const lf=y+1>=N?20:wat(x,y+1)&&!brg(x,y+1)?4:0,rf=x+1>=N?20:wat(x+1,y)&&!brg(x+1,y)?4:0;
+if(lf)X.drawImage(lf>5?SL20:SL4,tx,ty+9);if(rf)X.drawImage(rf>5?SR20:SR4,tx+17,ty+9);
+X.drawImage(gsp(x,y),tx,ty)}
+const OBJ={
+h:(o,cx,cy,yo)=>{shadow(cx,cy,14);X.drawImage(HSP[o.k],cx-21,cy-31+yo);
+for(let i=0;i<3;i++){const ph=(T*.45+i/3)%1;X.fillStyle='rgba(255,255,255,'+(.8*(1-ph)).toFixed(2)+')';const s=2+(ph*3|0);X.fillRect(cx+9+Math.round(Math.sin(ph*6+i)*2),cy-26+yo-Math.round(ph*16),s,s)}},
+t:(o,cx,cy,yo)=>{shadow(cx,cy,8);X.drawImage(TRE[o.k],cx-14,cy-33+yo)},
+p:(o,cx,cy,yo)=>{shadow(cx,cy,7);X.drawImage(PIN,cx-13,cy-37+yo)},
+y:(o,cx,cy,yo)=>{shadow(cx,cy,8);X.drawImage(HAY,cx-8,cy-11+yo)},
+b:(o,cx,cy,yo)=>{shadow(cx,cy,8);X.drawImage(BSH,cx-10,cy-12+yo)},
+f:(o,cx,cy)=>{X.fillStyle='#4a9a46';X.fillRect(cx-5,cy,1,1);X.fillRect(cx+3,cy+1,1,1);X.fillStyle=o.c;X.fillRect(cx-5,cy-1,1,1);X.fillRect(cx+3,cy,1,1);X.fillRect(cx,cy+2,1,1)}};
+function walk(w){const x=w.x+(w.tx-w.x)*w.f,y=w.y+(w.ty-w.y)*w.f,[cx,cy]=P(x,y),mv=w.f>0&&w.f<1,fr=mv&&Math.sin(T*9+w.s)>0|0,b=mv&&fr?1:0;
+shadow(cx,cy,4);X.drawImage(w.sp[fr?1:0],cx-6,cy-16-b)}
+const CL=[[10,.07,3,0],[90,.2,2,1],[170,.12,4,0],[40,.33,2.5,1]];
+function draw(){const bands=['#5db8ee','#74c6f2','#8dd2f5','#a8ddf7','#c3e8f9','#dcf2fb'],bh=Math.ceil(H/6);
+bands.forEach((c,i)=>{X.fillStyle=c;X.fillRect(0,i*bh,W,bh)});
+for(const c of CL)X.drawImage(CLD[c[3]],Math.round(((c[0]+T*c[2])%(W+90))-45+OX*.4),Math.round(c[1]*H));
+let hx=-99,hy=-99;if(LV){const u=(mx/S-W/2-OX)/16,v=(my/S-H/2-OY+8)/8;hx=(u+v)/2+cam.x;hy=(v-u)/2+cam.y}
+const wb=Array.from({length:2*N+1},()=>[]);
+for(const w of WK){const d=Math.round(w.x+(w.tx-w.x)*w.f)+Math.round(w.y+(w.ty-w.y)*w.f);wb[Math.max(0,Math.min(2*N,d))].push(w)}
+for(let d=0;d<2*N-1;d++){for(let x=Math.max(0,d-N+1);x<=Math.min(d,N-1);x++){const y=d-x,[cx,cy]=P(x,y);
+if(cx<-34||cx>W+34||cy<-50||cy>H+50)continue;tile(x,y,cx,cy);
+for(const o of OM[y*N+x]){if(LV)o.hv+=((Math.hypot(o.x-hx,o.y-hy)<1.1?4:0)-o.hv)*.25;OBJ[o.t](o,cx,cy,-Math.round(o.hv))}}
+for(const w of wb[d])walk(w)}}
+function render(ctx,w,h,fx,fy,ox,oy,lv){const s=[X,W,H,cam,OX,OY,LV];X=ctx;W=w;H=h;cam={x:fx,y:fy};OX=ox;OY=oy;LV=lv;draw();[X,W,H,cam,OX,OY,LV]=s}
+/* ---------- camera & input ---------- */
+const WP=[[14.5,9.5],[8,5.5],[5.5,16],[17,4.5],[12.5,13],[16,10]],cur={x:0,y:0,px:0,py:0};
+function onScroll(){const m=document.documentElement.scrollHeight-innerHeight,p=m>0?Math.min(1,scrollY/m):0,f=p*(WP.length-1),i=Math.min(WP.length-2,f|0),k=f-i,e=k*k*(3-2*k);
+tgt.x=WP[i][0]+(WP[i+1][0]-WP[i][0])*e;tgt.y=WP[i][1]+(WP[i+1][1]-WP[i][1])*e}
+function resize(){S=innerWidth<700?2:3;W=C.width=Math.ceil(innerWidth/S);H=C.height=Math.ceil(innerHeight/S);onScroll()}
+addEventListener('resize',resize);addEventListener('scroll',onScroll,{passive:true});
+addEventListener('pointermove',e=>{mx=e.clientX;my=e.clientY});addEventListener('pointerdown',e=>{mx=e.clientX;my=e.clientY});
+let last=0;
+function loop(ts){requestAnimationFrame(loop);if(ts-last<33)return;const dt=RM?0:Math.min(.1,(ts-last)/1000);last=ts;T=ts/1000;
+const k=1-Math.min(1,scrollY/(innerHeight*.7)),wide=innerWidth>900,L=RM?1:.08;
+const bx=wide?W*.2*k:0,by=wide?0:-H*.16*k,px=(mx/innerWidth-.5)*-10,py=(my/innerHeight-.5)*-5;
+cur.x+=(bx-cur.x)*L;cur.y+=(by-cur.y)*L;cur.px+=((mx>-1e3?px:0)-cur.px)*.08;cur.py+=((mx>-1e3?py:0)-cur.py)*.08;
+cam.x+=(tgt.x-cam.x)*(RM?1:.07);cam.y+=(tgt.y-cam.y)*(RM?1:.07);
+for(const w of WK)step(w,dt);
+render(X0,W,H,cam.x,cam.y,Math.round(cur.x+(RM?0:cur.px)),Math.round(cur.y+(RM?0:cur.py)),true)}
+const MN=$$('canvas.m').map(c=>{c.width=160;c.height=100;c.v=0;new IntersectionObserver(e=>c.v=e[0].isIntersecting).observe(c);return[c,+c.dataset.x,+c.dataset.y]});
+setInterval(()=>{for(const[c,x,y]of MN)if(c.v)render(c.getContext('2d'),160,100,x,y,0,0,false)},220);
+
+$$('.ic').forEach(c=>{const s=ICN[+c.dataset.i];c.width=s.width;c.height=s.height;c.getContext('2d').drawImage(s,0,0);c.style.width=s.width*(+c.dataset.s||1)+'px'});
+const BIG=$('#big'),bq=BIG.getContext('2d');BIG.width=320;BIG.height=200;let bt=[16,9.5],cb=[16,9.5],bv=1;
+new IntersectionObserver(e=>bv=e[0].isIntersecting).observe(BIG);
+setInterval(()=>{if(!bv)return;cb[0]+=(bt[0]-cb[0])*.3;cb[1]+=(bt[1]-cb[1])*.3;render(bq,320,200,cb[0],cb[1],0,0,false)},80);
+const BI=[['Meadow village','Rooftops, a market road and neighbours out for a walk.',16,9.5],['Whispering forest','Dense trees, a quiet cabin and the upper bend of the river.',5,5],['Snowy peaks','Frosted pines and a house with a warm chimney.',18,3.5],['Golden farmlands','Crop rows, hay bales and a farmhouse by the path.',6.5,17]];
+$$('.tab').forEach((b,i)=>b.onclick=()=>{$$('.tab').forEach(t=>t.setAttribute('aria-selected',t==b));bt=[BI[i][2],BI[i][3]];$('#bn').textContent=BI[i][0];$('#bd').textContent=BI[i][1]});
+const nav=$('#nav');const ns=()=>nav.classList.toggle('s',scrollY>40);addEventListener('scroll',ns,{passive:true});ns();
+$('#mb').onclick=()=>nav.classList.toggle('o');$$('.nav li a').forEach(a=>a.onclick=()=>nav.classList.remove('o'));
+
+// Багатомовність
+const translations = {
+  uk: {
+    title: 'Pixel Village — Будуй свій маленький світ',
+    hero_h1: 'Будуй свій маленький світ',
+    hero_sub: 'Створюй, досліджуй і оживляй своє село',
+    btn_play: 'Грати зараз',
+    btn_explore: 'Досліджувати світ',
+    nav_home: 'Головна',
+    nav_about: 'Про гру',
+    nav_features: 'Особливості',
+    nav_updates: 'Оновлення',
+    nav_download: 'Завантажити',
+    nav_promo: '🎁 Промокоди',
+    nav_support: '📩 Підтримка',
+    win1: 'Кожен будинок, поле і міст розміщується тобою.',
+    about_h2: 'Спокійне місце для будівництва.',
+    about_lead: 'Pixel Village — це розслаблена пісочниця. Прокладай дороги, будуй будинки, саджай поля та спостерігай як жителі заповнюють вулиці. Немає таймерів, тож будуй у своєму темпі.',
+    about_biomes: 'Біоми',
+    about_biomes_desc: 'Луки, ліс, сніг та фермерські землі',
+    about_platforms: 'Платформи',
+    about_platforms_desc: 'Windows, macOS, Linux, Android, iOS',
+    about_pace: 'Темп',
+    about_pace_desc: 'Без таймерів, без поспіху',
+    features_h2: 'Що можна робити у твоєму селі',
+    features_build_h3: 'Будуй що завгодно, плитка за плиткою',
+    features_build_p: 'Будинки, дороги, мости та сади. Переставляй їх коли захочеш.',
+    features_villagers_h3: 'Жителі',
+    features_villagers_p: 'Вони ходять дорогами, переходять мости та роблять місце живим.',
+    features_farm_h3: 'Ферма',
+    features_farm_p: 'Саджай ряди врожаю та складай сіно біля фермерського будинку.',
+    features_daynight_h3: 'День і ніч',
+    features_daynight_p: 'Теплі післяобідні години змінюються спокійними, місячними вечорами.',
+    features_share_h3: 'Ділися своїм світом',
+    features_share_p: 'Роби скріншоти та обмінюйся ідеями з іншими будівельниками.',
+    win2: 'Перетни річку і карта зміниться.',
+    explore_h2: 'Чотири біоми, одна карта',
+    explore_tab1: 'Село на луках',
+    explore_tab2: 'Шепочучий ліс',
+    explore_tab3: 'Сніжні вершини',
+    explore_tab4: 'Золоті фермерські землі',
+    explore_tab1_name: 'Село на луках',
+    explore_tab1_desc: 'Дахи, ринкова дорога та сусіди на прогулянці.',
+    explore_tab2_name: 'Шепочучий ліс',
+    explore_tab2_desc: 'Густі дерева, тиха хатина та верхній вигин річки.',
+    explore_tab3_name: 'Сніжні вершини',
+    explore_tab3_desc: 'Засніжені сосни та будинок з теплим димоходом.',
+    explore_tab4_name: 'Золоті фермерські землі',
+    explore_tab4_desc: 'Ряди врожаю, стоги сіна та фермерський будинок біля стежки.',
+    updates_h2: 'Останні оновлення',
+    updates_v138_title: 'v1.3.8 — Новий дизайн налаштувань',
+    updates_v138_desc: 'Повністю оновлено меню налаштувань з сучасним дизайном, iOS-стиль toggles, красиві слайдери та фіолетові градієнти.',
+    updates_v137_title: 'v1.3.7 — Версія в меню',
+    updates_v137_desc: 'Додано відображення версії гри в правому нижньому куті головного меню.',
+    updates_macos_title: 'Підтримка macOS та iOS',
+    updates_macos_desc: 'Гра тепер доступна для MacBook (DMG) та iPhone/iPad (IPA). Автоматична збірка для 5 платформ.',
+    updates_autoupdate_title: 'Система автооновлення',
+    updates_autoupdate_desc: 'Гра автоматично оновлюється при запуску. Просто натисніть "Встановити" коли з\'явиться повідомлення про нову версію.',
+    download_h2: 'Завантажити гру',
+    download_windows: 'Windows',
+    download_windows_desc: 'Десктопна збірка • EXE',
+    download_macos: 'macOS',
+    download_macos_desc: 'Десктопна збірка • DMG',
+    download_linux: 'Linux',
+    download_linux_desc: 'Десктопна збірка • Бінарник',
+    download_android: 'Android',
+    download_android_desc: 'Мобільна збірка • APK',
+    download_ios: 'iOS',
+    download_ios_desc: 'Мобільна збірка • IPA',
+    download_btn: 'Завантажити',
+    community_h2: 'Приєднуйся до спільноти',
+    community_discord_desc: 'Чат та обмін',
+    community_telegram_desc: 'Новини та оновлення',
+    footer: '© 2026 Pixel Village'
+  },
+  en: {
+    title: 'Pixel Village — Build your own little world',
+    hero_h1: 'Build your own little world',
+    hero_sub: 'Create, explore and bring your own village to life',
+    btn_play: 'Play now',
+    btn_explore: 'Explore world',
+    nav_home: 'Home',
+    nav_about: 'About',
+    nav_features: 'Features',
+    nav_updates: 'Updates',
+    nav_download: 'Download',
+    nav_promo: '🎁 Promo Codes',
+    nav_support: '📩 Support',
+    win1: 'Every house, field and bridge is placed by you.',
+    about_h2: 'A quiet place to build.',
+    about_lead: 'Pixel Village is a relaxed sandbox. Lay out roads, raise cottages, plant fields and watch villagers fill the streets. There are no timers, so you can build at your own pace.',
+    about_biomes: 'Biomes',
+    about_biomes_desc: 'Meadow, forest, snow and farmland',
+    about_platforms: 'Platforms',
+    about_platforms_desc: 'Windows, macOS, Linux, Android, iOS',
+    about_pace: 'Pace',
+    about_pace_desc: 'No timers, no rush',
+    features_h2: 'What you can do in your village',
+    features_build_h3: 'Build anything, tile by tile',
+    features_build_p: 'Homes, roads, bridges and gardens. Rearrange them whenever you like.',
+    features_villagers_h3: 'Villagers',
+    features_villagers_p: 'They walk the roads, cross bridges and make the place feel lived in.',
+    features_farm_h3: 'Farm',
+    features_farm_p: 'Plant crop rows and stack hay by the farmhouse.',
+    features_daynight_h3: 'Day and night',
+    features_daynight_p: 'Warm afternoons give way to calm, moonlit evenings.',
+    features_share_h3: 'Share your world',
+    features_share_p: 'Take screenshots and trade ideas with other builders.',
+    win2: 'Cross the river and the map changes.',
+    explore_h2: 'Four biomes, one map',
+    explore_tab1: 'Meadow village',
+    explore_tab2: 'Whispering forest',
+    explore_tab3: 'Snowy peaks',
+    explore_tab4: 'Golden farmlands',
+    explore_tab1_name: 'Meadow village',
+    explore_tab1_desc: 'Rooftops, a market road and neighbours out for a walk.',
+    explore_tab2_name: 'Whispering forest',
+    explore_tab2_desc: 'Dense trees, a quiet cabin and the upper bend of the river.',
+    explore_tab3_name: 'Snowy peaks',
+    explore_tab3_desc: 'Frosted pines and a house with a warm chimney.',
+    explore_tab4_name: 'Golden farmlands',
+    explore_tab4_desc: 'Crop rows, hay bales and a farmhouse by the path.',
+    updates_h2: 'Latest updates',
+    updates_v138_title: 'v1.3.8 — New settings design',
+    updates_v138_desc: 'Completely redesigned settings menu with modern design, iOS-style toggles, beautiful sliders and purple gradients.',
+    updates_v137_title: 'v1.3.7 — Version in menu',
+    updates_v137_desc: 'Added version display in the bottom right corner of the main menu.',
+    updates_macos_title: 'macOS and iOS support',
+    updates_macos_desc: 'The game is now available for MacBook (DMG) and iPhone/iPad (IPA). Automatic builds for 5 platforms.',
+    updates_autoupdate_title: 'Auto-update system',
+    updates_autoupdate_desc: 'The game automatically updates on launch. Just click "Install" when the new version notification appears.',
+    download_h2: 'Download the game',
+    download_windows: 'Windows',
+    download_windows_desc: 'Desktop build • EXE',
+    download_macos: 'macOS',
+    download_macos_desc: 'Desktop build • DMG',
+    download_linux: 'Linux',
+    download_linux_desc: 'Desktop build • Binary',
+    download_android: 'Android',
+    download_android_desc: 'Mobile build • APK',
+    download_ios: 'iOS',
+    download_ios_desc: 'Mobile build • IPA',
+    download_btn: 'Download',
+    community_h2: 'Join the community',
+    community_discord_desc: 'Chat and share',
+    community_telegram_desc: 'News and updates',
+    footer: '© 2026 Pixel Village'
+  },
+  ru: {
+    title: 'Pixel Village — Построй свой маленький мир',
+    hero_h1: 'Построй свой маленький мир',
+    hero_sub: 'Создавай, исследуй и оживляй свою деревню',
+    btn_play: 'Играть сейчас',
+    btn_explore: 'Исследовать мир',
+    nav_home: 'Главная',
+    nav_about: 'О игре',
+    nav_features: 'Особенности',
+    nav_updates: 'Обновления',
+    nav_download: 'Скачать',
+    nav_promo: '🎁 Промокоды',
+    nav_support: '📩 Поддержка',
+    win1: 'Каждый дом, поле и мост размещается тобой.',
+    about_h2: 'Спокойное место для строительства.',
+    about_lead: 'Pixel Village — это расслабленная песочница. Прокладывай дороги, строй дома, сажай поля и наблюдай как жители заполняют улицы. Нет таймеров, так что строй в своём темпе.',
+    about_biomes: 'Биомы',
+    about_biomes_desc: 'Луга, лес, снег и фермерские земли',
+    about_platforms: 'Платформы',
+    about_platforms_desc: 'Windows, macOS, Linux, Android, iOS',
+    about_pace: 'Темп',
+    about_pace_desc: 'Без таймеров, без спешки',
+    features_h2: 'Что можно делать в твоей деревне',
+    features_build_h3: 'Строй что угодно, плитка за плиткой',
+    features_build_p: 'Дома, дороги, мосты и сады. Переставляй их когда захочешь.',
+    features_villagers_h3: 'Жители',
+    features_villagers_p: 'Они ходят по дорогам, переходят мосты и делают место живым.',
+    features_farm_h3: 'Ферма',
+    features_farm_p: 'Сажай ряды урожая и складывай сено возле фермерского дома.',
+    features_daynight_h3: 'День и ночь',
+    features_daynight_p: 'Тёплые послеобеденные часы сменяются спокойными, лунными вечерами.',
+    features_share_h3: 'Делись своим миром',
+    features_share_p: 'Делай скриншоты и обменивайся идеями с другими строителями.',
+    win2: 'Пересеки реку и карта изменится.',
+    explore_h2: 'Четыре биома, одна карта',
+    explore_tab1: 'Деревня на лугах',
+    explore_tab2: 'Шепчущий лес',
+    explore_tab3: 'Снежные вершины',
+    explore_tab4: 'Золотые фермерские земли',
+    explore_tab1_name: 'Деревня на лугах',
+    explore_tab1_desc: 'Крыши, рыночная дорога и соседи на прогулке.',
+    explore_tab2_name: 'Шепчущий лес',
+    explore_tab2_desc: 'Густые деревья, тихая хижина и верхний изгиб реки.',
+    explore_tab3_name: 'Снежные вершины',
+    explore_tab3_desc: 'Заснеженные сосны и дом с тёплым дымоходом.',
+    explore_tab4_name: 'Золотые фермерские земли',
+    explore_tab4_desc: 'Ряды урожая, стога сена и фермерский дом у тропинки.',
+    updates_h2: 'Последние обновления',
+    updates_v138_title: 'v1.3.8 — Новый дизайн настроек',
+    updates_v138_desc: 'Полностью обновлено меню настроек с современным дизайном, iOS-стиль toggles, красивые слайдеры и фиолетовые градиенты.',
+    updates_v137_title: 'v1.3.7 — Версия в меню',
+    updates_v137_desc: 'Добавлено отображение версии игры в правом нижнем углу главного меню.',
+    updates_macos_title: 'Поддержка macOS и iOS',
+    updates_macos_desc: 'Игра теперь доступна для MacBook (DMG) и iPhone/iPad (IPA). Автоматическая сборка для 5 платформ.',
+    updates_autoupdate_title: 'Система автообновления',
+    updates_autoupdate_desc: 'Игра автоматически обновляется при запуске. Просто нажми "Установить" когда появится уведомление о новой версии.',
+    download_h2: 'Скачать игру',
+    download_windows: 'Windows',
+    download_windows_desc: 'Десктопная сборка • EXE',
+    download_macos: 'macOS',
+    download_macos_desc: 'Десктопная сборка • DMG',
+    download_linux: 'Linux',
+    download_linux_desc: 'Десктопная сборка • Бинарник',
+    download_android: 'Android',
+    download_android_desc: 'Мобильная сборка • APK',
+    download_ios: 'iOS',
+    download_ios_desc: 'Мобильная сборка • IPA',
+    download_btn: 'Скачать',
+    community_h2: 'Присоединяйся к сообществу',
+    community_discord_desc: 'Чат и обмен',
+    community_telegram_desc: 'Новости и обновления',
+    footer: '© 2026 Pixel Village'
+  }
+};
+
+function setLang(lang) {
+  localStorage.setItem('lang', lang);
+  document.documentElement.lang = lang;
+  document.title = translations[lang].title;
+
+  // Оновлення кнопок мови
+  $$('.lang button').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+
+  // Оновлення тексту
+  const t = translations[lang];
+
+  // Hero секція
+  $('.hero h1').textContent = t.hero_h1;
+  $('.hero .sub').textContent = t.hero_sub;
+  $$('.hero .btn')[0].textContent = t.btn_play;
+  $$('.hero .btn')[1].textContent = t.btn_explore;
+
+
+  // Навігація
+  const navA = (href) => $(`.nav ul li a[href="${href}"]`);
+  if (navA('#home')) navA('#home').textContent = t.nav_home;
+  if (navA('#about')) navA('#about').textContent = t.nav_about;
+  if (navA('#features')) navA('#features').textContent = t.nav_features;
+  if (navA('#promo')) navA('#promo').textContent = t.nav_promo || '🎁 Промокоди';
+  if (navA('#support')) navA('#support').textContent = t.nav_support || '📩 Підтримка';
+  if (navA('#updates')) navA('#updates').textContent = t.nav_updates;
+  if (navA('#download')) navA('#download').textContent = t.nav_download;
+
+
+  // Win секції
+  $$('.win p')[0].textContent = t.win1;
+  $$('.win p')[1].textContent = t.win2;
+
+  // About секція
+  $('#about h2').textContent = t.about_h2;
+  $('#about .lead').textContent = t.about_lead;
+  const aboutDl = $$('#about dl div');
+  aboutDl[0].querySelector('dt').textContent = t.about_biomes;
+  aboutDl[0].querySelector('dd').textContent = t.about_biomes_desc;
+  aboutDl[1].querySelector('dt').textContent = t.about_platforms;
+  aboutDl[1].querySelector('dd').textContent = t.about_platforms_desc;
+  aboutDl[2].querySelector('dt').textContent = t.about_pace;
+  aboutDl[2].querySelector('dd').textContent = t.about_pace_desc;
+
+  // Features секція
+  $('#features h2').textContent = t.features_h2;
+  const featuresTiles = $$('#features .t');
+  featuresTiles[0].querySelector('h3').textContent = t.features_build_h3;
+  featuresTiles[0].querySelector('p').textContent = t.features_build_p;
+  featuresTiles[1].querySelector('h3').textContent = t.features_villagers_h3;
+  featuresTiles[1].querySelector('p').textContent = t.features_villagers_p;
+  featuresTiles[2].querySelector('h3').textContent = t.features_farm_h3;
+  featuresTiles[2].querySelector('p').textContent = t.features_farm_p;
+  featuresTiles[3].querySelector('h3').textContent = t.features_daynight_h3;
+  featuresTiles[3].querySelector('p').textContent = t.features_daynight_p;
+  featuresTiles[4].querySelector('h3').textContent = t.features_share_h3;
+  featuresTiles[4].querySelector('p').textContent = t.features_share_p;
+
+  // Explore секція
+  $('#explore h2').textContent = t.explore_h2;
+  const tabs = $$('.tab');
+  tabs[0].textContent = t.explore_tab1;
+  tabs[1].textContent = t.explore_tab2;
+  tabs[2].textContent = t.explore_tab3;
+  tabs[3].textContent = t.explore_tab4;
+
+  // Updates секція
+  $('#updates h2').textContent = t.updates_h2;
+  const updates = $$('#updates .log > div');
+  updates[0].querySelector('h3').textContent = t.updates_v138_title;
+  updates[0].querySelector('p').textContent = t.updates_v138_desc;
+  updates[1].querySelector('h3').textContent = t.updates_v137_title;
+  updates[1].querySelector('p').textContent = t.updates_v137_desc;
+  updates[2].querySelector('h3').textContent = t.updates_macos_title;
+  updates[2].querySelector('p').textContent = t.updates_macos_desc;
+  updates[3].querySelector('h3').textContent = t.updates_autoupdate_title;
+  updates[3].querySelector('p').textContent = t.updates_autoupdate_desc;
+
+  // Download секція
+  $('#download h2').textContent = t.download_h2;
+  const downloads = $$('#download .dl');
+  downloads[0].querySelector('h3').textContent = t.download_windows;
+  downloads[0].querySelector('span').textContent = t.download_windows_desc;
+  downloads[0].querySelector('.btn').textContent = t.download_btn;
+  downloads[1].querySelector('h3').textContent = t.download_macos;
+  downloads[1].querySelector('span').textContent = t.download_macos_desc;
+  downloads[1].querySelector('.btn').textContent = t.download_btn;
+  downloads[2].querySelector('h3').textContent = t.download_linux;
+  downloads[2].querySelector('span').textContent = t.download_linux_desc;
+  downloads[2].querySelector('.btn').textContent = t.download_btn;
+  downloads[3].querySelector('h3').textContent = t.download_android;
+  downloads[3].querySelector('span').textContent = t.download_android_desc;
+  downloads[3].querySelector('.btn').textContent = t.download_btn;
+  downloads[4].querySelector('h3').textContent = t.download_ios;
+  downloads[4].querySelector('span').textContent = t.download_ios_desc;
+  downloads[4].querySelector('.btn').textContent = t.download_btn;
+
+  // Community секція
+  $('#community h2').textContent = t.community_h2;
+  const socLinks = $$('#community .soc a');
+  socLinks[0].querySelector('small').textContent = t.community_discord_desc;
+  socLinks[1].querySelector('small').textContent = t.community_telegram_desc;
+
+  // Footer
+  $('footer').textContent = t.footer;
+
+  // Оновлення biome табів (для explore)
+  BI[0][0] = t.explore_tab1_name;
+  BI[0][1] = t.explore_tab1_desc;
+  BI[1][0] = t.explore_tab2_name;
+  BI[1][1] = t.explore_tab2_desc;
+  BI[2][0] = t.explore_tab3_name;
+  BI[2][1] = t.explore_tab3_desc;
+  BI[3][0] = t.explore_tab4_name;
+  BI[3][1] = t.explore_tab4_desc;
+
+  // Оновити поточний активний таб
+  const activeTab = $('.tab[aria-selected="true"]');
+  const activeIndex = [...$$('.tab')].indexOf(activeTab);
+  if (activeIndex >= 0) {
+    $('#bn').textContent = BI[activeIndex][0];
+    $('#bd').textContent = BI[activeIndex][1];
+  }
+}
+
+// Автовизначення мови або завантаження збереженої
+const savedLang = localStorage.getItem('lang');
+const browserLang = navigator.language.split('-')[0];
+const defaultLang = savedLang || (['uk', 'ru'].includes(browserLang) ? browserLang : 'uk');
+setLang(defaultLang);
+
+
+// ================= API & LIVE INTEGRATION =================
+const API_URL = 'https://api.pixel-village.online';
+
+function toastFloat(msg, type='success') {
+  let el = document.getElementById('toastFloat');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toastFloat';
+    el.className = 'toast-float';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.borderLeftColor = type === 'success' ? '#10b981' : '#ef4444';
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+// Live Server Check
+async function checkServerStatus() {
+  const start = performance.now();
+  try {
+    const res = await fetch(API_URL + '/api/players');
+    const data = await res.json();
+    const ping = Math.round(performance.now() - start);
+    document.getElementById('srvPing').textContent = '(' + ping + 'ms)';
+    const cnt = data.count || (data.players ? data.players.length : 0);
+    document.getElementById('srvOnline').textContent = cnt;
+    document.getElementById('srvStatusText').textContent = 'Сервер онлайн';
+    const dot = document.querySelector('.srv-dot');
+    if (dot) dot.classList.remove('offline');
+  } catch(e) {
+    document.getElementById('srvPing').textContent = '(офлайн)';
+    document.getElementById('srvStatusText').textContent = 'Сервер недоступний';
+    const dot = document.querySelector('.srv-dot');
+    if (dot) dot.classList.add('offline');
+  }
+}
+setInterval(checkServerStatus, 5000);
+checkServerStatus();
+
+// Promo Code Redemption
+document.getElementById('btnRedeem').onclick = async function() {
+  const nick = document.getElementById('promoNick').value.trim();
+  const code = document.getElementById('promoCode').value.trim();
+  const msgBox = document.getElementById('promoMsg');
+  const btn = document.getElementById('btnRedeem');
+  if (!nick || !code) {
+    msgBox.className = 'feedback-msg error';
+    msgBox.textContent = 'Будь ласка, вкажіть нікнейм та промокод!';
+    return;
+  }
+  btn.disabled = true;
+  try {
+    const res = await fetch(API_URL + '/api/promo/redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player: nick, code: code })
+    });
+    const d = await res.json();
+    if (d.success) {
+      msgBox.className = 'feedback-msg success';
+      msgBox.textContent = '🎉 Промокод активовано! Нагорода: ' + (d.reward || 'бонус отримано');
+      toastFloat('Промокод успішно активовано!');
+    } else {
+      msgBox.className = 'feedback-msg error';
+      msgBox.textContent = d.message || 'Невірний промокод або ліміт вичерпано.';
+    }
+  } catch (err) {
+    msgBox.className = 'feedback-msg error';
+    msgBox.textContent = 'Помилка підключення до сервера.';
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+// Support Ticket Submission
+document.getElementById('btnSubmitTicket').onclick = async function() {
+  const nick = document.getElementById('tNick').value.trim();
+  const type = document.getElementById('tType').value;
+  const subj = document.getElementById('tSubj').value.trim();
+  const msg = document.getElementById('tMsg').value.trim();
+  const msgBox = document.getElementById('ticketMsg');
+  const btn = document.getElementById('btnSubmitTicket');
+  if (!nick || !msg) {
+    msgBox.className = 'feedback-msg error';
+    msgBox.textContent = 'Вкажіть нікнейм та текст звернення!';
+    return;
+  }
+  btn.disabled = true;
+  try {
+    const res = await fetch(API_URL + '/api/ticket/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player: nick, ticket_type: type, subject: subj, message: msg })
+    });
+    const d = await res.json();
+    if (d.success || d.status === 'created') {
+      msgBox.className = 'feedback-msg success';
+      msgBox.textContent = '✅ Тікет успішно надіслано! Дякуємо за допомогу в покращенні гри.';
+      toastFloat('Тікет надіслано адміністратору!');
+      document.getElementById('tSubj').value = '';
+      document.getElementById('tMsg').value = '';
+    } else {
+      msgBox.className = 'feedback-msg error';
+      msgBox.textContent = d.message || 'Не вдалося надіслати тікет.';
+    }
+  } catch(err) {
+    msgBox.className = 'feedback-msg error';
+    msgBox.textContent = 'Помилка надсилання тікета.';
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+resize();requestAnimationFrame(loop);
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"7ef1b243593d4d15a1ad7306cf736380","r":1,"spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>
