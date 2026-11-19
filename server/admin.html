@@ -1155,9 +1155,19 @@ input:focus, select:focus, textarea:focus {
 
 <script>
 // ==================== STATE & CONFIG ====================
+var urlParams = new URLSearchParams(window.location.search);
+var urlKey = urlParams.get('key');
+if (urlKey) {
+  localStorage.setItem('pv_admin_key', urlKey);
+}
+var urlApi = urlParams.get('api');
+if (urlApi) {
+  localStorage.setItem('pv_api_base', urlApi);
+}
+
 var state = {
-  adminKey: localStorage.getItem('pv_admin_key') || '',
-  apiBase: localStorage.getItem('pv_api_base') || '',
+  adminKey: urlKey || localStorage.getItem('pv_admin_key') || '',
+  apiBase: urlApi || localStorage.getItem('pv_api_base') || '',
   currentTab: 'overview',
   activeTicketId: null,
   cachedPlayers: [],
