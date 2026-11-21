@@ -2082,6 +2082,152 @@ document.addEventListener('DOMContentLoaded', function() {
   // Auto refresh every 3 seconds
   state.refreshTimer = setInterval(refreshAll, 3000);
 });
+
+// ==================== SITE UPDATES MANAGEMENT ====================
+state.cachedUpdates = [];
+
+async function loadAdminUpdates() {
+  var tbody = document.getElementById('updatesTableBody');
+  try {
+    var res = await fetch(getApiBase() + '/api/updates');
+    if (!res.ok) throw new Error('Помилка сервера: ' + res.status);
+    var updates = await res.json();
+    state.cachedUpdates = updates || [];
+    renderAdminUpdates(state.cachedUpdates);
+  } catch(e) {
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--accent-rose);padding:20px;">Не вдалося завантажити оновлення: ' + escapeHtml(e.message) + '</td></tr>';
+  }
+}
+
+function renderAdminUpdates(updates) {
+  var tbody = document.getElementById('updatesTableBody');
+  if (!tbody) return;
+
+  if (!updates || updates.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Ще немає опублікованих оновлень. Натисніть "+ Опублікувати оновлення", щоб додати перше!</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = updates.map(function(u) {
+    var descPreview = escapeHtml(u.description).replace(/\n/g, '<br>');
+    return '<tr>' +
+      '<td><span class="tag tag-blue" style="font-size:12px;font-weight:700">' + escapeHtml(u.version) + '</span></td>' +
+      '<td style="color:var(--text-muted);font-size:12.5px;">' + escapeHtml(u.date) + '</td>' +
+      '<td style="font-weight:600;color:#fff;">' + escapeHtml(u.title) + '</td>' +
+      '<td style="max-width:380px;white-space:normal;font-size:12.5px;color:var(--text-muted);line-height:1.4;">' + descPreview + '</td>' +
+      '<td style="text-align:right;">' +
+        '<div style="display:flex;gap:6px;justify-content:flex-end;">' +
+          '<button class="btn btn-sm" onclick="openEditUpdateModal(' + u.id + ')" title="Редагувати">✏️</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="deleteUpdateSubmit(' + u.id + ')" title="Видалити">🗑️</button>' +
+        '</div>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function openCreateUpdateModal() {
+  document.getElementById('updModalTitle').textContent = '🚀 Нове оновлення сайту';
+  document.getElementById('updId').value = '';
+  document.getElementById('updVersion').value = '';
+  document.getElementById('updTitle').value = '';
+  document.getElementById('updDesc').value = '';
+
+  var months = ['Січня', 'Лютого', 'Березня', 'Квітня', 'Травня', 'Червня', 'Липня', 'Серпня', 'Вересня', 'Жовтня', 'Листопада', 'Грудня'];
+  var now = new Date();
+  var dateStr = now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+  document.getElementById('updDate').value = dateStr;
+
+  var msg = document.getElementById('updFormMsg');
+  if (msg) msg.style.display = 'none';
+  document.getElementById('btnSaveUpdate').textContent = 'Опублікувати на сайт';
+  document.getElementById('updateModal').classList.add('open');
+}
+
+function openEditUpdateModal(id) {
+  var u = state.cachedUpdates.find(function(item) { return item.id === id; });
+  if (!u) return;
+
+  document.getElementById('updModalTitle').textContent = '✏️ Редагувати оновлення #' + u.id;
+  document.getElementById('updId').value = u.id;
+  document.getElementById('updVersion').value = u.version;
+  document.getElementById('updDate').value = u.date;
+  document.getElementById('updTitle').value = u.title;
+  document.getElementById('updDesc').value = u.description;
+
+  var msg = document.getElementById('updFormMsg');
+  if (msg) msg.style.display = 'none';
+  document.getElementById('btnSaveUpdate').textContent = 'Зберегти зміни';
+  document.getElementById('updateModal').classList.add('open');
+}
+
+function closeUpdateModal() {
+  document.getElementById('updateModal').classList.remove('open');
+}
+
+async function saveUpdateSubmit(e) {
+  e.preventDefault();
+  var id = document.getElementById('updId').value;
+  var version = document.getElementById('updVersion').value.trim();
+  var date = document.getElementById('updDate').value.trim();
+  var title = document.getElementById('updTitle').value.trim();
+  var description = document.getElementById('updDesc').value.trim();
+
+  var msg = document.getElementById('updFormMsg');
+  var btn = document.getElementById('btnSaveUpdate');
+
+  if (!version || !date || !title || !description) {
+    if (msg) {
+      msg.style.display = 'block';
+      msg.style.background = 'rgba(244,63,94,0.15)';
+      msg.style.color = 'var(--accent-rose)';
+      msg.textContent = 'Будь ласка, заповніть усі поля!';
+    }
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Збереження...';
+
+  try {
+    var endpoint = id ? '/api/admin/update/edit' : '/api/admin/update/create';
+    var payload = id ? { id: parseInt(id), version: version, title: title, description: description, date: date }
+                     : { version: version, title: title, description: description, date: date };
+
+    await api('POST', endpoint, payload);
+
+    closeUpdateModal();
+    await loadAdminUpdates();
+    alert(id ? 'Оновлення успішно збережено!' : 'Оновлення успішно опубліковано на сайті!');
+  } catch(err) {
+    if (msg) {
+      msg.style.display = 'block';
+      msg.style.background = 'rgba(244,63,94,0.15)';
+      msg.style.color = 'var(--accent-rose)';
+      msg.textContent = 'Помилка: ' + err.message;
+    } else {
+      alert('Помилка: ' + err.message);
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = id ? 'Зберегти зміни' : 'Опублікувати на сайт';
+  }
+}
+
+async function deleteUpdateSubmit(id) {
+  var u = state.cachedUpdates.find(function(item) { return item.id === id; });
+  var name = u ? (u.version + ' — ' + u.title) : ('#' + id);
+  if (!confirm('Ви дійсно хочете видалити оновлення "' + name + '" із сайту?')) {
+    return;
+  }
+
+  try {
+    await api('POST', '/api/admin/update/delete', { id: id });
+    await loadAdminUpdates();
+  } catch(err) {
+    alert('Не вдалося видалити оновлення: ' + err.message);
+  }
+}
+
 </script>
 
 <!-- Modal Create / Edit Update -->
