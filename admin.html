@@ -669,6 +669,9 @@ input:focus, select:focus, textarea:focus {
     <button class="nav-link" data-tab="promos">
       <span>🎁</span> Промокоди
     </button>
+    <button class="nav-link" data-tab="updates">
+      <span>🚀</span> Оновлення сайту
+    </button>
     <button class="nav-link" data-tab="broadcast">
       <span>📢</span> Оголошення гравцям
     </button>
@@ -701,6 +704,12 @@ input:focus, select:focus, textarea:focus {
       <div class="page-title" id="pageTitle">Огляд та активні гравці</div>
     </div>
     <div class="header-actions">
+      <!-- Dual Server Switcher -->
+      <div class="server-tabs" style="display:flex;gap:4px;background:var(--bg-input);padding:3px 5px;border-radius:var(--radius-sm);border:1px solid var(--border)">
+        <button id="btnTabVps" class="btn btn-sm" style="padding:4px 10px;font-size:12px;background:rgba(16,185,129,0.2);color:var(--accent-green);border:1px solid rgba(16,185,129,0.4)" onclick="switchAdminServer('vps')">🖥️ VPS: <b id="badgeVps">0</b></button>
+        <button id="btnTabRender" class="btn btn-sm" style="padding:4px 10px;font-size:12px;background:transparent;color:var(--text-muted);border:1px solid transparent" onclick="switchAdminServer('render')">☁️ Render: <b id="badgeRender">0</b></button>
+        <button id="btnTabAll" class="btn btn-sm" style="padding:4px 10px;font-size:12px;background:transparent;color:var(--text-muted);border:1px solid transparent" onclick="switchAdminServer('all')">👥 Всі: <b id="badgeTotal">0</b></button>
+      </div>
       <div class="key-badge" id="keyBadge" title="Натисніть для зміни ADMIN_KEY">
         <span>🔑</span> <span id="keyText">Встановити ключ</span>
       </div>
@@ -1155,10 +1164,23 @@ input:focus, select:focus, textarea:focus {
 
 <script>
 // ==================== STATE & CONFIG ====================
+var urlParams = new URLSearchParams(window.location.search);
+var urlKey = urlParams.get('key');
+if (urlKey) {
+  localStorage.setItem('pv_admin_key', urlKey);
+}
+var urlApi = urlParams.get('api');
+if (urlApi) {
+  localStorage.setItem('pv_api_base', urlApi);
+}
+
 var state = {
-  adminKey: localStorage.getItem('pv_admin_key') || '',
-  apiBase: localStorage.getItem('pv_api_base') || '',
+  adminKey: urlKey || localStorage.getItem('pv_admin_key') || '',
+  apiBase: urlApi || localStorage.getItem('pv_api_base') || '',
   currentTab: 'overview',
+  activeServer: 'all', // 'vps', 'render', or 'all'
+  vpsPlayers: [],
+  renderPlayers: [],
   activeTicketId: null,
   cachedPlayers: [],
   cachedBans: [],
@@ -1219,6 +1241,35 @@ function formatDuration(sec) {
   }
   return m + ' хв ' + s + ' с';
 }
+
+
+// Switch server view in admin
+window.switchAdminServer = function(srv) {
+  state.activeServer = srv;
+  var bVps = document.getElementById('btnTabVps');
+  var bRen = document.getElementById('btnTabRender');
+  var bAll = document.getElementById('btnTabAll');
+  
+  if (bVps) {
+    bVps.style.background = srv === 'vps' ? 'rgba(16,185,129,0.2)' : 'transparent';
+    bVps.style.color = srv === 'vps' ? 'var(--accent-green)' : 'var(--text-muted)';
+    bVps.style.borderColor = srv === 'vps' ? 'rgba(16,185,129,0.4)' : 'transparent';
+  }
+  if (bRen) {
+    bRen.style.background = srv === 'render' ? 'rgba(56,189,248,0.2)' : 'transparent';
+    bRen.style.color = srv === 'render' ? 'var(--accent-blue)' : 'var(--text-muted)';
+    bRen.style.borderColor = srv === 'render' ? 'rgba(56,189,248,0.4)' : 'transparent';
+  }
+  if (bAll) {
+    bAll.style.background = srv === 'all' ? 'rgba(255,200,61,0.2)' : 'transparent';
+    bAll.style.color = srv === 'all' ? 'var(--accent-amber)' : 'var(--text-muted)';
+    bAll.style.borderColor = srv === 'all' ? 'rgba(255,200,61,0.4)' : 'transparent';
+  }
+
+  var list = srv === 'vps' ? state.vpsPlayers : (srv === 'render' ? state.renderPlayers : state.cachedPlayers);
+  renderPlayers(list);
+  if (state.currentTab === 'radar') renderRadar();
+};
 
 // API request helper with authentication
 async function api(method, endpoint, body) {
@@ -1311,6 +1362,7 @@ function switchTab(tabId) {
     moderation: 'Керування банами та мутами',
     tickets: 'Тікети підтримки гравців',
     promos: 'Керування промокодами',
+    updates: 'Оновлення на сайті',
     broadcast: 'Глобальне оголошення гравцям',
     logs: 'Журнал аудиту дій',
     settings: 'Налаштування сервера'
@@ -1319,6 +1371,9 @@ function switchTab(tabId) {
 
   if (tabId === 'radar') {
     renderRadar();
+  }
+  if (tabId === 'updates') {
+    loadAdminUpdates();
   }
 }
 
@@ -1333,15 +1388,36 @@ async function refreshAll() {
   state.isRefreshing = true;
 
   try {
-    // 1. Fetch public players list (always works without admin key)
-    var playersData = await fetch(getApiBase() + '/api/players').then(r => r.json()).catch(() => null);
-    if (playersData && playersData.players) {
-      state.cachedPlayers = playersData.players;
-      renderPlayers(playersData.players);
-      document.getElementById('statOnline').textContent = playersData.count || playersData.players.length;
-      document.getElementById('badgeOnline').textContent = playersData.count || playersData.players.length;
-      if (state.currentTab === 'radar') renderRadar();
-    }
+    // 1. Fetch both VPS and Render players list
+    var vpsData = await fetch(getApiBase() + '/api/players').then(r => r.json()).catch(() => null);
+    // Fetch render players via VPS proxy or direct
+    var renderData = await fetch('https://game-n6ay.onrender.com/api/players')
+      .then(r => r.json())
+      .catch(() => fetch(getApiBase() + '/api/render/api/players').then(r => r.json()).catch(() => null));
+
+    var vpsList = (vpsData && vpsData.players) ? vpsData.players.map(p => Object.assign({}, p, { server: 'VPS' })) : [];
+    var renderList = (renderData && renderData.players) ? renderData.players.map(p => Object.assign({}, p, { server: 'Render' })) : [];
+
+    state.vpsPlayers = vpsList;
+    state.renderPlayers = renderList;
+
+    var vpsCount = vpsData ? (vpsData.count || vpsList.length) : 0;
+    var renderCount = renderData ? (renderData.count || renderList.length) : 0;
+    var totalOnline = vpsCount + renderCount;
+
+    if (document.getElementById('badgeVps')) document.getElementById('badgeVps').textContent = vpsCount;
+    if (document.getElementById('badgeRender')) document.getElementById('badgeRender').textContent = renderCount;
+    if (document.getElementById('badgeTotal')) document.getElementById('badgeTotal').textContent = totalOnline;
+
+    // Combined list
+    state.cachedPlayers = vpsList.concat(renderList);
+
+    var displayList = state.activeServer === 'vps' ? vpsList : (state.activeServer === 'render' ? renderList : state.cachedPlayers);
+    renderPlayers(displayList);
+
+    document.getElementById('statOnline').textContent = totalOnline + ' (VPS: ' + vpsCount + ' | Render: ' + renderCount + ')';
+    document.getElementById('badgeOnline').textContent = totalOnline;
+    if (state.currentTab === 'radar') renderRadar();
 
     // 2. Fetch admin stats if key exists
     if (state.adminKey) {
@@ -1433,8 +1509,10 @@ function renderPlayers(players) {
     var time = formatDuration(p.online_seconds);
     var score = p.score || 0;
 
+    var srvTag = (p.server === 'Render') ? '<span class="tag tag-blue" style="font-size:11px">☁️ Render</span>' : '<span class="tag tag-green" style="font-size:11px">🖥️ VPS</span>';
+
     return '<tr>' +
-      '<td><span class="tag tag-gray">#' + p.id + '</span></td>' +
+      '<td><span class="tag tag-gray">#' + p.id + '</span> ' + srvTag + '</td>' +
       '<td><strong style="color:#fff;">' + escapeHtml(p.name) + '</strong></td>' +
       '<td><span class="tag tag-blue">' + escapeHtml(dev) + '</span></td>' +
       '<td><span class="tag tag-green">' + score + '</span></td>' +
@@ -1442,9 +1520,9 @@ function renderPlayers(players) {
       '<td style="color:var(--text-muted);">' + time + '</td>' +
       '<td>' +
         '<div style="display:flex;gap:6px;">' +
-          '<button class="btn btn-sm btn-danger" onclick="quickAction(\'kick\', \'' + escapeHtml(p.name) + '\')">Кік</button>' +
-          '<button class="btn btn-sm btn-warning" onclick="quickAction(\'mute\', \'' + escapeHtml(p.name) + '\')">Мут</button>' +
-          '<button class="btn btn-sm btn-danger" onclick="quickAction(\'ban\', \'' + escapeHtml(p.name) + '\')">Бан</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="quickAction(\'kick\', \'' + escapeHtml(p.name) + '\', \'' + (p.server || 'VPS') + '\')">Кік</button>' +
+          '<button class="btn btn-sm btn-warning" onclick="quickAction(\'mute\', \'' + escapeHtml(p.name) + '\', \'' + (p.server || 'VPS') + '\')">Мут</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="quickAction(\'ban\', \'' + escapeHtml(p.name) + '\', \'' + (p.server || 'VPS') + '\')">Бан</button>' +
         '</div>' +
       '</td>' +
     '</tr>';
@@ -1661,16 +1739,20 @@ document.getElementById('chkShowCoords').onchange = renderRadar;
 // ==================== ACTIONS & HANDLERS ====================
 
 // Quick action from players table
-window.quickAction = function(action, playerName) {
+window.quickAction = function(action, playerName, playerServer = 'VPS') {
   if (action === 'kick') {
-    var reason = prompt('Причина кіку гравця ' + playerName + ':', 'Відключено адміністратором');
+    if (playerServer === 'Render') {
+      alert('Гравець ' + playerName + ' грає на резервному сервері Render.\n\nЩоб модерація діяла повністю, перемкніть клієнт на Основний сервер (VPS) у грі або перезапустіть сервер Render.');
+      return;
+    }
+    var reason = prompt('Причина кіку гравця ' + playerName + ' (буде заблоковано вхід на 60 сек):', 'Порушення правил / Відключено адміном');
     if (reason != null) {
       api('POST', '/api/admin/kick', { player: playerName, reason: reason })
-        .then(function() {
-          showToast('Гравця ' + playerName + ' відключено', 'success');
+        .then(function(res) {
+          showToast('Гравця ' + playerName + ' успішно відключено на 60 секунд!', 'success');
           refreshAll();
         })
-        .catch(err => showToast(err.message, 'error'));
+        .catch(err => showToast(err.message || 'Помилка виконання кіку', 'error'));
     }
   } else if (action === 'mute') {
     switchTab('moderation');
@@ -1966,5 +2048,42 @@ document.addEventListener('DOMContentLoaded', function() {
   state.refreshTimer = setInterval(refreshAll, 3000);
 });
 </script>
+
+<!-- Modal Create / Edit Update -->
+<div class="modal-overlay" id="updateModal">
+  <div class="modal" style="max-width:580px;">
+    <div class="modal-header">
+      <div class="modal-title" id="updModalTitle">🚀 Нове оновлення сайту</div>
+      <button class="modal-close" onclick="closeUpdateModal()">✕</button>
+    </div>
+    <form id="updateForm" onsubmit="saveUpdateSubmit(event)">
+      <input type="hidden" id="updId" value="">
+      <div class="input-row" style="margin-bottom:14px;display:flex;gap:12px;">
+        <div class="form-group" style="flex:1">
+          <label>Версія гри</label>
+          <input type="text" id="updVersion" placeholder="Наприклад: v1.8.0" required maxlength="20">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Дата публікації</label>
+          <input type="text" id="updDate" placeholder="21 Листопада 2026" required maxlength="40">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Заголовок релізу</label>
+        <input type="text" id="updTitle" placeholder="Коротко: про що це оновлення" required maxlength="120">
+      </div>
+      <div class="form-group">
+        <label>Детальний опис та список змін</label>
+        <textarea id="updDesc" rows="6" placeholder="Опишіть список змін, нововведень та виправлень..." required style="resize:vertical"></textarea>
+      </div>
+      <div id="updFormMsg" style="font-size:13px;margin-bottom:12px;padding:8px;border-radius:4px;display:none"></div>
+      <div style="display:flex;justify-content:flex-end;gap:10px">
+        <button type="button" class="btn" onclick="closeUpdateModal()">Скасувати</button>
+        <button type="submit" class="btn btn-primary" id="btnSaveUpdate">Опублікувати на сайт</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 </body>
 </html>

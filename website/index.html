@@ -586,8 +586,8 @@ a.btn.g:hover {
 </div></section>
 
 <section class="sheet" id="updates"><div class="in">
-<h2>Latest updates</h2>
-<div class="log">
+<h2 id="updatesTitle">Latest updates</h2>
+<div class="log" id="updatesLog">
 <div><time>Nov 12, 2026</time><div><h3>v1.6.0 — Переробка меню налаштувань</h3><p>Повністю переписане меню з 4 категоріями: Мова, Аудіо, Керування, Графіка. Покращена структура коду та модульність.</p></div></div>
 <div><time>Nov 12, 2026</time><div><h3>v1.4.0 — Система модерації</h3><p>Додано повну систему банів та мутів: /ban, /tempban, /unban, /mute, /unmute. Історія модерації зберігається в базі даних.</p></div></div>
 <div><time>Nov 11, 2026</time><div><h3>v1.3.16 — API для статистики</h3><p>Додано API endpoint для реал-тайм статистики адмінки з автоматичним оновленням даних.</p></div></div>
@@ -1362,7 +1362,83 @@ document.getElementById('btnSubmitTicket').onclick = async function() {
 };
 
 resize();requestAnimationFrame(loop);
+
+// Live updates from API
+async function loadLiveUpdates() {
+  try {
+    const res = await fetch('https://api.pixel-village.online/api/updates');
+    if (!res.ok) return;
+    const updates = await res.json();
+    if (!updates || updates.length === 0) return;
+
+    const container = document.getElementById('updatesLog') || document.querySelector('#updates .log');
+    if (!container) return;
+
+    const esc = function(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+
+    container.innerHTML = updates.map(function(u) {
+      var desc = esc(u.description).replace(/\n/g, '<br>');
+      return '<div>' +
+        '<time>' + esc(u.date) + '</time>' +
+        '<div>' +
+          '<h3>' + esc(u.version) + ' — ' + esc(u.title) + '</h3>' +
+          '<p>' + desc + '</p>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    // Keep static fallback
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadLiveUpdates);
+} else {
+  loadLiveUpdates();
+}
+
 </script>
-<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"7ef1b243593d4d15a1ad7306cf736380","r":1,"spa":2}' crossorigin="anonymous"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"7ef1b243593d4d15a1ad7306cf736380","r":1,"spa":2}' crossorigin="anonymous">
+// Live updates from API
+async function loadLiveUpdates() {
+  try {
+    const res = await fetch('https://api.pixel-village.online/api/updates');
+    if (!res.ok) return;
+    const updates = await res.json();
+    if (!updates || updates.length === 0) return;
+
+    const container = document.getElementById('updatesLog') || document.querySelector('#updates .log');
+    if (!container) return;
+
+    const esc = function(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+
+    container.innerHTML = updates.map(function(u) {
+      var desc = esc(u.description).replace(/\n/g, '<br>');
+      return '<div>' +
+        '<time>' + esc(u.date) + '</time>' +
+        '<div>' +
+          '<h3>' + esc(u.version) + ' — ' + esc(u.title) + '</h3>' +
+          '<p>' + desc + '</p>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    // Keep static fallback
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadLiveUpdates);
+} else {
+  loadLiveUpdates();
+}
+
+</script>
 </body>
 </html>

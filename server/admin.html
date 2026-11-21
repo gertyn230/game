@@ -669,6 +669,9 @@ input:focus, select:focus, textarea:focus {
     <button class="nav-link" data-tab="promos">
       <span>🎁</span> Промокоди
     </button>
+    <button class="nav-link" data-tab="updates">
+      <span>🚀</span> Оновлення сайту
+    </button>
     <button class="nav-link" data-tab="broadcast">
       <span>📢</span> Оголошення гравцям
     </button>
@@ -1359,6 +1362,7 @@ function switchTab(tabId) {
     moderation: 'Керування банами та мутами',
     tickets: 'Тікети підтримки гравців',
     promos: 'Керування промокодами',
+    updates: 'Оновлення на сайті',
     broadcast: 'Глобальне оголошення гравцям',
     logs: 'Журнал аудиту дій',
     settings: 'Налаштування сервера'
@@ -1367,6 +1371,9 @@ function switchTab(tabId) {
 
   if (tabId === 'radar') {
     renderRadar();
+  }
+  if (tabId === 'updates') {
+    loadAdminUpdates();
   }
 }
 
@@ -2041,5 +2048,42 @@ document.addEventListener('DOMContentLoaded', function() {
   state.refreshTimer = setInterval(refreshAll, 3000);
 });
 </script>
+
+<!-- Modal Create / Edit Update -->
+<div class="modal-overlay" id="updateModal">
+  <div class="modal" style="max-width:580px;">
+    <div class="modal-header">
+      <div class="modal-title" id="updModalTitle">🚀 Нове оновлення сайту</div>
+      <button class="modal-close" onclick="closeUpdateModal()">✕</button>
+    </div>
+    <form id="updateForm" onsubmit="saveUpdateSubmit(event)">
+      <input type="hidden" id="updId" value="">
+      <div class="input-row" style="margin-bottom:14px;display:flex;gap:12px;">
+        <div class="form-group" style="flex:1">
+          <label>Версія гри</label>
+          <input type="text" id="updVersion" placeholder="Наприклад: v1.8.0" required maxlength="20">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Дата публікації</label>
+          <input type="text" id="updDate" placeholder="21 Листопада 2026" required maxlength="40">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Заголовок релізу</label>
+        <input type="text" id="updTitle" placeholder="Коротко: про що це оновлення" required maxlength="120">
+      </div>
+      <div class="form-group">
+        <label>Детальний опис та список змін</label>
+        <textarea id="updDesc" rows="6" placeholder="Опишіть список змін, нововведень та виправлень..." required style="resize:vertical"></textarea>
+      </div>
+      <div id="updFormMsg" style="font-size:13px;margin-bottom:12px;padding:8px;border-radius:4px;display:none"></div>
+      <div style="display:flex;justify-content:flex-end;gap:10px">
+        <button type="button" class="btn" onclick="closeUpdateModal()">Скасувати</button>
+        <button type="submit" class="btn btn-primary" id="btnSaveUpdate">Опублікувати на сайт</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 </body>
 </html>

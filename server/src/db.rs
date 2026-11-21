@@ -97,6 +97,34 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
     .execute(&pool)
     .await?;
 
+    
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS game_updates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            version TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            date TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        )
+        "#
+    )
+    .execute(&pool)
+    .await?;
+
+    let upd_count: i64 = sqlx::query_scalar("SELECT count(*) FROM game_updates")
+        .fetch_one(&pool)
+        .await
+        .unwrap_or(0);
+
+    if upd_count == 0 {
+        let _ = create_game_update(&pool, "v1.7.5", "Онлайн мультиплеєр та оптимізація", "Підключено високошвидкісний європейський сервер pixel-village.online, додано підтримку промокодів та систему тікетів.", "21 Листопада 2026").await;
+        let _ = create_game_update(&pool, "v1.7.3", "Новий інвентар та крафт", "Додано крафт на гарячі клавіші, налаштування керування та покращено штучний інтелект мобів.", "18 Листопада 2026").await;
+        let _ = create_game_update(&pool, "v1.6.0", "Переробка меню налаштувань", "Повністю переписане меню з 4 категоріями: Мова, Аудіо, Керування, Графіка. Покращена структура коду.", "12 Листопада 2026").await;
+        let _ = create_game_update(&pool, "v1.5.0", "Система автооновлення", "Гра автоматично перевіряє наявність нових версій та завантажує оновлення прямо в клієнті.", "07 Листопада 2026").await;
+    }
+
     Ok(pool)
 }
 
@@ -303,3 +331,66 @@ pub async fn redeem_promocode(pool: &SqlitePool, code: &str) -> Result<Option<St
 }
 
 
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GameUpdate {
+    pub id: i64,
+    pub version: String,
+    pub title: String,
+    pub description: String,
+    pub date: String,
+    pub created_at: i64,
+}
+
+pub async fn get_game_updates(pool: &SqlitePool) -> Result<Vec<GameUpdate>, sqlx::Error> {
+    let rows = sqlx::query("SELECT id, version, title, description, date, created_at FROM game_updates ORDER BY id DESC")
+        .fetch_all(pool)
+        .await?;
+
+    Ok(rows.iter().map(|row| GameUpdate {
+        id: row.get("id"),
+        version: row.get("version"),
+        title: row.get("title"),
+        description: row.get("description"),
+        date: row.get("date"),
+        created_at: row.get("created_at"),
+    }).collect())
+}
+
+pub async fn create_game_update(pool: &SqlitePool, version: &str, title: &str, description: &str, date: &str) -> Result<i64, sqlx::Error> {
+    let timestamp = chrono::Utc::now().timestamp();
+    let result = sqlx::query(
+        "INSERT INTO game_updates (version, title, description, date, created_at) VALUES (?, ?, ?, ?, ?)"
+    )
+    .bind(version)
+    .bind(title)
+    .bind(description)
+    .bind(date)
+    .bind(timestamp)
+    .execute(pool)
+    .await?;
+    Ok(result.last_insert_rowid())
+}
+
+pub async fn update_game_update(pool: &SqlitePool, id: i64, version: &str, title: &str, description: &str, date: &str) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE game_updates SET version = ?, title = ?, description = ?, date = ? WHERE id = ?"
+    )
+    .bind(version)
+    .bind(title)
+    .bind(description)
+    .bind(date)
+    .bind(id)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn delete_game_update(pool: &SqlitePool, id: i64) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM game_updates WHERE id = ?")
+        .bind(id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}

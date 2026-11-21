@@ -236,6 +236,11 @@ async fn main() {
         .route("/api/admin/promo/create", post(api_create_promo))
         .route("/api/admin/promo/toggle", post(api_toggle_promo))
         .route("/api/admin/promo/delete", post(api_delete_promo))
+        .route("/api/updates", get(api_get_updates))
+        .route("/api/admin/updates", get(api_admin_get_updates))
+        .route("/api/admin/update/create", post(api_create_update))
+        .route("/api/admin/update/edit", post(api_edit_update))
+        .route("/api/admin/update/delete", post(api_delete_update))
         .route("/api/promo/redeem", post(api_redeem_promo))
         .route("/api/ticket/create", post(api_create_ticket))
         .route("/api/admin/config", get(api_get_config))
@@ -1116,3 +1121,103 @@ async fn api_delete_promo(State(app): State<App>, headers: HeaderMap, Json(req):
     }
 }
 
+
+
+async fn api_get_updates(State(app): State<App>) -> Response {
+    match db::get_game_updates(&app.db).await {
+        Ok(updates) => Json(updates).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка БД: {}", e)).into_response(),
+    }
+}
+
+async fn api_admin_get_updates(State(app): State<App>, headers: HeaderMap) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
+    }
+    match db::get_game_updates(&app.db).await {
+        Ok(updates) => Json(updates).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка БД: {}", e)).into_response(),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct UpdateCreateReq {
+    version: String,
+    title: String,
+    description: String,
+    date: String,
+}
+
+async fn api_create_update(State(app): State<App>, headers: HeaderMap, Json(req): Json<UpdateCreateReq>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
+    }
+
+    let ver = req.version.trim();
+    let title = req.title.trim();
+    let desc = req.description.trim();
+    let date = req.date.trim();
+
+    if ver.is_empty() || title.is_empty() || desc.is_empty() {
+        return (StatusCode::BAD_REQUEST, "Всі поля обов'язкові").into_response();
+    }
+
+    match db::create_game_update(&app.db, ver, title, desc, date).await {
+        Ok(id) => {
+            let _ = db::add_log(&app.db, "admin", &format!("Опубліковано оновлення: {} — {}", ver, title)).await;
+            Json(serde_json::json!({ "success": true, "id": id, "message": "Оновлення опубліковано на сайті" })).into_response()
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка БД: {}", e)).into_response(),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct UpdateEditReq {
+    id: i64,
+    version: String,
+    title: String,
+    description: String,
+    date: String,
+}
+
+async fn api_edit_update(State(app): State<App>, headers: HeaderMap, Json(req): Json<UpdateEditReq>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
+    }
+
+    let ver = req.version.trim();
+    let title = req.title.trim();
+    let desc = req.description.trim();
+    let date = req.date.trim();
+
+    if ver.is_empty() || title.is_empty() || desc.is_empty() {
+        return (StatusCode::BAD_REQUEST, "Всі поля обов'язкові").into_response();
+    }
+
+    match db::update_game_update(&app.db, req.id, ver, title, desc, date).await {
+        Ok(_) => {
+            let _ = db::add_log(&app.db, "admin", &format!("Змінено оновлення #{}: {}", req.id, ver)).await;
+            Json(serde_json::json!({ "success": true, "message": "Оновлення збережено" })).into_response()
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка БД: {}", e)).into_response(),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct UpdateDeleteReq {
+    id: i64,
+}
+
+async fn api_delete_update(State(app): State<App>, headers: HeaderMap, Json(req): Json<UpdateDeleteReq>) -> Response {
+    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+        return status.into_response();
+    }
+
+    match db::delete_game_update(&app.db, req.id).await {
+        Ok(_) => {
+            let _ = db::add_log(&app.db, "admin", &format!("Видалено оновлення сайту #{}", req.id)).await;
+            Json(serde_json::json!({ "success": true, "message": "Оновлення видалено" })).into_response()
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка БД: {}", e)).into_response(),
+    }
+}
