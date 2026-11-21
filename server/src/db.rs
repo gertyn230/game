@@ -97,15 +97,8 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
     .execute(&pool)
     .await?;
 
-    
     sqlx::query(
         r#"
-        
-    let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN title_en TEXT DEFAULT ''").execute(&pool).await;
-    let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN description_en TEXT DEFAULT ''").execute(&pool).await;
-    let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN title_ru TEXT DEFAULT ''").execute(&pool).await;
-    let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN description_ru TEXT DEFAULT ''").execute(&pool).await;
-
         CREATE TABLE IF NOT EXISTS game_updates (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             version TEXT NOT NULL,
@@ -118,6 +111,12 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
     )
     .execute(&pool)
     .await?;
+
+    // Add multilang columns (ignore errors if they already exist)
+    let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN title_en TEXT DEFAULT ''").execute(&pool).await;
+    let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN description_en TEXT DEFAULT ''").execute(&pool).await;
+    let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN title_ru TEXT DEFAULT ''").execute(&pool).await;
+    let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN description_ru TEXT DEFAULT ''").execute(&pool).await;
 
     let upd_count: i64 = sqlx::query_scalar("SELECT count(*) FROM game_updates")
         .fetch_one(&pool)
