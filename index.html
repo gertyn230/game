@@ -1159,6 +1159,7 @@ function setLang(lang) {
 
   // Updates секція
   if ($('#updates h2')) $('#updates h2').textContent = t.updates_h2;
+  renderSiteUpdates(lang);
   const updates = $$('#updates .log > div');
   if (updates[0]) {
     updates[0].querySelector('h3').textContent = t.updates_v138_title;
@@ -1364,31 +1365,54 @@ document.getElementById('btnSubmitTicket').onclick = async function() {
 resize();requestAnimationFrame(loop);
 
 // Live updates from API
+window.liveUpdates = [];
+var currentSiteLang = 'uk';
+
+function renderSiteUpdates(lang) {
+  if (lang) currentSiteLang = lang;
+  if (!window.liveUpdates || window.liveUpdates.length === 0) return;
+
+  var container = document.getElementById('updatesLog') || document.querySelector('#updates .log');
+  if (!container) return;
+
+  var esc = function(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  };
+
+  container.innerHTML = window.liveUpdates.map(function(u) {
+    var title = u.title || '';
+    var desc = u.description || '';
+
+    if (currentSiteLang === 'en' && u.title_en) {
+      title = u.title_en;
+      desc = u.description_en || u.description || '';
+    } else if (currentSiteLang === 'ru' && u.title_ru) {
+      title = u.title_ru;
+      desc = u.description_ru || u.description || '';
+    }
+
+    return '<div>' +
+      '<time>' + esc(u.date) + '</time>' +
+      '<div>' +
+        '<h3>' + esc(u.version) + ' — ' + esc(title) + '</h3>' +
+        '<p>' + esc(desc).replace(/\n/g, '<br>') + '</p>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
 async function loadLiveUpdates() {
   try {
-    const res = await fetch('https://api.pixel-village.online/api/updates');
+    var res = await fetch('https://api.pixel-village.online/api/updates');
     if (!res.ok) return;
-    const updates = await res.json();
+    var updates = await res.json();
     if (!updates || updates.length === 0) return;
 
-    const container = document.getElementById('updatesLog') || document.querySelector('#updates .log');
-    if (!container) return;
-
-    const esc = function(s) {
-      if (!s) return '';
-      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    };
-
-    container.innerHTML = updates.map(function(u) {
-      var desc = esc(u.description).replace(/\n/g, '<br>');
-      return '<div>' +
-        '<time>' + esc(u.date) + '</time>' +
-        '<div>' +
-          '<h3>' + esc(u.version) + ' — ' + esc(u.title) + '</h3>' +
-          '<p>' + desc + '</p>' +
-        '</div>' +
-      '</div>';
-    }).join('');
+    window.liveUpdates = updates;
+    var activeLangBtn = document.querySelector('.lang button.active');
+    var lang = activeLangBtn ? activeLangBtn.dataset.lang : 'uk';
+    renderSiteUpdates(lang);
   } catch(e) {
     // Keep static fallback
   }
@@ -1403,31 +1427,54 @@ if (document.readyState === 'loading') {
 </script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"7ef1b243593d4d15a1ad7306cf736380","r":1,"spa":2}' crossorigin="anonymous">
 // Live updates from API
+window.liveUpdates = [];
+var currentSiteLang = 'uk';
+
+function renderSiteUpdates(lang) {
+  if (lang) currentSiteLang = lang;
+  if (!window.liveUpdates || window.liveUpdates.length === 0) return;
+
+  var container = document.getElementById('updatesLog') || document.querySelector('#updates .log');
+  if (!container) return;
+
+  var esc = function(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  };
+
+  container.innerHTML = window.liveUpdates.map(function(u) {
+    var title = u.title || '';
+    var desc = u.description || '';
+
+    if (currentSiteLang === 'en' && u.title_en) {
+      title = u.title_en;
+      desc = u.description_en || u.description || '';
+    } else if (currentSiteLang === 'ru' && u.title_ru) {
+      title = u.title_ru;
+      desc = u.description_ru || u.description || '';
+    }
+
+    return '<div>' +
+      '<time>' + esc(u.date) + '</time>' +
+      '<div>' +
+        '<h3>' + esc(u.version) + ' — ' + esc(title) + '</h3>' +
+        '<p>' + esc(desc).replace(/\n/g, '<br>') + '</p>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
 async function loadLiveUpdates() {
   try {
-    const res = await fetch('https://api.pixel-village.online/api/updates');
+    var res = await fetch('https://api.pixel-village.online/api/updates');
     if (!res.ok) return;
-    const updates = await res.json();
+    var updates = await res.json();
     if (!updates || updates.length === 0) return;
 
-    const container = document.getElementById('updatesLog') || document.querySelector('#updates .log');
-    if (!container) return;
-
-    const esc = function(s) {
-      if (!s) return '';
-      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    };
-
-    container.innerHTML = updates.map(function(u) {
-      var desc = esc(u.description).replace(/\n/g, '<br>');
-      return '<div>' +
-        '<time>' + esc(u.date) + '</time>' +
-        '<div>' +
-          '<h3>' + esc(u.version) + ' — ' + esc(u.title) + '</h3>' +
-          '<p>' + desc + '</p>' +
-        '</div>' +
-      '</div>';
-    }).join('');
+    window.liveUpdates = updates;
+    var activeLangBtn = document.querySelector('.lang button.active');
+    var lang = activeLangBtn ? activeLangBtn.dataset.lang : 'uk';
+    renderSiteUpdates(lang);
   } catch(e) {
     // Keep static fallback
   }

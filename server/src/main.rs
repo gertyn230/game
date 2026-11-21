@@ -1155,6 +1155,14 @@ struct UpdateCreateReq {
     title: String,
     description: String,
     date: String,
+    #[serde(default)]
+    title_en: Option<String>,
+    #[serde(default)]
+    description_en: Option<String>,
+    #[serde(default)]
+    title_ru: Option<String>,
+    #[serde(default)]
+    description_ru: Option<String>,
 }
 
 async fn api_create_update(State(app): State<App>, headers: HeaderMap, Json(req): Json<UpdateCreateReq>) -> Response {
@@ -1166,12 +1174,16 @@ async fn api_create_update(State(app): State<App>, headers: HeaderMap, Json(req)
     let title = req.title.trim();
     let desc = req.description.trim();
     let date = req.date.trim();
+    let title_en = req.title_en.as_deref().unwrap_or("").trim();
+    let desc_en = req.description_en.as_deref().unwrap_or("").trim();
+    let title_ru = req.title_ru.as_deref().unwrap_or("").trim();
+    let desc_ru = req.description_ru.as_deref().unwrap_or("").trim();
 
     if ver.is_empty() || title.is_empty() || desc.is_empty() {
         return (StatusCode::BAD_REQUEST, "Всі поля обов'язкові").into_response();
     }
 
-    match db::create_game_update(&app.db, ver, title, desc, date).await {
+    match db::create_game_update(&app.db, ver, title, desc, date, title_en, desc_en, title_ru, desc_ru).await {
         Ok(id) => {
             let _ = db::add_log(&app.db, "admin", &format!("Опубліковано оновлення: {} — {}", ver, title)).await;
             Json(serde_json::json!({ "success": true, "id": id, "message": "Оновлення опубліковано на сайті" })).into_response()
@@ -1187,6 +1199,14 @@ struct UpdateEditReq {
     title: String,
     description: String,
     date: String,
+    #[serde(default)]
+    title_en: Option<String>,
+    #[serde(default)]
+    description_en: Option<String>,
+    #[serde(default)]
+    title_ru: Option<String>,
+    #[serde(default)]
+    description_ru: Option<String>,
 }
 
 async fn api_edit_update(State(app): State<App>, headers: HeaderMap, Json(req): Json<UpdateEditReq>) -> Response {
@@ -1198,12 +1218,16 @@ async fn api_edit_update(State(app): State<App>, headers: HeaderMap, Json(req): 
     let title = req.title.trim();
     let desc = req.description.trim();
     let date = req.date.trim();
+    let title_en = req.title_en.as_deref().unwrap_or("").trim();
+    let desc_en = req.description_en.as_deref().unwrap_or("").trim();
+    let title_ru = req.title_ru.as_deref().unwrap_or("").trim();
+    let desc_ru = req.description_ru.as_deref().unwrap_or("").trim();
 
     if ver.is_empty() || title.is_empty() || desc.is_empty() {
         return (StatusCode::BAD_REQUEST, "Всі поля обов'язкові").into_response();
     }
 
-    match db::update_game_update(&app.db, req.id, ver, title, desc, date).await {
+    match db::update_game_update(&app.db, req.id, ver, title, desc, date, title_en, desc_en, title_ru, desc_ru).await {
         Ok(_) => {
             let _ = db::add_log(&app.db, "admin", &format!("Змінено оновлення #{}: {}", req.id, ver)).await;
             Json(serde_json::json!({ "success": true, "message": "Оновлення збережено" })).into_response()

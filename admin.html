@@ -2085,6 +2085,85 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ==================== SITE UPDATES MANAGEMENT ====================
 state.cachedUpdates = [];
+var currentUpdModalLang = 'ua';
+
+function switchUpdateLang(lang) {
+  currentUpdModalLang = lang;
+  ['ua', 'en', 'ru'].forEach(function(l) {
+    var cap = l.charAt(0).toUpperCase() + l.slice(1);
+    var btn = document.getElementById('tabLang' + cap);
+    var pane = document.getElementById('updFields' + cap);
+    if (btn) {
+      btn.style.background = (l === lang) ? 'var(--accent-green)' : 'transparent';
+      btn.style.color = (l === lang) ? '#062419' : 'var(--text-muted)';
+      btn.style.fontWeight = (l === lang) ? '700' : '400';
+    }
+    if (pane) {
+      pane.style.display = (l === lang) ? 'block' : 'none';
+    }
+  });
+}
+
+async function translateText(text, targetLang) {
+  if (!text || !text.trim()) return '';
+  var url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=uk&tl=' + targetLang + '&dt=t&q=' + encodeURIComponent(text);
+  var res = await fetch(url);
+  if (!res.ok) throw new Error('API перекладу повернуло статус ' + res.status);
+  var data = await res.json();
+  return data[0].map(function(seg) { return seg[0]; }).join('');
+}
+
+async function autoTranslateUpdates() {
+  var titleUa = document.getElementById('updTitle').value.trim();
+  var descUa = document.getElementById('updDesc').value.trim();
+  var btn = document.getElementById('btnAutoTranslate');
+  var msg = document.getElementById('updFormMsg');
+
+  if (!titleUa || !descUa) {
+    if (msg) {
+      msg.style.display = 'block';
+      msg.style.background = 'rgba(244,63,94,0.15)';
+      msg.style.color = 'var(--accent-rose)';
+      msg.textContent = 'Спочатку заповніть український заголовок та опис!';
+    }
+    return;
+  }
+
+  btn.disabled = true;
+  var originalText = btn.innerHTML;
+  btn.innerHTML = '⏳ Перекладаємо...';
+
+  try {
+    var results = await Promise.all([
+      translateText(titleUa, 'en'),
+      translateText(descUa, 'en'),
+      translateText(titleUa, 'ru'),
+      translateText(descUa, 'ru')
+    ]);
+
+    document.getElementById('updTitleEn').value = results[0];
+    document.getElementById('updDescEn').value = results[1];
+    document.getElementById('updTitleRu').value = results[2];
+    document.getElementById('updDescRu').value = results[3];
+
+    if (msg) {
+      msg.style.display = 'block';
+      msg.style.background = 'rgba(16,185,129,0.15)';
+      msg.style.color = 'var(--accent-green)';
+      msg.textContent = '✅ Успішно перекладено на англійську та російську! Перегляньте у вкладках 🇬🇧 EN та 🇷🇺 RU.';
+    }
+  } catch(err) {
+    if (msg) {
+      msg.style.display = 'block';
+      msg.style.background = 'rgba(244,63,94,0.15)';
+      msg.style.color = 'var(--accent-rose)';
+      msg.textContent = 'Не вдалося виконати автопереклад: ' + err.message;
+    }
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
 
 async function loadAdminUpdates() {
   var tbody = document.getElementById('updatesTableBody');
@@ -2110,8 +2189,14 @@ function renderAdminUpdates(updates) {
 
   tbody.innerHTML = updates.map(function(u) {
     var descPreview = escapeHtml(u.description).replace(/\n/g, '<br>');
+    var langBadges = '<span style="font-size:11px;color:var(--text-muted);display:flex;gap:4px;margin-top:4px;">' +
+      (u.title ? '<span title="Є українською">🇺🇦</span>' : '') +
+      (u.title_en ? '<span title="Є англійською">🇬🇧</span>' : '') +
+      (u.title_ru ? '<span title="Є російською">🇷🇺</span>' : '') +
+    '</span>';
+
     return '<tr>' +
-      '<td><span class="tag tag-blue" style="font-size:12px;font-weight:700">' + escapeHtml(u.version) + '</span></td>' +
+      '<td><span class="tag tag-blue" style="font-size:12px;font-weight:700">' + escapeHtml(u.version) + '</span>' + langBadges + '</td>' +
       '<td style="color:var(--text-muted);font-size:12.5px;">' + escapeHtml(u.date) + '</td>' +
       '<td style="font-weight:600;color:#fff;">' + escapeHtml(u.title) + '</td>' +
       '<td style="max-width:380px;white-space:normal;font-size:12.5px;color:var(--text-muted);line-height:1.4;">' + descPreview + '</td>' +
@@ -2131,6 +2216,11 @@ function openCreateUpdateModal() {
   document.getElementById('updVersion').value = '';
   document.getElementById('updTitle').value = '';
   document.getElementById('updDesc').value = '';
+  document.getElementById('updTitleEn').value = '';
+  document.getElementById('updDescEn').value = '';
+  document.getElementById('updTitleRu').value = '';
+  document.getElementById('updDescRu').value = '';
+  switchUpdateLang('ua');
 
   var months = ['Січня', 'Лютого', 'Березня', 'Квітня', 'Травня', 'Червня', 'Липня', 'Серпня', 'Вересня', 'Жовтня', 'Листопада', 'Грудня'];
   var now = new Date();
@@ -2151,8 +2241,13 @@ function openEditUpdateModal(id) {
   document.getElementById('updId').value = u.id;
   document.getElementById('updVersion').value = u.version;
   document.getElementById('updDate').value = u.date;
-  document.getElementById('updTitle').value = u.title;
-  document.getElementById('updDesc').value = u.description;
+  document.getElementById('updTitle').value = u.title || '';
+  document.getElementById('updDesc').value = u.description || '';
+  document.getElementById('updTitleEn').value = u.title_en || '';
+  document.getElementById('updDescEn').value = u.description_en || '';
+  document.getElementById('updTitleRu').value = u.title_ru || '';
+  document.getElementById('updDescRu').value = u.description_ru || '';
+  switchUpdateLang('ua');
 
   var msg = document.getElementById('updFormMsg');
   if (msg) msg.style.display = 'none';
@@ -2171,6 +2266,10 @@ async function saveUpdateSubmit(e) {
   var date = document.getElementById('updDate').value.trim();
   var title = document.getElementById('updTitle').value.trim();
   var description = document.getElementById('updDesc').value.trim();
+  var title_en = document.getElementById('updTitleEn').value.trim();
+  var description_en = document.getElementById('updDescEn').value.trim();
+  var title_ru = document.getElementById('updTitleRu').value.trim();
+  var description_ru = document.getElementById('updDescRu').value.trim();
 
   var msg = document.getElementById('updFormMsg');
   var btn = document.getElementById('btnSaveUpdate');
@@ -2180,7 +2279,7 @@ async function saveUpdateSubmit(e) {
       msg.style.display = 'block';
       msg.style.background = 'rgba(244,63,94,0.15)';
       msg.style.color = 'var(--accent-rose)';
-      msg.textContent = 'Будь ласка, заповніть усі поля!';
+      msg.textContent = 'Будь ласка, заповніть обов\'язкові поля версії, дати, заголовка та опису!';
     }
     return;
   }
@@ -2190,8 +2289,17 @@ async function saveUpdateSubmit(e) {
 
   try {
     var endpoint = id ? '/api/admin/update/edit' : '/api/admin/update/create';
-    var payload = id ? { id: parseInt(id), version: version, title: title, description: description, date: date }
-                     : { version: version, title: title, description: description, date: date };
+    var payload = {
+      version: version,
+      title: title,
+      description: description,
+      date: date,
+      title_en: title_en,
+      description_en: description_en,
+      title_ru: title_ru,
+      description_ru: description_ru
+    };
+    if (id) payload.id = parseInt(id);
 
     await api('POST', endpoint, payload);
 
@@ -2227,12 +2335,12 @@ async function deleteUpdateSubmit(id) {
     alert('Не вдалося видалити оновлення: ' + err.message);
   }
 }
-
 </script>
 
 <!-- Modal Create / Edit Update -->
+<!-- Modal Create / Edit Update -->
 <div class="modal-overlay" id="updateModal">
-  <div class="modal" style="max-width:580px;">
+  <div class="modal" style="max-width:620px;">
     <div class="modal-header">
       <div class="modal-title" id="updModalTitle">🚀 Нове оновлення сайту</div>
       <button class="modal-close" onclick="closeUpdateModal()">✕</button>
@@ -2249,6 +2357,63 @@ async function deleteUpdateSubmit(id) {
           <input type="text" id="updDate" placeholder="21 Листопада 2026" required maxlength="40">
         </div>
       </div>
+
+      <!-- Language selector bar + Magic auto-translate button -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;background:var(--bg-input);padding:6px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);">
+        <div style="display:flex;gap:4px;">
+          <button type="button" class="btn btn-sm" id="tabLangUa" style="background:var(--accent-green);color:#062419;font-weight:700" onclick="switchUpdateLang('ua')">🇺🇦 UA</button>
+          <button type="button" class="btn btn-sm" id="tabLangEn" style="background:transparent;color:var(--text-muted)" onclick="switchUpdateLang('en')">🇬🇧 EN</button>
+          <button type="button" class="btn btn-sm" id="tabLangRu" style="background:transparent;color:var(--text-muted)" onclick="switchUpdateLang('ru')">🇷🇺 RU</button>
+        </div>
+        <button type="button" class="btn btn-sm" id="btnAutoTranslate" style="background:rgba(56,189,248,0.2);color:var(--accent-blue);border-color:rgba(56,189,248,0.3)" onclick="autoTranslateUpdates()">
+          🪄 Автопереклад на EN та RU
+        </button>
+      </div>
+
+      <!-- UA Fields -->
+      <div id="updFieldsUa">
+        <div class="form-group">
+          <label>Заголовок (Українською) *</label>
+          <input type="text" id="updTitle" placeholder="Коротко: про що це оновлення" required maxlength="120">
+        </div>
+        <div class="form-group">
+          <label>Опис та список змін (Українською) *</label>
+          <textarea id="updDesc" rows="5" placeholder="Опишіть список змін, нововведень та виправлень..." required style="resize:vertical"></textarea>
+        </div>
+      </div>
+
+      <!-- EN Fields -->
+      <div id="updFieldsEn" style="display:none">
+        <div class="form-group">
+          <label>Title (English)</label>
+          <input type="text" id="updTitleEn" placeholder="Title in English" maxlength="120">
+        </div>
+        <div class="form-group">
+          <label>Description & Changelog (English)</label>
+          <textarea id="updDescEn" rows="5" placeholder="Describe new features, changes and fixes in English..." style="resize:vertical"></textarea>
+        </div>
+      </div>
+
+      <!-- RU Fields -->
+      <div id="updFieldsRu" style="display:none">
+        <div class="form-group">
+          <label>Заголовок (Русский)</label>
+          <input type="text" id="updTitleRu" placeholder="Заголовок на русском" maxlength="120">
+        </div>
+        <div class="form-group">
+          <label>Описание и список изменений (Русский)</label>
+          <textarea id="updDescRu" rows="5" placeholder="Опишите список изменений и исправлений на русском..." style="resize:vertical"></textarea>
+        </div>
+      </div>
+
+      <div id="updFormMsg" style="font-size:13px;margin-bottom:12px;padding:8px;border-radius:4px;display:none"></div>
+      <div style="display:flex;justify-content:flex-end;gap:10px">
+        <button type="button" class="btn" onclick="closeUpdateModal()">Скасувати</button>
+        <button type="submit" class="btn btn-primary" id="btnSaveUpdate">Опублікувати на сайт</button>
+      </div>
+    </form>
+  </div>
+</div>
       <div class="form-group">
         <label>Заголовок релізу</label>
         <input type="text" id="updTitle" placeholder="Коротко: про що це оновлення" required maxlength="120">

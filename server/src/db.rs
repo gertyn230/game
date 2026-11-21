@@ -100,6 +100,12 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
     
     sqlx::query(
         r#"
+        
+    let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN title_en TEXT DEFAULT ''").execute(&pool).await;
+    let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN description_en TEXT DEFAULT ''").execute(&pool).await;
+    let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN title_ru TEXT DEFAULT ''").execute(&pool).await;
+    let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN description_ru TEXT DEFAULT ''").execute(&pool).await;
+
         CREATE TABLE IF NOT EXISTS game_updates (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             version TEXT NOT NULL,
@@ -119,10 +125,10 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
         .unwrap_or(0);
 
     if upd_count == 0 {
-        let _ = create_game_update(&pool, "v1.7.5", "Онлайн мультиплеєр та оптимізація", "Підключено високошвидкісний європейський сервер pixel-village.online, додано підтримку промокодів та систему тікетів.", "21 Листопада 2026").await;
-        let _ = create_game_update(&pool, "v1.7.3", "Новий інвентар та крафт", "Додано крафт на гарячі клавіші, налаштування керування та покращено штучний інтелект мобів.", "18 Листопада 2026").await;
-        let _ = create_game_update(&pool, "v1.6.0", "Переробка меню налаштувань", "Повністю переписане меню з 4 категоріями: Мова, Аудіо, Керування, Графіка. Покращена структура коду.", "12 Листопада 2026").await;
-        let _ = create_game_update(&pool, "v1.5.0", "Система автооновлення", "Гра автоматично перевіряє наявність нових версій та завантажує оновлення прямо в клієнті.", "07 Листопада 2026").await;
+        let _ = create_game_update(&pool, "v1.7.5", "Онлайн мультиплеєр та оптимізація", "Підключено високошвидкісний європейський сервер pixel-village.online, додано підтримку промокодів та систему тікетів.", "21 Листопада 2026", "Online multiplayer and optimization", "Connected high-speed European server pixel-village.online, added promo code support and ticket system.", "Онлайн мультиплеер и оптимизация", "Подключен высокоскоростной европейский сервер pixel-village.online, добавлена поддержка промокодов и система тикетов.").await;
+        let _ = create_game_update(&pool, "v1.7.3", "Новий інвентар та крафт", "Додано крафт на гарячі клавіші, налаштування керування та покращено штучний інтелект мобів.", "18 Листопада 2026", "New inventory and craft", "Added hotkey craft, control settings and improved mob AI.", "Новый инвентарь и крафт", "Добавлен крафт на горячие клавиши, настройки управления и улучшен искусственный интеллект мобов.").await;
+        let _ = create_game_update(&pool, "v1.6.0", "Переробка меню налаштувань", "Повністю переписане меню з 4 категоріями: Мова, Аудіо, Керування, Графіка. Покращена структура коду.", "12 Листопада 2026", "Settings menu redesign", "Completely rewritten menu with 4 categories: Language, Audio, Controls, Graphics. Improved code structure.", "Переработка меню настроек", "Полностью переписанное меню с 4 категориями: Язык, Аудио, Управление, Графика. Улучшена структура кода.").await;
+        let _ = create_game_update(&pool, "v1.5.0", "Система автооновлення", "Гра автоматично перевіряє наявність нових версій та завантажує оновлення прямо в клієнті.", "07 Листопада 2026", "Auto-update system", "The game automatically checks for updates and downloads them in client.", "Система автообновления", "Игра автоматически проверяет наличие новых версий и скачивает их прямо в клиенте.").await;
     }
 
     Ok(pool)
@@ -340,11 +346,19 @@ pub struct GameUpdate {
     pub title: String,
     pub description: String,
     pub date: String,
+    #[serde(default)]
+    pub title_en: String,
+    #[serde(default)]
+    pub description_en: String,
+    #[serde(default)]
+    pub title_ru: String,
+    #[serde(default)]
+    pub description_ru: String,
     pub created_at: i64,
 }
 
 pub async fn get_game_updates(pool: &SqlitePool) -> Result<Vec<GameUpdate>, sqlx::Error> {
-    let rows = sqlx::query("SELECT id, version, title, description, date, created_at FROM game_updates ORDER BY id DESC")
+    let rows = sqlx::query("SELECT id, version, title, description, date, COALESCE(title_en, '') as title_en, COALESCE(description_en, '') as description_en, COALESCE(title_ru, '') as title_ru, COALESCE(description_ru, '') as description_ru, created_at FROM game_updates ORDER BY id DESC")
         .fetch_all(pool)
         .await?;
 
@@ -354,33 +368,66 @@ pub async fn get_game_updates(pool: &SqlitePool) -> Result<Vec<GameUpdate>, sqlx
         title: row.get("title"),
         description: row.get("description"),
         date: row.get("date"),
+        title_en: row.get("title_en"),
+        description_en: row.get("description_en"),
+        title_ru: row.get("title_ru"),
+        description_ru: row.get("description_ru"),
         created_at: row.get("created_at"),
     }).collect())
 }
 
-pub async fn create_game_update(pool: &SqlitePool, version: &str, title: &str, description: &str, date: &str) -> Result<i64, sqlx::Error> {
+pub async fn create_game_update(
+    pool: &SqlitePool,
+    version: &str,
+    title: &str,
+    description: &str,
+    date: &str,
+    title_en: &str,
+    description_en: &str,
+    title_ru: &str,
+    description_ru: &str,
+) -> Result<i64, sqlx::Error> {
     let timestamp = chrono::Utc::now().timestamp();
     let result = sqlx::query(
-        "INSERT INTO game_updates (version, title, description, date, created_at) VALUES (?, ?, ?, ?, ?)"
+        "INSERT INTO game_updates (version, title, description, date, title_en, description_en, title_ru, description_ru, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .bind(version)
     .bind(title)
     .bind(description)
     .bind(date)
+    .bind(title_en)
+    .bind(description_en)
+    .bind(title_ru)
+    .bind(description_ru)
     .bind(timestamp)
     .execute(pool)
     .await?;
     Ok(result.last_insert_rowid())
 }
 
-pub async fn update_game_update(pool: &SqlitePool, id: i64, version: &str, title: &str, description: &str, date: &str) -> Result<(), sqlx::Error> {
+pub async fn update_game_update(
+    pool: &SqlitePool,
+    id: i64,
+    version: &str,
+    title: &str,
+    description: &str,
+    date: &str,
+    title_en: &str,
+    description_en: &str,
+    title_ru: &str,
+    description_ru: &str,
+) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "UPDATE game_updates SET version = ?, title = ?, description = ?, date = ? WHERE id = ?"
+        "UPDATE game_updates SET version = ?, title = ?, description = ?, date = ?, title_en = ?, description_en = ?, title_ru = ?, description_ru = ? WHERE id = ?"
     )
     .bind(version)
     .bind(title)
     .bind(description)
     .bind(date)
+    .bind(title_en)
+    .bind(description_en)
+    .bind(title_ru)
+    .bind(description_ru)
     .bind(id)
     .execute(pool)
     .await?;
