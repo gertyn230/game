@@ -1026,6 +1026,41 @@ input:focus, select:focus, textarea:focus {
       </div>
     </div>
 
+    <!-- TAB: UPDATES -->
+    <div class="tab-content" id="tab-updates">
+      <div class="panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div class="panel-title" style="margin-bottom:4px;">🚀 Останні оновлення на сайті</div>
+            <div style="color:var(--text-muted);font-size:13px;">Публікуйте свіжі патчноути, оновлення та релізи. Вони миттєво з'являються на головній сторінці сайту!</div>
+          </div>
+          <button class="btn btn-primary" onclick="openCreateUpdateModal()">
+            <span>➕</span> Опублікувати оновлення
+          </button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:14px;">📋 Список опублікованих оновлень</div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:110px">Версія</th>
+                <th style="width:140px">Дата</th>
+                <th style="width:240px">Заголовок</th>
+                <th>Опис та список змін</th>
+                <th style="width:130px;text-align:right">Дії</th>
+              </tr>
+            </thead>
+            <tbody id="updatesTableBody">
+              <tr><td colspan="5" class="empty-state">Завантаження списку оновлень...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- TAB 6: BROADCAST -->
     <div class="tab-content" id="tab-broadcast">
       <div class="panel">

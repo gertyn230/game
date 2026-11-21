@@ -271,8 +271,17 @@ fn page(title: &str, body: &str) -> Html<String> {
     ))
 }
 
-async fn admin_page() -> Html<&'static str> {
-    Html(include_str!("../admin.html"))
+async fn admin_page() -> Html<String> {
+    if let Ok(content) = tokio::fs::read_to_string("/app/admin.html").await {
+        return Html(content);
+    }
+    if let Ok(content) = tokio::fs::read_to_string("admin.html").await {
+        return Html(content);
+    }
+    if let Ok(content) = tokio::fs::read_to_string("server/admin.html").await {
+        return Html(content);
+    }
+    Html(include_str!("../admin.html").to_string())
 }
 
 async fn index(headers: HeaderMap, State(app): State<App>) -> Response {
