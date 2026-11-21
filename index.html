@@ -369,6 +369,88 @@ footer{background:var(--sheet);padding:30px 5vw 60px;color:var(--mute);font-size
   animation: rise .3s ease;
 }
 
+
+/* ==================== BUTTON DESIGN SYSTEM ==================== */
+.btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  height: 52px !important;
+  padding: 0 28px !important;
+  border-radius: 999px !important;
+  font-family: 'Bricolage Grotesque', 'DM Sans', system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  line-height: 1 !important;
+  text-decoration: none !important;
+  border: 0 !important;
+  outline: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-sizing: border-box !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  white-space: nowrap !important;
+}
+.btn:hover {
+  transform: translateY(-2px) !important;
+}
+.btn:active {
+  transform: translateY(0) !important;
+}
+
+/* Primary yellow button (Hero, Promo, Ticket, etc.) */
+.btn.p,
+button.btn.p,
+a.btn.p {
+  background: var(--sun) !important;
+  color: #10261c !important;
+  box-shadow: 0 4px 16px rgba(255, 200, 61, 0.35) !important;
+}
+.btn.p:hover,
+button.btn.p:hover,
+a.btn.p:hover {
+  background: #ffcf4d !important;
+  box-shadow: 0 6px 22px rgba(255, 200, 61, 0.5) !important;
+}
+
+/* Ghost / Glass secondary button (Explore, etc.) */
+.btn.g,
+a.btn.g {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+  border: 2px solid rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+}
+.btn.g:hover,
+a.btn.g:hover {
+  background: rgba(255, 255, 255, 0.28) !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Download card buttons */
+.dl .btn {
+  height: 46px !important;
+  padding: 0 24px !important;
+  background: var(--ink) !important;
+  color: var(--sheet) !important;
+  border-radius: 999px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+  text-decoration: none !important;
+}
+.dl .btn:hover {
+  background: var(--leaf) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(79, 174, 90, 0.4) !important;
+}
+
 </style>
 </head>
 <body>
@@ -402,7 +484,7 @@ footer{background:var(--sheet);padding:30px 5vw 60px;color:var(--mute);font-size
   <span class="srv-dot"></span>
   <span id="srvStatusText">Сервер онлайн</span>
   <span class="srv-sep">•</span>
-  <span>Гравців у грі: <b id="srvOnline">0</b></span>
+  <span><span id="srvLabelPlayers">Гравців у грі:</span> <b id="srvOnline">0</b></span>
   <span class="srv-ping" id="srvPing">(...)</span>
 </div>
 </div></section>
@@ -437,27 +519,27 @@ footer{background:var(--sheet);padding:30px 5vw 60px;color:var(--mute);font-size
 </div></section>
 
 
-<div class="win"><p>Використовуй промокоди та розвивай своє поселення швидше.</p></div>
+<div class="win"><p id="promoWinText">Використовуй промокоди та розвивай своє поселення швидше.</p></div>
 <section class="sheet" id="promo"><div class="in">
   <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
     <span style="font-size:36px">🎁</span>
     <div>
-      <h2 style="font-size:clamp(28px,4vw,44px)">Активація промокоду</h2>
-      <p class="lead">Введіть ваш нікнейм у грі та промокод, щоб отримати ресурси чи золото прямо на сервері!</p>
+      <h2 style="font-size:clamp(28px,4vw,44px)" id="promoTitle">Активація промокоду</h2>
+      <p class="lead" id="promoLead">Введіть ваш нікнейм у грі та промокод, щоб отримати ресурси чи золото прямо на сервері!</p>
     </div>
   </div>
   <div class="promo-box">
     <div class="form-grid">
       <div class="form-group">
-        <label>Ваш нікнейм у грі</label>
+        <label id="promoLabelNick">Ваш нікнейм у грі</label>
         <input type="text" id="promoNick" placeholder="Наприклад: Player1" maxlength="16">
       </div>
       <div class="form-group">
-        <label>Секретний промокод</label>
+        <label id="promoLabelCode">Секретний промокод</label>
         <input type="text" id="promoCode" placeholder="START2026" maxlength="32">
       </div>
       <div class="form-group" style="display:flex;align-items:flex-end">
-        <button class="btn p" id="btnRedeem" style="width:100%;height:48px;justify-content:center">Активувати</button>
+        <button class="btn p" id="btnRedeem" style="width:100%;height:52px;justify-content:center">Активувати</button>
       </div>
     </div>
     <div id="promoMsg" class="feedback-msg"></div>
@@ -468,18 +550,18 @@ footer{background:var(--sheet);padding:30px 5vw 60px;color:var(--mute);font-size
   <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
     <span style="font-size:36px">📩</span>
     <div>
-      <h2 style="font-size:clamp(28px,4vw,44px)">Підтримка та Баг-репорти</h2>
-      <p class="lead">Знайшли баг або маєте пропозицію для гри? Напишіть нам — тікет миттєво з'явиться в підтримці гри.</p>
+      <h2 style="font-size:clamp(28px,4vw,44px)" id="supportTitle">Підтримка та Баг-репорти</h2>
+      <p class="lead" id="supportLead">Знайшли баг або маєте пропозицію для гри? Напишіть нам — розробники отримають ваше повідомлення.</p>
     </div>
   </div>
   <div class="support-box">
     <div class="form-grid-2">
       <div class="form-group">
-        <label>Ваш нікнейм</label>
+        <label id="supportLabelNick">Ваш нікнейм</label>
         <input type="text" id="tNick" placeholder="Player1" maxlength="16">
       </div>
       <div class="form-group">
-        <label>Тип звернення</label>
+        <label id="supportLabelType">Тип звернення</label>
         <select id="tType">
           <option value="bug">🐛 Помилка / Баг</option>
           <option value="idea">💡 Пропозиція для гри</option>
@@ -489,15 +571,15 @@ footer{background:var(--sheet);padding:30px 5vw 60px;color:var(--mute);font-size
       </div>
     </div>
     <div class="form-group" style="margin-top:14px">
-      <label>Тема повідомлення</label>
-      <input type="text" id="tSubj" placeholder="Коротко про тему" maxlength="100">
+      <label id="supportLabelSubj">Тема повідомлення</label>
+      <input type="text" id="tSubj" placeholder="Коротко про проблему чи ідею" maxlength="100">
     </div>
     <div class="form-group" style="margin-top:14px">
-      <label>Детальний опис</label>
+      <label id="supportLabelMsg">Детальний опис</label>
       <textarea id="tMsg" rows="4" placeholder="Опишіть ситуацію максимально детально..."></textarea>
     </div>
     <div style="margin-top:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-      <button class="btn p" id="btnSubmitTicket" style="height:48px">Надіслати тікет</button>
+      <button class="btn p" id="btnSubmitTicket" style="height:52px">Надіслати тікет</button>
       <div id="ticketMsg" class="feedback-msg" style="margin-top:0"></div>
     </div>
   </div>
@@ -672,25 +754,27 @@ const translations = {
   uk: {
     title: 'Pixel Village — Будуй свій маленький світ',
     hero_h1: 'Будуй свій маленький світ',
-    hero_sub: 'Створюй, досліджуй і оживляй своє село',
+    hero_sub: 'Створюй свій власний пікселізований світ з будинками, дорогами та жителями',
     btn_play: 'Грати зараз',
-    btn_explore: 'Досліджувати світ',
+    btn_explore: 'Дослідити',
+    srv_status: 'Сервер онлайн',
+    srv_players: 'Гравців у грі:',
     nav_home: 'Головна',
     nav_about: 'Про гру',
     nav_features: 'Особливості',
-    nav_updates: 'Оновлення',
-    nav_download: 'Завантажити',
     nav_promo: '🎁 Промокоди',
     nav_support: '📩 Підтримка',
-    win1: 'Кожен будинок, поле і міст розміщується тобою.',
-    about_h2: 'Спокійне місце для будівництва.',
-    about_lead: 'Pixel Village — це розслаблена пісочниця. Прокладай дороги, будуй будинки, саджай поля та спостерігай як жителі заповнюють вулиці. Немає таймерів, тож будуй у своєму темпі.',
+    nav_updates: 'Оновлення',
+    nav_download: 'Завантажити',
+    win1: 'Будуй будинки, дороги та мости. Все під твоїм контролем.',
+    about_h2: 'Твоє пікселізоване село',
+    about_lead: 'Pixel Village — це гра де ти створюєш своє власне село. Будуй будинки, прокладай дороги, саджай поля та спостерігай як жителі гуляють вулицями. Без таймерів, без поспіху — будуй у своєму темпі.',
     about_biomes: 'Біоми',
-    about_biomes_desc: 'Луки, ліс, сніг та фермерські землі',
+    about_biomes_desc: 'Луки, ліс, сніг та ферма',
     about_platforms: 'Платформи',
     about_platforms_desc: 'Windows, macOS, Linux, Android, iOS',
-    about_pace: 'Темп',
-    about_pace_desc: 'Без таймерів, без поспіху',
+    about_pace: 'Стиль',
+    about_pace_desc: 'Пікселізована графіка та розслаблений геймплей',
     features_h2: 'Що можна робити у твоєму селі',
     features_build_h3: 'Будуй що завгодно, плитка за плиткою',
     features_build_p: 'Будинки, дороги, мости та сади. Переставляй їх коли захочеш.',
@@ -702,6 +786,27 @@ const translations = {
     features_daynight_p: 'Теплі післяобідні години змінюються спокійними, місячними вечорами.',
     features_share_h3: 'Ділися своїм світом',
     features_share_p: 'Роби скріншоти та обмінюйся ідеями з іншими будівельниками.',
+    win_promo: 'Використовуй промокоди та розвивай своє поселення швидше.',
+    promo_h2: 'Активація промокоду',
+    promo_lead: 'Введіть ваш нікнейм у грі та промокод, щоб отримати ресурси чи золото прямо на сервері!',
+    promo_lbl_nick: 'Ваш нікнейм у грі',
+    promo_ph_nick: 'Наприклад: Player1',
+    promo_lbl_code: 'Секретний промокод',
+    promo_ph_code: 'START2026',
+    promo_btn: 'Активувати',
+    support_h2: 'Підтримка та Баг-репорти',
+    support_lead: 'Знайшли баг або маєте пропозицію для гри? Напишіть нам — розробники отримають ваше повідомлення.',
+    support_lbl_nick: 'Ваш нікнейм',
+    support_lbl_type: 'Тип звернення',
+    support_opt_bug: '🐛 Помилка / Баг',
+    support_opt_idea: '💡 Пропозиція для гри',
+    support_opt_question: '❓ Запитання / Допомога',
+    support_opt_report: '⚠️ Скарга на гравця',
+    support_lbl_subj: 'Тема повідомлення',
+    support_ph_subj: 'Коротко про проблему чи ідею',
+    support_lbl_msg: 'Детальний опис',
+    support_ph_msg: 'Опишіть ситуацію максимально детально...',
+    support_btn: 'Надіслати тікет',
     win2: 'Перетни річку і карта зміниться.',
     explore_h2: 'Чотири біоми, одна карта',
     explore_tab1: 'Село на луках',
@@ -717,53 +822,55 @@ const translations = {
     explore_tab4_name: 'Золоті фермерські землі',
     explore_tab4_desc: 'Ряди врожаю, стоги сіна та фермерський будинок біля стежки.',
     updates_h2: 'Останні оновлення',
-    updates_v138_title: 'v1.3.8 — Новий дизайн налаштувань',
-    updates_v138_desc: 'Повністю оновлено меню налаштувань з сучасним дизайном, iOS-стиль toggles, красиві слайдери та фіолетові градієнти.',
-    updates_v137_title: 'v1.3.7 — Версія в меню',
-    updates_v137_desc: 'Додано відображення версії гри в правому нижньому куті головного меню.',
-    updates_macos_title: 'Підтримка macOS та iOS',
-    updates_macos_desc: 'Гра тепер доступна для MacBook (DMG) та iPhone/iPad (IPA). Автоматична збірка для 5 платформ.',
+    updates_v138_title: 'v1.7.5 — Онлайн мультиплеєр та оптимізація',
+    updates_v138_desc: 'Підключено високошвидкісний європейський сервер pixel-village.online, додано підтримку промокодів та систему тікетів.',
+    updates_v137_title: 'v1.7.3 — Новий інвентар та крафт',
+    updates_v137_desc: 'Додано крафт на гарячі клавіші, налаштування керування та покращено штучний інтелект мобів.',
+    updates_macos_title: 'Підтримка всіх платформ',
+    updates_macos_desc: 'Гра доступна для Windows (EXE), Android (APK), macOS (DMG), Linux та iOS (IPA).',
     updates_autoupdate_title: 'Система автооновлення',
-    updates_autoupdate_desc: 'Гра автоматично оновлюється при запуску. Просто натисніть "Встановити" коли з\'явиться повідомлення про нову версію.',
+    updates_autoupdate_desc: 'Гра автоматично перевіряє наявність нових версій при запуску.',
     download_h2: 'Завантажити гру',
     download_windows: 'Windows',
-    download_windows_desc: 'Десктопна збірка • EXE',
+    download_windows_desc: 'Десктопна версія • EXE',
     download_macos: 'macOS',
-    download_macos_desc: 'Десктопна збірка • DMG',
+    download_macos_desc: 'Десктопна версія • DMG',
     download_linux: 'Linux',
-    download_linux_desc: 'Десктопна збірка • Бінарник',
+    download_linux_desc: 'Десктопна версія • Binary',
     download_android: 'Android',
-    download_android_desc: 'Мобільна збірка • APK',
+    download_android_desc: 'Мобільна версія • APK',
     download_ios: 'iOS',
-    download_ios_desc: 'Мобільна збірка • IPA',
+    download_ios_desc: 'Мобільна версія • IPA',
     download_btn: 'Завантажити',
     community_h2: 'Приєднуйся до спільноти',
-    community_discord_desc: 'Чат та обмін',
-    community_telegram_desc: 'Новини та оновлення',
+    community_discord_desc: 'Спілкування та новини',
+    community_telegram_desc: 'Оновлення та анонси',
     footer: '© 2026 Pixel Village'
   },
   en: {
     title: 'Pixel Village — Build your own little world',
     hero_h1: 'Build your own little world',
-    hero_sub: 'Create, explore and bring your own village to life',
+    hero_sub: 'Create, explore and bring your pixelated village to life with homes, roads and villagers',
     btn_play: 'Play now',
     btn_explore: 'Explore world',
+    srv_status: 'Server online',
+    srv_players: 'Players online:',
     nav_home: 'Home',
     nav_about: 'About',
     nav_features: 'Features',
-    nav_updates: 'Updates',
-    nav_download: 'Download',
     nav_promo: '🎁 Promo Codes',
     nav_support: '📩 Support',
-    win1: 'Every house, field and bridge is placed by you.',
-    about_h2: 'A quiet place to build.',
-    about_lead: 'Pixel Village is a relaxed sandbox. Lay out roads, raise cottages, plant fields and watch villagers fill the streets. There are no timers, so you can build at your own pace.',
+    nav_updates: 'Updates',
+    nav_download: 'Download',
+    win1: 'Build houses, roads and bridges. Everything is under your control.',
+    about_h2: 'Your pixelated village',
+    about_lead: 'Pixel Village is a relaxed sandbox where you build your own village. Place cottages, lay stone roads, plant crops and watch villagers stroll the streets. No timers, no rush — create at your own pace.',
     about_biomes: 'Biomes',
-    about_biomes_desc: 'Meadow, forest, snow and farmland',
+    about_biomes_desc: 'Meadows, forest, snow and farm',
     about_platforms: 'Platforms',
     about_platforms_desc: 'Windows, macOS, Linux, Android, iOS',
     about_pace: 'Pace',
-    about_pace_desc: 'No timers, no rush',
+    about_pace_desc: 'Relaxed sandbox gameplay, no rush',
     features_h2: 'What you can do in your village',
     features_build_h3: 'Build anything, tile by tile',
     features_build_p: 'Homes, roads, bridges and gardens. Rearrange them whenever you like.',
@@ -775,6 +882,27 @@ const translations = {
     features_daynight_p: 'Warm afternoons give way to calm, moonlit evenings.',
     features_share_h3: 'Share your world',
     features_share_p: 'Take screenshots and trade ideas with other builders.',
+    win_promo: 'Redeem secret promo codes and accelerate your settlement progress.',
+    promo_h2: 'Promo Code Redemption',
+    promo_lead: 'Enter your in-game nickname and promo code to receive instant resources and gold on the server!',
+    promo_lbl_nick: 'Your in-game nickname',
+    promo_ph_nick: 'e.g. Player1',
+    promo_lbl_code: 'Secret promo code',
+    promo_ph_code: 'START2026',
+    promo_btn: 'Redeem Code',
+    support_h2: 'Support & Bug Reports',
+    support_lead: 'Found a bug or have a suggestion? Send us a ticket — developers will review your message immediately.',
+    support_lbl_nick: 'Your nickname',
+    support_lbl_type: 'Ticket category',
+    support_opt_bug: '🐛 Bug / Issue',
+    support_opt_idea: '💡 Game Suggestion',
+    support_opt_question: '❓ Question / Help',
+    support_opt_report: '⚠️ Report a Player',
+    support_lbl_subj: 'Subject',
+    support_ph_subj: 'Short summary of the topic',
+    support_lbl_msg: 'Detailed description',
+    support_ph_msg: 'Describe the situation in detail...',
+    support_btn: 'Submit Ticket',
     win2: 'Cross the river and the map changes.',
     explore_h2: 'Four biomes, one map',
     explore_tab1: 'Meadow village',
@@ -790,14 +918,14 @@ const translations = {
     explore_tab4_name: 'Golden farmlands',
     explore_tab4_desc: 'Crop rows, hay bales and a farmhouse by the path.',
     updates_h2: 'Latest updates',
-    updates_v138_title: 'v1.3.8 — New settings design',
-    updates_v138_desc: 'Completely redesigned settings menu with modern design, iOS-style toggles, beautiful sliders and purple gradients.',
-    updates_v137_title: 'v1.3.7 — Version in menu',
-    updates_v137_desc: 'Added version display in the bottom right corner of the main menu.',
-    updates_macos_title: 'macOS and iOS support',
-    updates_macos_desc: 'The game is now available for MacBook (DMG) and iPhone/iPad (IPA). Automatic builds for 5 platforms.',
+    updates_v138_title: 'v1.7.5 — Online Multiplayer & Optimization',
+    updates_v138_desc: 'High-speed European server pixel-village.online connected, added promo codes and support ticket system.',
+    updates_v137_title: 'v1.7.3 — New Inventory & Crafting',
+    updates_v137_desc: 'Added hotkey crafting, keybind customization, and improved animal and mob AI.',
+    updates_macos_title: 'Cross-platform support',
+    updates_macos_desc: 'Available for Windows (EXE), Android (APK), macOS (DMG), Linux, and iOS (IPA).',
     updates_autoupdate_title: 'Auto-update system',
-    updates_autoupdate_desc: 'The game automatically updates on launch. Just click "Install" when the new version notification appears.',
+    updates_autoupdate_desc: 'The game automatically checks for and applies new updates on startup.',
     download_h2: 'Download the game',
     download_windows: 'Windows',
     download_windows_desc: 'Desktop build • EXE',
@@ -818,25 +946,27 @@ const translations = {
   ru: {
     title: 'Pixel Village — Построй свой маленький мир',
     hero_h1: 'Построй свой маленький мир',
-    hero_sub: 'Создавай, исследуй и оживляй свою деревню',
+    hero_sub: 'Создавай свой собственный пиксельный мир с домами, дорогами и жителями',
     btn_play: 'Играть сейчас',
-    btn_explore: 'Исследовать мир',
+    btn_explore: 'Исследовать',
+    srv_status: 'Сервер онлайн',
+    srv_players: 'Игроков в игре:',
     nav_home: 'Главная',
     nav_about: 'О игре',
     nav_features: 'Особенности',
-    nav_updates: 'Обновления',
-    nav_download: 'Скачать',
     nav_promo: '🎁 Промокоды',
     nav_support: '📩 Поддержка',
-    win1: 'Каждый дом, поле и мост размещается тобой.',
-    about_h2: 'Спокойное место для строительства.',
-    about_lead: 'Pixel Village — это расслабленная песочница. Прокладывай дороги, строй дома, сажай поля и наблюдай как жители заполняют улицы. Нет таймеров, так что строй в своём темпе.',
+    nav_updates: 'Обновления',
+    nav_download: 'Скачать',
+    win1: 'Строй дома, дороги и мосты. Всё под твоим контролем.',
+    about_h2: 'Твоя пиксельная деревня',
+    about_lead: 'Pixel Village — это игра, в которой ты создаёшь свою собственную деревню. Строй дома, прокладывай дороги, сажай поля и наблюдай, как жители гуляют по улицам. Без таймеров и спешки — строй в своём темпе.',
     about_biomes: 'Биомы',
-    about_biomes_desc: 'Луга, лес, снег и фермерские земли',
+    about_biomes_desc: 'Луга, лес, снег и ферма',
     about_platforms: 'Платформы',
     about_platforms_desc: 'Windows, macOS, Linux, Android, iOS',
-    about_pace: 'Темп',
-    about_pace_desc: 'Без таймеров, без спешки',
+    about_pace: 'Стиль',
+    about_pace_desc: 'Пиксельная графика и расслабляющий геймплей',
     features_h2: 'Что можно делать в твоей деревне',
     features_build_h3: 'Строй что угодно, плитка за плиткой',
     features_build_p: 'Дома, дороги, мосты и сады. Переставляй их когда захочешь.',
@@ -848,6 +978,27 @@ const translations = {
     features_daynight_p: 'Тёплые послеобеденные часы сменяются спокойными, лунными вечерами.',
     features_share_h3: 'Делись своим миром',
     features_share_p: 'Делай скриншоты и обменивайся идеями с другими строителями.',
+    win_promo: 'Используй промокоды и развивай своё поселение быстрее.',
+    promo_h2: 'Активация промокода',
+    promo_lead: 'Введите ваш никнейм в игре и промокод, чтобы получить ресурсы или золото прямо на сервере!',
+    promo_lbl_nick: 'Ваш никнейм в игре',
+    promo_ph_nick: 'Например: Player1',
+    promo_lbl_code: 'Секретный промокод',
+    promo_ph_code: 'START2026',
+    promo_btn: 'Активировать',
+    support_h2: 'Поддержка и Баг-репорты',
+    support_lead: 'Нашли баг или есть предложение по игре? Напишите нам — разработчики сразу увидят ваше обращение.',
+    support_lbl_nick: 'Ваш никнейм',
+    support_lbl_type: 'Тип обращения',
+    support_opt_bug: '🐛 Ошибка / Баг',
+    support_opt_idea: '💡 Предложение по игре',
+    support_opt_question: '❓ Вопрос / Помощь',
+    support_opt_report: '⚠️ Жалоба на игрока',
+    support_lbl_subj: 'Тема сообщения',
+    support_ph_subj: 'Кратко о проблеме или идее',
+    support_lbl_msg: 'Подробное описание',
+    support_ph_msg: 'Опишите ситуацию максимально подробно...',
+    support_btn: 'Отправить тикет',
     win2: 'Пересеки реку и карта изменится.',
     explore_h2: 'Четыре биома, одна карта',
     explore_tab1: 'Деревня на лугах',
@@ -863,29 +1014,29 @@ const translations = {
     explore_tab4_name: 'Золотые фермерские земли',
     explore_tab4_desc: 'Ряды урожая, стога сена и фермерский дом у тропинки.',
     updates_h2: 'Последние обновления',
-    updates_v138_title: 'v1.3.8 — Новый дизайн настроек',
-    updates_v138_desc: 'Полностью обновлено меню настроек с современным дизайном, iOS-стиль toggles, красивые слайдеры и фиолетовые градиенты.',
-    updates_v137_title: 'v1.3.7 — Версия в меню',
-    updates_v137_desc: 'Добавлено отображение версии игры в правом нижнем углу главного меню.',
-    updates_macos_title: 'Поддержка macOS и iOS',
-    updates_macos_desc: 'Игра теперь доступна для MacBook (DMG) и iPhone/iPad (IPA). Автоматическая сборка для 5 платформ.',
+    updates_v138_title: 'v1.7.5 — Онлайн мультиплеер и оптимизация',
+    updates_v138_desc: 'Подключен высокоскоростной сервер pixel-village.online, добавлена система промокодов и тикетов.',
+    updates_v137_title: 'v1.7.3 — Новый инвентарь и крафт',
+    updates_v137_desc: 'Добавлен крафт на горячие клавиши, кастомизация управления и улучшен ИИ животных.',
+    updates_macos_title: 'Поддержка всех платформ',
+    updates_macos_desc: 'Игра доступна для Windows (EXE), Android (APK), macOS (DMG), Linux и iOS (IPA).',
     updates_autoupdate_title: 'Система автообновления',
-    updates_autoupdate_desc: 'Игра автоматически обновляется при запуске. Просто нажми "Установить" когда появится уведомление о новой версии.',
+    updates_autoupdate_desc: 'Игра автоматически проверяет обновления при каждом запуске.',
     download_h2: 'Скачать игру',
     download_windows: 'Windows',
     download_windows_desc: 'Десктопная сборка • EXE',
     download_macos: 'macOS',
     download_macos_desc: 'Десктопная сборка • DMG',
     download_linux: 'Linux',
-    download_linux_desc: 'Десктопная сборка • Бинарник',
+    download_linux_desc: 'Десктопная сборка • Binary',
     download_android: 'Android',
     download_android_desc: 'Мобильная сборка • APK',
     download_ios: 'iOS',
     download_ios_desc: 'Мобильная сборка • IPA',
     download_btn: 'Скачать',
     community_h2: 'Присоединяйся к сообществу',
-    community_discord_desc: 'Чат и обмен',
-    community_telegram_desc: 'Новости и обновления',
+    community_discord_desc: 'Общение и новости',
+    community_telegram_desc: 'Анонсы и обновления',
     footer: '© 2026 Pixel Village'
   }
 };
@@ -898,15 +1049,19 @@ function setLang(lang) {
   // Оновлення кнопок мови
   $$('.lang button').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
 
-  // Оновлення тексту
   const t = translations[lang];
 
   // Hero секція
-  $('.hero h1').textContent = t.hero_h1;
-  $('.hero .sub').textContent = t.hero_sub;
-  $$('.hero .btn')[0].textContent = t.btn_play;
-  $$('.hero .btn')[1].textContent = t.btn_explore;
+  if ($('.hero h1')) $('.hero h1').textContent = t.hero_h1;
+  if ($('.hero .sub')) $('.hero .sub').textContent = t.hero_sub;
+  if ($$('.hero .btn')[0]) $$('.hero .btn')[0].textContent = t.btn_play;
+  if ($$('.hero .btn')[1]) $$('.hero .btn')[1].textContent = t.btn_explore;
 
+  // Серверний статус
+  if ($('#srvStatusText') && !$('#srvStatusText').textContent.includes('недоступний')) {
+    $('#srvStatusText').textContent = t.srv_status;
+  }
+  if ($('#srvLabelPlayers')) $('#srvLabelPlayers').textContent = t.srv_players;
 
   // Навігація
   const navA = (href) => $(`.nav-center li a[href="${href}"], .btn-nav-dl[href="${href}"]`);
@@ -918,83 +1073,147 @@ function setLang(lang) {
   if (navA('#updates')) navA('#updates').textContent = t.nav_updates;
   if (navA('#download')) navA('#download').textContent = t.nav_download;
 
-
   // Win секції
-  $$('.win p')[0].textContent = t.win1;
-  $$('.win p')[1].textContent = t.win2;
+  const wins = $$('.win p');
+  if (wins[0]) wins[0].textContent = t.win1;
+  if ($('#promoWinText')) $('#promoWinText').textContent = t.win_promo;
+  if (wins[2]) wins[2].textContent = t.win2;
+  else if (wins[1] && !$('#promoWinText')) wins[1].textContent = t.win2;
 
   // About секція
-  $('#about h2').textContent = t.about_h2;
-  $('#about .lead').textContent = t.about_lead;
+  if ($('#about h2')) $('#about h2').textContent = t.about_h2;
+  if ($('#about .lead')) $('#about .lead').textContent = t.about_lead;
   const aboutDl = $$('#about dl div');
-  aboutDl[0].querySelector('dt').textContent = t.about_biomes;
-  aboutDl[0].querySelector('dd').textContent = t.about_biomes_desc;
-  aboutDl[1].querySelector('dt').textContent = t.about_platforms;
-  aboutDl[1].querySelector('dd').textContent = t.about_platforms_desc;
-  aboutDl[2].querySelector('dt').textContent = t.about_pace;
-  aboutDl[2].querySelector('dd').textContent = t.about_pace_desc;
+  if (aboutDl[0]) {
+    aboutDl[0].querySelector('dt').textContent = t.about_biomes;
+    aboutDl[0].querySelector('dd').textContent = t.about_biomes_desc;
+  }
+  if (aboutDl[1]) {
+    aboutDl[1].querySelector('dt').textContent = t.about_platforms;
+    aboutDl[1].querySelector('dd').textContent = t.about_platforms_desc;
+  }
+  if (aboutDl[2]) {
+    aboutDl[2].querySelector('dt').textContent = t.about_pace;
+    aboutDl[2].querySelector('dd').textContent = t.about_pace_desc;
+  }
 
   // Features секція
-  $('#features h2').textContent = t.features_h2;
+  if ($('#features h2')) $('#features h2').textContent = t.features_h2;
   const featuresTiles = $$('#features .t');
-  featuresTiles[0].querySelector('h3').textContent = t.features_build_h3;
-  featuresTiles[0].querySelector('p').textContent = t.features_build_p;
-  featuresTiles[1].querySelector('h3').textContent = t.features_villagers_h3;
-  featuresTiles[1].querySelector('p').textContent = t.features_villagers_p;
-  featuresTiles[2].querySelector('h3').textContent = t.features_farm_h3;
-  featuresTiles[2].querySelector('p').textContent = t.features_farm_p;
-  featuresTiles[3].querySelector('h3').textContent = t.features_daynight_h3;
-  featuresTiles[3].querySelector('p').textContent = t.features_daynight_p;
-  featuresTiles[4].querySelector('h3').textContent = t.features_share_h3;
-  featuresTiles[4].querySelector('p').textContent = t.features_share_p;
+  if (featuresTiles[0]) {
+    featuresTiles[0].querySelector('h3').textContent = t.features_build_h3;
+    featuresTiles[0].querySelector('p').textContent = t.features_build_p;
+  }
+  if (featuresTiles[1]) {
+    featuresTiles[1].querySelector('h3').textContent = t.features_villagers_h3;
+    featuresTiles[1].querySelector('p').textContent = t.features_villagers_p;
+  }
+  if (featuresTiles[2]) {
+    featuresTiles[2].querySelector('h3').textContent = t.features_farm_h3;
+    featuresTiles[2].querySelector('p').textContent = t.features_farm_p;
+  }
+  if (featuresTiles[3]) {
+    featuresTiles[3].querySelector('h3').textContent = t.features_daynight_h3;
+    featuresTiles[3].querySelector('p').textContent = t.features_daynight_p;
+  }
+  if (featuresTiles[4]) {
+    featuresTiles[4].querySelector('h3').textContent = t.features_share_h3;
+    featuresTiles[4].querySelector('p').textContent = t.features_share_p;
+  }
+
+  // Promo секція
+  if ($('#promoTitle')) $('#promoTitle').textContent = t.promo_h2;
+  if ($('#promoLead')) $('#promoLead').textContent = t.promo_lead;
+  if ($('#promoLabelNick')) $('#promoLabelNick').textContent = t.promo_lbl_nick;
+  if ($('#promoNick')) $('#promoNick').placeholder = t.promo_ph_nick;
+  if ($('#promoLabelCode')) $('#promoLabelCode').textContent = t.promo_lbl_code;
+  if ($('#promoCode')) $('#promoCode').placeholder = t.promo_ph_code;
+  if ($('#btnRedeem')) $('#btnRedeem').textContent = t.promo_btn;
+
+  // Support секція
+  if ($('#supportTitle')) $('#supportTitle').textContent = t.support_h2;
+  if ($('#supportLead')) $('#supportLead').textContent = t.support_lead;
+  if ($('#supportLabelNick')) $('#supportLabelNick').textContent = t.support_lbl_nick;
+  if ($('#tNick')) $('#tNick').placeholder = t.support_lbl_nick;
+  if ($('#supportLabelType')) $('#supportLabelType').textContent = t.support_lbl_type;
+  const tType = $('#tType');
+  if (tType && tType.options.length >= 4) {
+    tType.options[0].textContent = t.support_opt_bug;
+    tType.options[1].textContent = t.support_opt_idea;
+    tType.options[2].textContent = t.support_opt_question;
+    tType.options[3].textContent = t.support_opt_report;
+  }
+  if ($('#supportLabelSubj')) $('#supportLabelSubj').textContent = t.support_lbl_subj;
+  if ($('#tSubj')) $('#tSubj').placeholder = t.support_ph_subj;
+  if ($('#supportLabelMsg')) $('#supportLabelMsg').textContent = t.support_lbl_msg;
+  if ($('#tMsg')) $('#tMsg').placeholder = t.support_ph_msg;
+  if ($('#btnSubmitTicket')) $('#btnSubmitTicket').textContent = t.support_btn;
 
   // Explore секція
-  $('#explore h2').textContent = t.explore_h2;
+  if ($('#explore h2')) $('#explore h2').textContent = t.explore_h2;
   const tabs = $$('.tab');
-  tabs[0].textContent = t.explore_tab1;
-  tabs[1].textContent = t.explore_tab2;
-  tabs[2].textContent = t.explore_tab3;
-  tabs[3].textContent = t.explore_tab4;
+  if (tabs[0]) tabs[0].textContent = t.explore_tab1;
+  if (tabs[1]) tabs[1].textContent = t.explore_tab2;
+  if (tabs[2]) tabs[2].textContent = t.explore_tab3;
+  if (tabs[3]) tabs[3].textContent = t.explore_tab4;
 
   // Updates секція
-  $('#updates h2').textContent = t.updates_h2;
+  if ($('#updates h2')) $('#updates h2').textContent = t.updates_h2;
   const updates = $$('#updates .log > div');
-  updates[0].querySelector('h3').textContent = t.updates_v138_title;
-  updates[0].querySelector('p').textContent = t.updates_v138_desc;
-  updates[1].querySelector('h3').textContent = t.updates_v137_title;
-  updates[1].querySelector('p').textContent = t.updates_v137_desc;
-  updates[2].querySelector('h3').textContent = t.updates_macos_title;
-  updates[2].querySelector('p').textContent = t.updates_macos_desc;
-  updates[3].querySelector('h3').textContent = t.updates_autoupdate_title;
-  updates[3].querySelector('p').textContent = t.updates_autoupdate_desc;
+  if (updates[0]) {
+    updates[0].querySelector('h3').textContent = t.updates_v138_title;
+    updates[0].querySelector('p').textContent = t.updates_v138_desc;
+  }
+  if (updates[1]) {
+    updates[1].querySelector('h3').textContent = t.updates_v137_title;
+    updates[1].querySelector('p').textContent = t.updates_v137_desc;
+  }
+  if (updates[2]) {
+    updates[2].querySelector('h3').textContent = t.updates_macos_title;
+    updates[2].querySelector('p').textContent = t.updates_macos_desc;
+  }
+  if (updates[3]) {
+    updates[3].querySelector('h3').textContent = t.updates_autoupdate_title;
+    updates[3].querySelector('p').textContent = t.updates_autoupdate_desc;
+  }
 
   // Download секція
-  $('#download h2').textContent = t.download_h2;
+  if ($('#download h2')) $('#download h2').textContent = t.download_h2;
   const downloads = $$('#download .dl');
-  downloads[0].querySelector('h3').textContent = t.download_windows;
-  downloads[0].querySelector('span').textContent = t.download_windows_desc;
-  downloads[0].querySelector('.btn').textContent = t.download_btn;
-  downloads[1].querySelector('h3').textContent = t.download_macos;
-  downloads[1].querySelector('span').textContent = t.download_macos_desc;
-  downloads[1].querySelector('.btn').textContent = t.download_btn;
-  downloads[2].querySelector('h3').textContent = t.download_linux;
-  downloads[2].querySelector('span').textContent = t.download_linux_desc;
-  downloads[2].querySelector('.btn').textContent = t.download_btn;
-  downloads[3].querySelector('h3').textContent = t.download_android;
-  downloads[3].querySelector('span').textContent = t.download_android_desc;
-  downloads[3].querySelector('.btn').textContent = t.download_btn;
-  downloads[4].querySelector('h3').textContent = t.download_ios;
-  downloads[4].querySelector('span').textContent = t.download_ios_desc;
-  downloads[4].querySelector('.btn').textContent = t.download_btn;
+  if (downloads[0]) {
+    downloads[0].querySelector('h3').textContent = t.download_windows;
+    downloads[0].querySelector('span').textContent = t.download_windows_desc;
+    downloads[0].querySelector('.btn').textContent = t.download_btn;
+  }
+  if (downloads[1]) {
+    downloads[1].querySelector('h3').textContent = t.download_macos;
+    downloads[1].querySelector('span').textContent = t.download_macos_desc;
+    downloads[1].querySelector('.btn').textContent = t.download_btn;
+  }
+  if (downloads[2]) {
+    downloads[2].querySelector('h3').textContent = t.download_linux;
+    downloads[2].querySelector('span').textContent = t.download_linux_desc;
+    downloads[2].querySelector('.btn').textContent = t.download_btn;
+  }
+  if (downloads[3]) {
+    downloads[3].querySelector('h3').textContent = t.download_android;
+    downloads[3].querySelector('span').textContent = t.download_android_desc;
+    downloads[3].querySelector('.btn').textContent = t.download_btn;
+  }
+  if (downloads[4]) {
+    downloads[4].querySelector('h3').textContent = t.download_ios;
+    downloads[4].querySelector('span').textContent = t.download_ios_desc;
+    downloads[4].querySelector('.btn').textContent = t.download_btn;
+  }
 
   // Community секція
-  $('#community h2').textContent = t.community_h2;
+  if ($('#community h2')) $('#community h2').textContent = t.community_h2;
   const socLinks = $$('#community .soc a');
-  socLinks[0].querySelector('small').textContent = t.community_discord_desc;
-  socLinks[1].querySelector('small').textContent = t.community_telegram_desc;
+  if (socLinks[0]) socLinks[0].querySelector('small').textContent = t.community_discord_desc;
+  if (socLinks[1]) socLinks[1].querySelector('small').textContent = t.community_telegram_desc;
 
   // Footer
-  $('footer').textContent = t.footer;
+  if ($('footer')) $('footer').textContent = t.footer;
 
   // Оновлення biome табів (для explore)
   BI[0][0] = t.explore_tab1_name;
