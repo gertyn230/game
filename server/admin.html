@@ -2338,7 +2338,6 @@ async function deleteUpdateSubmit(id) {
 </script>
 
 <!-- Modal Create / Edit Update -->
-<!-- Modal Create / Edit Update -->
 <div class="modal-overlay" id="updateModal">
   <div class="modal" style="max-width:620px;">
     <div class="modal-header">
@@ -2406,22 +2405,6 @@ async function deleteUpdateSubmit(id) {
         </div>
       </div>
 
-      <div id="updFormMsg" style="font-size:13px;margin-bottom:12px;padding:8px;border-radius:4px;display:none"></div>
-      <div style="display:flex;justify-content:flex-end;gap:10px">
-        <button type="button" class="btn" onclick="closeUpdateModal()">Скасувати</button>
-        <button type="submit" class="btn btn-primary" id="btnSaveUpdate">Опублікувати на сайт</button>
-      </div>
-    </form>
-  </div>
-</div>
-      <div class="form-group">
-        <label>Заголовок релізу</label>
-        <input type="text" id="updTitle" placeholder="Коротко: про що це оновлення" required maxlength="120">
-      </div>
-      <div class="form-group">
-        <label>Детальний опис та список змін</label>
-        <textarea id="updDesc" rows="6" placeholder="Опишіть список змін, нововведень та виправлень..." required style="resize:vertical"></textarea>
-      </div>
       <div id="updFormMsg" style="font-size:13px;margin-bottom:12px;padding:8px;border-radius:4px;display:none"></div>
       <div style="display:flex;justify-content:flex-end;gap:10px">
         <button type="button" class="btn" onclick="closeUpdateModal()">Скасувати</button>
