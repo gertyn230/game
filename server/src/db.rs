@@ -99,6 +99,19 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
 
     sqlx::query(
         r#"
+        CREATE TABLE IF NOT EXISTS promocode_redemptions (
+            code TEXT NOT NULL,
+            player TEXT NOT NULL,
+            redeemed_at INTEGER NOT NULL,
+            PRIMARY KEY (code, player)
+        )
+        "#
+    )
+    .execute(&pool)
+    .await?;
+
+    sqlx::query(
+        r#"
         CREATE TABLE IF NOT EXISTS game_updates (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             version TEXT NOT NULL,
@@ -308,7 +321,14 @@ pub async fn delete_promocode(pool: &SqlitePool, code: &str) -> Result<(), sqlx:
     Ok(())
 }
 
-pub async fn redeem_promocode(pool: &SqlitePool, code: &str) -> Result<Option<String>, sqlx::Error> {
+#[derive(Debug, PartialEq, Eq)]
+pub enum RedeemResult {
+    Success(String),
+    AlreadyRedeemed,
+    InvalidOrExpired,
+}
+
+pub async fn redeem_promocode(pool: &SqlitePool, code: &str, player: &str) -> Result<RedeemResult, sqlx::Error> {
     let row = sqlx::query("SELECT reward, used, limit_uses, active FROM promocodes WHERE code = ?")
         .bind(code)
         .fetch_optional(pool)
@@ -321,7 +341,19 @@ pub async fn redeem_promocode(pool: &SqlitePool, code: &str) -> Result<Option<St
         let reward: String = r.get("reward");
 
         if active == 0 || used >= limit_uses {
-            return Ok(None);
+            return Ok(RedeemResult::InvalidOrExpired);
+        }
+
+        let clean_player = player.trim();
+        if !clean_player.is_empty() {
+            let already: Option<i64> = sqlx::query_scalar("SELECT 1 FROM promocode_redemptions WHERE code = ? AND player = ?")
+                .bind(code)
+                .bind(clean_player)
+                .fetch_optional(pool)
+                .await?;
+            if already.is_some() {
+                return Ok(RedeemResult::AlreadyRedeemed);
+            }
         }
 
         sqlx::query("UPDATE promocodes SET used = used + 1 WHERE code = ?")
@@ -329,9 +361,19 @@ pub async fn redeem_promocode(pool: &SqlitePool, code: &str) -> Result<Option<St
             .execute(pool)
             .await?;
 
-        Ok(Some(reward))
+        if !clean_player.is_empty() {
+            let now = chrono::Utc::now().timestamp();
+            let _ = sqlx::query("INSERT INTO promocode_redemptions (code, player, redeemed_at) VALUES (?, ?, ?)")
+                .bind(code)
+                .bind(clean_player)
+                .bind(now)
+                .execute(pool)
+                .await;
+        }
+
+        Ok(RedeemResult::Success(reward))
     } else {
-        Ok(None)
+        Ok(RedeemResult::InvalidOrExpired)
     }
 }
 

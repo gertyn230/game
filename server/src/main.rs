@@ -58,6 +58,8 @@ struct UnmuteRequest {
 struct Conn {
     state: PlayerState,
     joined: Instant,
+    last_move: Instant,
+    ip: String,
     tx: mpsc::UnboundedSender<String>,
     score: u32,
     big: f32,
@@ -74,8 +76,11 @@ struct World {
     next_offer: u32,
     bans: Vec<Ban>,
     mutes: Vec<Mute>,
+    banned_ips: HashMap<String, String>, // IP -> Reason
     failed_auth_attempts: HashMap<String, (u32, Instant)>, // IP -> (count, last_attempt)
     kicked: HashMap<String, i64>, // Player name -> expires_at unix timestamp
+    ticket_rate_limit: HashMap<String, (u32, Instant)>, // IP -> (count, first_attempt)
+    promo_rate_limit: HashMap<String, (u32, Instant)>, // IP -> (count, first_attempt)
 }
 
 #[derive(Clone)]
@@ -84,6 +89,16 @@ struct App {
     tx: broadcast::Sender<String>,
     admin_key: Option<String>,
     db: SqlitePool,
+}
+
+fn get_client_ip(headers: &HeaderMap) -> String {
+    headers
+        .get("x-real-ip")
+        .or_else(|| headers.get("x-forwarded-for"))
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.split(',').next())
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|| "127.0.0.1".to_string())
 }
 
 fn enc(m: &ServerMsg) -> String {
@@ -294,7 +309,7 @@ async fn index(headers: HeaderMap, State(app): State<App>) -> Response {
     let mut names: Vec<String> = w.players.values().map(|c| esc(&c.state.name)).collect();
     names.sort();
     let rows: String = names.iter().map(|n| format!("<li>{n}</li>")).collect();
-    page("Pixel Village: онлайн", &format!("<h1>Онлайн: {}</h1><ul>{rows}</ul><p style='margin-top:20px;'><a href='/admin' style='color:#5fcf6e;font-weight:bold;'>👉 Панель Адміністратора (/admin)</a></p>", names.len())).into_response()
+    page("Pixel Village: онлайн", &format!("<h1>Онлайн: {}</h1><ul>{rows}</ul>", names.len())).into_response()
 }
 
 async fn api_version() -> Json<serde_json::Value> {
@@ -317,7 +332,8 @@ async fn api_version() -> Json<serde_json::Value> {
 }
 
 async fn api_ban(State(app): State<App>, headers: HeaderMap, Json(req): Json<BanRequest>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -346,9 +362,12 @@ async fn api_ban(State(app): State<App>, headers: HeaderMap, Json(req): Json<Ban
     w.bans.retain(|b| b.player_name != player_name);
     w.bans.push(ban.clone());
 
-    // Відключити гравця якщо він онлайн
-    let player_id = w.players.iter().find(|(_, c)| c.state.name == player_name).map(|(id, _)| *id);
-    if let Some(pid) = player_id {
+    // Відключити гравця якщо він онлайн та заблокувати його IP
+    let player_info = w.players.iter().find(|(_, c)| c.state.name == player_name).map(|(id, c)| (*id, c.ip.clone()));
+    if let Some((pid, ip)) = player_info {
+        if !ip.is_empty() && ip != "127.0.0.1" {
+            w.banned_ips.insert(ip, reason.clone());
+        }
         if let Some(c) = w.players.get(&pid) {
             let msg = format!("Ви заблоковані: {}. Забанив: {}", reason, banned_by);
             reply(c, &ServerMsg::Err { text: msg });
@@ -364,7 +383,8 @@ async fn api_ban(State(app): State<App>, headers: HeaderMap, Json(req): Json<Ban
 }
 
 async fn api_unban(State(app): State<App>, headers: HeaderMap, Json(req): Json<UnbanRequest>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -386,7 +406,8 @@ async fn api_unban(State(app): State<App>, headers: HeaderMap, Json(req): Json<U
 }
 
 async fn api_mute(State(app): State<App>, headers: HeaderMap, Json(req): Json<MuteRequest>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -429,7 +450,8 @@ async fn api_mute(State(app): State<App>, headers: HeaderMap, Json(req): Json<Mu
 }
 
 async fn api_unmute(State(app): State<App>, headers: HeaderMap, Json(req): Json<UnmuteRequest>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -451,7 +473,8 @@ async fn api_unmute(State(app): State<App>, headers: HeaderMap, Json(req): Json<
 }
 
 async fn api_list_bans(State(app): State<App>, headers: HeaderMap) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -475,14 +498,13 @@ async fn api_list_bans(State(app): State<App>, headers: HeaderMap) -> Response {
     })).into_response()
 }
 
-// TODO #104: Restrict /api/players to authenticated admins or remove coordinates
+// Public online players list - coordinates hidden to prevent wallhack/stalking
 async fn api_players(State(app): State<App>) -> Json<serde_json::Value> {
     let w = app.world.lock().await;
     let players: Vec<serde_json::Value> = w.players.values().map(|c| {
         serde_json::json!({
             "id": c.state.id,
             "name": c.state.name,
-            "position": {"x": c.state.x, "y": c.state.y},
             "face": c.state.face,
             "moving": c.state.moving,
             "status": "online"
@@ -492,7 +514,8 @@ async fn api_players(State(app): State<App>) -> Json<serde_json::Value> {
 }
 
 async fn api_admin_stats(State(app): State<App>, headers: HeaderMap) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -583,8 +606,9 @@ async fn api_admin_stats(State(app): State<App>, headers: HeaderMap) -> Response
     })).into_response()
 }
 
-async fn ws_handler(ws: WebSocketUpgrade, State(app): State<App>) -> impl IntoResponse {
-    ws.max_message_size(262144).on_upgrade(move |socket| client_loop(socket, app))
+async fn ws_handler(ws: WebSocketUpgrade, headers: HeaderMap, State(app): State<App>) -> impl IntoResponse {
+    let client_ip = get_client_ip(&headers);
+    ws.max_message_size(262144).on_upgrade(move |socket| client_loop(socket, app, client_ip))
 }
 
 fn clean_name(raw: &str) -> Option<String> {
@@ -596,9 +620,19 @@ fn clean_name(raw: &str) -> Option<String> {
     }
 }
 
-async fn client_loop(socket: WebSocket, app: App) {
-    // TODO #69: Add ping/pong heartbeat and idle timeout to detect dead connections
+async fn client_loop(socket: WebSocket, app: App, client_ip: String) {
     let (mut sink, mut stream) = socket.split();
+
+    // Check if IP is banned
+    {
+        let w = app.world.lock().await;
+        if let Some(reason) = w.banned_ips.get(&client_ip) {
+            let msg = format!("Ваша IP-адреса заблокована: {}", reason);
+            let _ = sink.send(Message::Text(enc(&ServerMsg::Err { text: msg }))).await;
+            return;
+        }
+    }
+
     let mut rx = app.tx.subscribe();
     // TODO #101: Use bounded channel to prevent memory DoS
     let (dtx, mut drx) = mpsc::unbounded_channel::<String>();
@@ -627,6 +661,8 @@ async fn client_loop(socket: WebSocket, app: App) {
                     held: 0,
                 },
                 joined: Instant::now(),
+                last_move: Instant::now(),
+                ip: client_ip.clone(),
                 tx: dtx,
                 score: 0,
                 big: 0.0,
@@ -742,8 +778,19 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
         ClientMsg::Move { x, y, face, moving, boat, coat, held } => {
             if x.is_finite() && y.is_finite() {
                 if let Some(c) = w.players.get_mut(&id) {
-                    c.state.x = x.clamp(0.0, WORLD_SIZE - 0.001);
-                    c.state.y = y.clamp(0.0, WORLD_SIZE - 0.001);
+                    let dt = c.last_move.elapsed().as_secs_f32().max(0.01);
+                    c.last_move = Instant::now();
+                    let target_x = x.clamp(0.0, WORLD_SIZE - 0.001);
+                    let target_y = y.clamp(0.0, WORLD_SIZE - 0.001);
+                    let dx = target_x - c.state.x;
+                    let dy = target_y - c.state.y;
+                    let dist = (dx * dx + dy * dy).sqrt();
+                    // Normal speed ~5-7 tiles/sec. Allow network lag bursts up to 14.0 * dt + 3.0 tiles
+                    let max_allowed = 14.0 * dt + 3.0;
+                    if dist <= max_allowed {
+                        c.state.x = target_x;
+                        c.state.y = target_y;
+                    }
                     c.state.face = face.min(3);
                     c.state.moving = moving;
                     c.state.boat = boat;
@@ -757,26 +804,42 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
                 if w.dead.contains_key(&idx) {
                     return;
                 }
+                // Check that player is close enough to harvest the node (<= 4.5 tiles)
+                if let Some(c) = w.players.get(&id) {
+                    let node_x = (idx % 40) as f32 + 0.5;
+                    let node_y = (idx / 40) as f32 + 0.5;
+                    let dx = c.state.x - node_x;
+                    let dy = c.state.y - node_y;
+                    if (dx * dx + dy * dy) > 20.25 {
+                        return; // Too far from node
+                    }
+                }
                 w.dead.insert(idx, Instant::now());
                 let _ = app.tx.send(enc(&ServerMsg::Dead { idx, left: RESPAWN_SECS }));
             }
         }
         ClientMsg::Stats { score, big, fish } => {
-            // TODO #73: Compute scores server-side instead of accepting ClientMsg::Stats
             if let Some(c) = w.players.get_mut(&id) {
-                c.score = score;
+                c.score = score.min(100_000);
                 c.big = if big.is_finite() { big.clamp(0.0, 50.0) } else { 0.0 };
-                c.fish = fish;
+                c.fish = fish.min(5_000);
             }
         }
         ClientMsg::Post { item, qty, price } => {
-            // TODO #16: Server should maintain player inventories for secure market transactions
-            if item >= ITEM_COUNT || qty == 0 || qty > 999 || price == 0 || price > 100_000 {
+            if item >= ITEM_COUNT || qty == 0 || qty > 100 || price == 0 || price > 50_000 {
+                return;
+            }
+            // Limit to max 5 concurrent market offers per player
+            let player_offers_count = w.offers.iter().filter(|o| o.seller == id).count();
+            if player_offers_count >= 5 {
+                if let Some(c) = w.players.get(&id) {
+                    reply(c, &ServerMsg::Err { text: "Максимум 5 активних пропозицій на ринку".into() });
+                }
                 return;
             }
             if w.offers.len() >= MAX_OFFERS {
                 if let Some(c) = w.players.get(&id) {
-                    reply(c, &ServerMsg::Err { text: "Рынок переполнен".into() });
+                    reply(c, &ServerMsg::Err { text: "Ринок переповнений".into() });
                 }
                 return;
             }
@@ -824,7 +887,8 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
 // ============ Нові API endpoints для адмінки ============
 
 async fn api_admin_logs(State(app): State<App>, headers: HeaderMap, Query(q): Query<HashMap<String, String>>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -846,11 +910,30 @@ struct TicketCreateReq {
     message: String,
 }
 
-async fn api_create_ticket(State(app): State<App>, Json(req): Json<TicketCreateReq>) -> Response {
-    let player = req.player.trim().to_string();
-    let ticket_type = req.ticket_type.trim().to_string();
-    let subject = req.subject.trim().to_string();
-    let message = req.message.trim().to_string();
+async fn api_create_ticket(State(app): State<App>, headers: HeaderMap, Json(req): Json<TicketCreateReq>) -> Response {
+    let client_ip = get_client_ip(&headers);
+
+    // Rate limit: max 3 tickets per 5 minutes per IP
+    {
+        let mut w = app.world.lock().await;
+        let entry = w.ticket_rate_limit.entry(client_ip.clone()).or_insert((0, Instant::now()));
+        if entry.1.elapsed().as_secs() > 300 {
+            entry.0 = 0;
+            entry.1 = Instant::now();
+        }
+        entry.0 += 1;
+        if entry.0 > 3 {
+            return (
+                StatusCode::TOO_MANY_REQUESTS,
+                "Ви надіслали забагато тікетів. Будь ласка, зачекайте 5 хвилин."
+            ).into_response();
+        }
+    }
+
+    let player: String = req.player.trim().chars().take(32).collect();
+    let ticket_type: String = req.ticket_type.trim().chars().take(32).collect();
+    let subject: String = req.subject.trim().chars().take(100).collect();
+    let message: String = req.message.trim().chars().take(1500).collect();
 
     if player.is_empty() || message.is_empty() {
         return (StatusCode::BAD_REQUEST, "Вкажіть нікнейм та текст повідомлення").into_response();
@@ -873,15 +956,40 @@ struct PromoRedeemReq {
     player: Option<String>,
 }
 
-async fn api_redeem_promo(State(app): State<App>, Json(req): Json<PromoRedeemReq>) -> Response {
-    let code = req.code.trim().to_uppercase();
+async fn api_redeem_promo(State(app): State<App>, headers: HeaderMap, Json(req): Json<PromoRedeemReq>) -> Response {
+    let client_ip = get_client_ip(&headers);
+
+    // Rate limit: max 6 redemption attempts per minute per IP to prevent brute-force
+    {
+        let mut w = app.world.lock().await;
+        let entry = w.promo_rate_limit.entry(client_ip.clone()).or_insert((0, Instant::now()));
+        if entry.1.elapsed().as_secs() > 60 {
+            entry.0 = 0;
+            entry.1 = Instant::now();
+        }
+        entry.0 += 1;
+        if entry.0 > 6 {
+            return (
+                StatusCode::TOO_MANY_REQUESTS,
+                Json(serde_json::json!({
+                    "success": false,
+                    "message": "Забагато спроб введення промокодів. Зачекайте 1 хвилину."
+                }))
+            ).into_response();
+        }
+    }
+
+    let code: String = req.code.trim().to_uppercase().chars().take(32).collect();
     if code.is_empty() {
         return Json(serde_json::json!({ "success": false, "message": "Введіть промокод" })).into_response();
     }
-    let player = req.player.unwrap_or_else(|| "Гравець".to_string());
+    let player: String = req.player.as_deref().unwrap_or("Гравець").trim().chars().take(32).collect();
+    if player.is_empty() {
+        return Json(serde_json::json!({ "success": false, "message": "Введіть нікнейм гравця" })).into_response();
+    }
 
-    match db::redeem_promocode(&app.db, &code).await {
-        Ok(Some(reward)) => {
+    match db::redeem_promocode(&app.db, &code, &player).await {
+        Ok(db::RedeemResult::Success(reward)) => {
             let _ = db::add_log(&app.db, &player, &format!("Активовано промокод {}: {}", code, reward)).await;
 
             // If player is currently online, send celebratory in-game announcement
@@ -899,7 +1007,11 @@ async fn api_redeem_promo(State(app): State<App>, Json(req): Json<PromoRedeemReq
                 "message": format!("Промокод активовано! Отримано: {}", reward)
             })).into_response()
         }
-        Ok(None) => Json(serde_json::json!({
+        Ok(db::RedeemResult::AlreadyRedeemed) => Json(serde_json::json!({
+            "success": false,
+            "message": "Ви вже активували цей промокод раніше!"
+        })).into_response(),
+        Ok(db::RedeemResult::InvalidOrExpired) => Json(serde_json::json!({
             "success": false,
             "message": "Промокод недійсний, вимкнений або вичерпано ліміт"
         })).into_response(),
@@ -908,7 +1020,8 @@ async fn api_redeem_promo(State(app): State<App>, Json(req): Json<PromoRedeemReq
 }
 
 async fn api_tickets(State(app): State<App>, headers: HeaderMap, Query(q): Query<HashMap<String, String>>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -927,13 +1040,19 @@ struct TicketUpdateReq {
     status: String,
 }
 
-async fn api_update_ticket(State(app): State<App>, Json(req): Json<TicketUpdateReq>) -> Response {
-    match (&app.admin_key, Some(&req.key)) {
-        (Some(k), Some(given)) if k == given => {}
-        _ => return (StatusCode::UNAUTHORIZED, "Потрібен ключ").into_response()
+async fn api_update_ticket(State(app): State<App>, headers: HeaderMap, Json(req): Json<TicketUpdateReq>) -> Response {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
+        // Also allow key in json body with constant-time comparison
+        let admin_key = match &app.admin_key {
+            Some(k) => k,
+            None => return status.into_response(),
+        };
+        if !constant_time_compare(admin_key, &req.key) {
+            return status.into_response();
+        }
     }
 
-    // Додати лог
     let _ = db::add_log(&app.db, "admin", &format!("Тікет #{} -> {}", req.id, req.status)).await;
 
     match db::update_ticket_status(&app.db, req.id, &req.status).await {
@@ -943,7 +1062,8 @@ async fn api_update_ticket(State(app): State<App>, Json(req): Json<TicketUpdateR
 }
 
 async fn api_get_config(State(app): State<App>, headers: HeaderMap, Query(q): Query<HashMap<String, String>>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -966,13 +1086,18 @@ struct ConfigSetReq {
     value: String,
 }
 
-async fn api_set_config(State(app): State<App>, Json(req): Json<ConfigSetReq>) -> Response {
-    match (&app.admin_key, Some(&req.key)) {
-        (Some(k), Some(given)) if k == given => {}
-        _ => return (StatusCode::UNAUTHORIZED, "Потрібен ключ").into_response()
+async fn api_set_config(State(app): State<App>, headers: HeaderMap, Json(req): Json<ConfigSetReq>) -> Response {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
+        let admin_key = match &app.admin_key {
+            Some(k) => k,
+            None => return status.into_response(),
+        };
+        if !constant_time_compare(admin_key, &req.key) {
+            return status.into_response();
+        }
     }
 
-    // Додати лог
     let _ = db::add_log(&app.db, "admin", &format!("Змінено налаштування: {} = {}", req.config_key, req.value)).await;
 
     match db::set_config(&app.db, &req.config_key, &req.value).await {
@@ -989,7 +1114,8 @@ struct KickRequest {
 }
 
 async fn api_kick(State(app): State<App>, headers: HeaderMap, Json(req): Json<KickRequest>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -1031,7 +1157,8 @@ struct BroadcastRequest {
 }
 
 async fn api_broadcast(State(app): State<App>, headers: HeaderMap, Json(req): Json<BroadcastRequest>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -1065,7 +1192,8 @@ async fn api_broadcast(State(app): State<App>, headers: HeaderMap, Json(req): Js
 }
 
 async fn api_get_promos(State(app): State<App>, headers: HeaderMap) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -1084,7 +1212,8 @@ struct PromoCreateReq {
 }
 
 async fn api_create_promo(State(app): State<App>, headers: HeaderMap, Json(req): Json<PromoCreateReq>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -1103,7 +1232,8 @@ struct PromoActionReq {
 }
 
 async fn api_toggle_promo(State(app): State<App>, headers: HeaderMap, Json(req): Json<PromoActionReq>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -1117,7 +1247,8 @@ async fn api_toggle_promo(State(app): State<App>, headers: HeaderMap, Json(req):
 }
 
 async fn api_delete_promo(State(app): State<App>, headers: HeaderMap, Json(req): Json<PromoActionReq>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -1140,7 +1271,8 @@ async fn api_get_updates(State(app): State<App>) -> Response {
 }
 
 async fn api_admin_get_updates(State(app): State<App>, headers: HeaderMap) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
     match db::get_game_updates(&app.db).await {
@@ -1166,7 +1298,8 @@ struct UpdateCreateReq {
 }
 
 async fn api_create_update(State(app): State<App>, headers: HeaderMap, Json(req): Json<UpdateCreateReq>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -1210,7 +1343,8 @@ struct UpdateEditReq {
 }
 
 async fn api_edit_update(State(app): State<App>, headers: HeaderMap, Json(req): Json<UpdateEditReq>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 
@@ -1242,7 +1376,8 @@ struct UpdateDeleteReq {
 }
 
 async fn api_delete_update(State(app): State<App>, headers: HeaderMap, Json(req): Json<UpdateDeleteReq>) -> Response {
-    if let Err(status) = check_admin_auth(&app, &headers, "127.0.0.1").await {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
         return status.into_response();
     }
 

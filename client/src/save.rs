@@ -55,6 +55,14 @@ pub fn load() -> Option<Save> {
     let mut save: Save = serde_json::from_str(&s).ok()?;
     if save.inv.len() < NI { save.inv.resize(NI, 0); }
     if save.tools.len() < NT { save.tools.resize(NT, 0); }
+    save.gold = save.gold.min(999_999);
+    save.hp = save.hp.clamp(0.0, 100.0);
+    save.hunger = save.hunger.clamp(0.0, 100.0);
+    save.thirst = save.thirst.clamp(0.0, 100.0);
+    save.energy = save.energy.clamp(0.0, 100.0);
+    for count in &mut save.inv {
+        *count = (*count).min(999);
+    }
     Some(save)
 }
 
