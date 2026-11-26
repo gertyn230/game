@@ -873,11 +873,12 @@ pub async fn google_login_account(
     if username.is_empty() {
         username = email.split('@').next().unwrap_or("Player").to_string();
     }
-    if username.len() > 24 {
-        username.truncate(24);
+    if username.chars().count() > 20 {
+        username = username.chars().take(20).collect();
     }
-    if username.len() < 2 {
-        username = format!("User_{}", &email[..email.find('@').unwrap_or(email.len()).min(8)]);
+    if username.chars().count() < 2 {
+        let prefix: String = email.chars().take_while(|&c| c != '@').take(8).collect();
+        username = if prefix.len() >= 2 { format!("User_{}", prefix) } else { "Player".to_string() };
     }
 
     let existing = sqlx::query(
@@ -1026,7 +1027,38 @@ pub async fn login_with_code(pool: &SqlitePool, code: &str) -> Result<AccountDat
 
     let acc_row = match acc_row {
         Some(r) => r,
-        None => return Err("Акаунт не знайдено".to_string()),
+        None => {
+            // Якщо запис акаунту ще не був створений (наприклад, збій під час Google авторизації),
+            // створюємо його автоматично зараз, щоб гравець гарантовано міг увійти!
+            let prefix: String = email.chars().take_while(|&c| c != '@').take(12).collect();
+            let default_username = if prefix.len() >= 2 { prefix } else { "Player".to_string() };
+            let _ = sqlx::query(
+                r#"
+                INSERT INTO accounts (email, username, password_hash, gold, score, fish, big_fish, inventory, tools, houses, last_x, last_y, created_at, last_login)
+                VALUES (?, ?, '', 0, 0, 0, 0.0, '[]', '[]', 0, 0.0, 0.0, ?, ?)
+                "#
+            )
+            .bind(&email)
+            .bind(&default_username)
+            .bind(now)
+            .bind(now)
+            .execute(pool)
+            .await;
+
+            return Ok(AccountData {
+                email,
+                username: default_username,
+                gold: 0,
+                score: 0,
+                fish: 0,
+                big_fish: 0.0,
+                inventory: vec![],
+                tools: vec![],
+                houses: 0,
+                x: 0.0,
+                y: 0.0,
+            });
+        }
     };
 
     let username: String = acc_row.get("username");

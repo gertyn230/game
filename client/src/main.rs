@@ -536,8 +536,55 @@ async fn main() {
                     3 => acc_ui.active_field = 4,
                     _ => {}
                 }
+                let ctrl_down = is_key_down(KeyCode::LeftControl) || is_key_down(KeyCode::RightControl);
+                if ctrl_down && is_key_pressed(KeyCode::V) {
+                    if let Some(text) = macroquad::miniquad::window::clipboard_get() {
+                        let clean = text.trim();
+                        match acc_ui.active_field {
+                            0 => {
+                                for c in clean.chars() {
+                                    if !c.is_control() && acc_ui.email.chars().count() < 64 {
+                                        acc_ui.email.push(c);
+                                    }
+                                }
+                            }
+                            1 => {
+                                for c in clean.chars() {
+                                    if !c.is_control() && acc_ui.password.chars().count() < 32 {
+                                        acc_ui.password.push(c);
+                                    }
+                                }
+                            }
+                            2 => {
+                                for c in clean.chars() {
+                                    if !c.is_control() && acc_ui.username.chars().count() < 20 {
+                                        acc_ui.username.push(c);
+                                    }
+                                }
+                            }
+                            3 => {
+                                for c in clean.chars() {
+                                    if !c.is_control() && acc_ui.new_password.chars().count() < 32 {
+                                        acc_ui.new_password.push(c);
+                                    }
+                                }
+                            }
+                            4 => {
+                                acc_ui.code.clear();
+                                for c in clean.chars() {
+                                    if acc_ui.code.chars().count() < 8 && (c.is_ascii_digit() || c.is_alphabetic()) {
+                                        for uc in c.to_uppercase() {
+                                            acc_ui.code.push(uc);
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
                 while let Some(c) = get_char_pressed() {
-                    if !c.is_control() {
+                    if !c.is_control() && !ctrl_down {
                         match acc_ui.active_field {
                             0 => if acc_ui.email.chars().count() < 64 { acc_ui.email.push(c); },
                             1 => if acc_ui.password.chars().count() < 32 { acc_ui.password.push(c); },
@@ -585,8 +632,55 @@ async fn main() {
                 if acc_ui.active_field != 1 && acc_ui.active_field != 3 {
                     acc_ui.active_field = 1;
                 }
+                let ctrl_down = is_key_down(KeyCode::LeftControl) || is_key_down(KeyCode::RightControl);
+                if ctrl_down && is_key_pressed(KeyCode::V) {
+                    if let Some(text) = macroquad::miniquad::window::clipboard_get() {
+                        let clean = text.trim();
+                        match acc_ui.active_field {
+                            0 => {
+                                for c in clean.chars() {
+                                    if !c.is_control() && acc_ui.email.chars().count() < 64 {
+                                        acc_ui.email.push(c);
+                                    }
+                                }
+                            }
+                            1 => {
+                                for c in clean.chars() {
+                                    if !c.is_control() && acc_ui.password.chars().count() < 32 {
+                                        acc_ui.password.push(c);
+                                    }
+                                }
+                            }
+                            2 => {
+                                for c in clean.chars() {
+                                    if !c.is_control() && acc_ui.username.chars().count() < 20 {
+                                        acc_ui.username.push(c);
+                                    }
+                                }
+                            }
+                            3 => {
+                                for c in clean.chars() {
+                                    if !c.is_control() && acc_ui.new_password.chars().count() < 32 {
+                                        acc_ui.new_password.push(c);
+                                    }
+                                }
+                            }
+                            4 => {
+                                acc_ui.code.clear();
+                                for c in clean.chars() {
+                                    if acc_ui.code.chars().count() < 8 && (c.is_ascii_digit() || c.is_alphabetic()) {
+                                        for uc in c.to_uppercase() {
+                                            acc_ui.code.push(uc);
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
                 while let Some(c) = get_char_pressed() {
-                    if !c.is_control() {
+                    if !c.is_control() && !ctrl_down {
                         match acc_ui.active_field {
                             1 => if acc_ui.password.chars().count() < 32 { acc_ui.password.push(c); },
                             3 => if acc_ui.new_password.chars().count() < 32 { acc_ui.new_password.push(c); },
@@ -904,6 +998,26 @@ async fn main() {
                             code: clean_code.to_string(),
                             device_info: Some(DeviceInfo::detect()),
                         });
+                    }
+                }
+                Cmd::AccountPasteCode => {
+                    if let Some(text) = macroquad::miniquad::window::clipboard_get() {
+                        let clean = text.trim();
+                        acc_ui.code.clear();
+                        for c in clean.chars() {
+                            if acc_ui.code.chars().count() < 8 && (c.is_ascii_digit() || c.is_alphabetic()) {
+                                for uc in c.to_uppercase() {
+                                    acc_ui.code.push(uc);
+                                }
+                            }
+                        }
+                        if acc_ui.code.is_empty() {
+                            acc_ui.status = Some("Буфер обміну порожній або не містить коду".to_string());
+                        } else {
+                            acc_ui.status = Some(format!("Вставлено код: {}", acc_ui.code));
+                        }
+                    } else {
+                        acc_ui.status = Some("Не вдалося отримати текст з буфера".to_string());
                     }
                 }
                 Cmd::AccountSubmit => {
@@ -2085,15 +2199,21 @@ fn draw_menu(
 
                     let code_active = acc_ui.active_field == 4;
                     let cur4 = if code_active && (now * 2.5) as i64 % 2 == 0 { "|" } else { "" };
-                    let code_rect = Rect::new(card_x + pad, y, field_w, field_h);
+                    
+                    let paste_btn_w = fs * 7.5;
+                    let code_field_w = field_w - paste_btn_w - pad * 0.5;
+                    let code_rect = Rect::new(card_x + pad, y, code_field_w, field_h);
                     ui.hit_area(code_rect, Cmd::AccountField(4));
                     draw_rectangle(code_rect.x, code_rect.y, code_rect.w, code_rect.h, hx(if code_active { 0x18281d } else { 0x121411 }));
                     draw_rectangle_lines(code_rect.x, code_rect.y, code_rect.w, code_rect.h, if code_active { 2.0 } else { 1.5 }, hx(if code_active { 0x2ecc71 } else { 0x3e4a39 }));
                     if acc_ui.code.is_empty() && !code_active {
-                        text(font, "Введіть 6-значний код...", code_rect.x + pad * 1.2, y + fs * 1.35, fs * 0.85, ha(0xffffff, 0.4));
+                        text(font, "Код...", code_rect.x + pad * 1.2, y + fs * 1.35, fs * 0.85, ha(0xffffff, 0.4));
                     } else {
                         text(font, &format!("{}{cur4}", acc_ui.code), code_rect.x + pad * 1.2, y + fs * 1.35, fs * 0.95, if code_active { hx(0x73d16b) } else { WHITE });
                     }
+
+                    let paste_rect = Rect::new(card_x + pad + code_field_w + pad * 0.5, y, paste_btn_w, field_h);
+                    ui.button(font, paste_rect, "Вставити", Cmd::AccountPasteCode, true, 0x2563eb, fs * 0.85);
                     y += field_h + pad * 0.8;
 
                     ui.button(font, Rect::new(card_x + pad, y, field_w, fs * 2.2), "Увійти за кодом", Cmd::AccountCodeSubmit, true, 0x27ae60, fs * 0.9);

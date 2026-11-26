@@ -50,6 +50,7 @@ pub enum Cmd {
     AccountChangePassword,
     AccountGoogleLogin,
     AccountCodeSubmit,
+    AccountPasteCode,
     AccountSwitchModeTab(u8),
 }
 
