@@ -103,8 +103,12 @@ impl Updater {
         struct LatestJson {
             version: String,
             sha256: String,
+            #[serde(default)]
             size: u64,
+            #[serde(default)]
             notes: String,
+            #[serde(default)]
+            url: Option<String>,
         }
 
         let json: LatestJson = response.json()
@@ -202,7 +206,7 @@ impl Updater {
             .map_err(|e| format!("Stat file: {}", e))?
             .len();
 
-        if actual_size != info.size {
+        if info.size > 0 && actual_size != info.size {
             let _ = fs::remove_file(&temp_path);
             *self.state.lock().unwrap() = UpdateState::Failed(format!("Size mismatch: {} != {}", actual_size, info.size));
             return Err("Size mismatch".to_string());

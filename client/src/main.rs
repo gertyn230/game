@@ -54,11 +54,6 @@ pub struct AccountUiState {
     pub status: Option<String>,
 }
 
-/// Адрес сервера. При сборке можно задать переменной окружения PV_SERVER.
-const SERVER_URL: &str = match option_env!("PV_SERVER") {
-    Some(u) if !u.is_empty() => u,
-    _ => "ws://127.0.0.1:8080/ws",
-};
 const PLAYER_COLORS: [u32; 5] = [0xd94f4f, 0x4a6fa5, 0xc9a227, 0x8e5bb5, 0x2a9d8f];
 const CLIENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -155,15 +150,6 @@ fn cost_text(r: &Recipe, texts: &Texts) -> String {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    // Якщо PV_SERVER не задано — використовуємо localhost (для тестування)
-    // У продакшн-білді задайте PV_SERVER через змінну оточення
-    #[cfg(not(debug_assertions))]
-    {
-        if SERVER_URL.starts_with("ws://127.0.0.1") || SERVER_URL.starts_with("ws://localhost") {
-            eprintln!("[WARN] PV_SERVER не задано — підключаюсь до localhost. Для продакшн задайте PV_SERVER.");
-        }
-    }
-
     // Видалити старі backup файли з попередніх оновлень
     updater::Updater::cleanup_old_version();
 
@@ -880,10 +866,6 @@ async fn main() {
                 Cmd::Act => {}
                 Cmd::AccountField(f) => {
                     acc_ui.active_field = f;
-                }
-                Cmd::AccountSwitchMode => {
-                    acc_ui.mode = if acc_ui.mode == 0 { 1 } else { 0 };
-                    acc_ui.status = None;
                 }
                 Cmd::AccountSwitchModeTab(m) => {
                     acc_ui.mode = m;

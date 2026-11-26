@@ -45,7 +45,6 @@ pub enum Cmd {
     // Команди акаунту
     AccountField(u8),
     AccountSubmit,
-    AccountSwitchMode,
     AccountLogout,
     AccountSaveCloud,
     AccountChangePassword,
