@@ -141,6 +141,10 @@ pub enum ClientMsg {
         x: f32,
         y: f32,
     },
+    ChangePassword {
+        old_password: String,
+        new_password: String,
+    },
     Move { x: f32, y: f32, face: u8, moving: bool, boat: bool, coat: bool, held: u8 },
     /// Ресурс на карте добыт (индекс клетки y*40+x).
     Dead { idx: u32 },
@@ -157,6 +161,7 @@ pub enum ServerMsg {
     Snapshot { players: Vec<PlayerState> },
     AuthSuccess { account: AccountData },
     AuthFailed { reason: String },
+    PasswordChanged,
     Dead { idx: u32, left: u32 },
     World { dead: Vec<(u32, u32)> },
     Market { offers: Vec<Offer> },

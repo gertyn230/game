@@ -44,11 +44,12 @@ use world::*;
 #[derive(Default, Clone)]
 pub struct AccountUiState {
     pub active: Option<shared::AccountData>,
-    pub mode: u8, // 0 = login, 1 = register
-    pub active_field: u8, // 0 = email, 1 = password, 2 = username
+    pub mode: u8, // 0 = login, 1 = register, 2 = change password
+    pub active_field: u8, // 0 = email, 1 = password, 2 = username, 3 = new_password
     pub email: String,
     pub password: String,
     pub username: String,
+    pub new_password: String,
     pub status: Option<String>,
 }
 
@@ -443,6 +444,21 @@ async fn main() {
                         acc_ui.status = Some(format!("Помилка: {}", reason));
                         g.say(&format!("Помилка акаунту: {}", reason), now);
                     }
+                    ServerMsg::PasswordChanged => {
+                        acc_ui.status = Some("Пароль успішно змінено!".to_string());
+                        // Update saved credentials with the new password
+                        if acc_ui.active.is_some() && !acc_ui.new_password.is_empty() {
+                            acc_ui.password = acc_ui.new_password.clone();
+                            save::store_account_creds(&save::AccountCredentials {
+                                email: acc_ui.email.clone(),
+                                password: acc_ui.password.clone(),
+                                username: acc_ui.username.clone(),
+                            });
+                        }
+                        acc_ui.new_password.clear();
+                        acc_ui.mode = 0;
+                        g.say("Пароль успішно змінено!", now);
+                    }
                 },
             }
         }
@@ -530,31 +546,57 @@ async fn main() {
             if is_key_pressed(KeyCode::Enter) {
                 cmds.push(Cmd::NameOk);
             }
-        } else if ui.menu && ui.tab == 5 && acc_ui.active.is_none() {
-            while let Some(c) = get_char_pressed() {
-                if !c.is_control() {
+        } else if ui.menu && ui.tab == 5 {
+            if acc_ui.active.is_none() {
+                while let Some(c) = get_char_pressed() {
+                    if !c.is_control() {
+                        match acc_ui.active_field {
+                            0 => if acc_ui.email.len() < 50 { acc_ui.email.push(c); },
+                            1 => if acc_ui.password.len() < 32 { acc_ui.password.push(c); },
+                            2 => if acc_ui.username.len() < 20 { acc_ui.username.push(c); },
+                            _ => {}
+                        }
+                    }
+                }
+                if is_key_pressed(KeyCode::Backspace) {
                     match acc_ui.active_field {
-                        0 => if acc_ui.email.len() < 50 { acc_ui.email.push(c); },
-                        1 => if acc_ui.password.len() < 32 { acc_ui.password.push(c); },
-                        2 => if acc_ui.username.len() < 20 { acc_ui.username.push(c); },
+                        0 => { acc_ui.email.pop(); },
+                        1 => { acc_ui.password.pop(); },
+                        2 => { acc_ui.username.pop(); },
                         _ => {}
                     }
                 }
-            }
-            if is_key_pressed(KeyCode::Backspace) {
-                match acc_ui.active_field {
-                    0 => { acc_ui.email.pop(); },
-                    1 => { acc_ui.password.pop(); },
-                    2 => { acc_ui.username.pop(); },
-                    _ => {}
+                if is_key_pressed(KeyCode::Tab) {
+                    let max_f = if acc_ui.mode == 0 { 2 } else { 3 };
+                    acc_ui.active_field = (acc_ui.active_field + 1) % max_f;
                 }
-            }
-            if is_key_pressed(KeyCode::Tab) {
-                let max_f = if acc_ui.mode == 0 { 2 } else { 3 };
-                acc_ui.active_field = (acc_ui.active_field + 1) % max_f;
-            }
-            if is_key_pressed(KeyCode::Enter) {
-                cmds.push(Cmd::AccountSubmit);
+                if is_key_pressed(KeyCode::Enter) {
+                    cmds.push(Cmd::AccountSubmit);
+                }
+            } else if acc_ui.mode == 2 {
+                // Change password mode: 1 = old password, 3 = new password
+                while let Some(c) = get_char_pressed() {
+                    if !c.is_control() {
+                        match acc_ui.active_field {
+                            1 => if acc_ui.password.len() < 32 { acc_ui.password.push(c); },
+                            3 => if acc_ui.new_password.len() < 32 { acc_ui.new_password.push(c); },
+                            _ => {}
+                        }
+                    }
+                }
+                if is_key_pressed(KeyCode::Backspace) {
+                    match acc_ui.active_field {
+                        1 => { acc_ui.password.pop(); },
+                        3 => { acc_ui.new_password.pop(); },
+                        _ => {}
+                    }
+                }
+                if is_key_pressed(KeyCode::Tab) {
+                    acc_ui.active_field = if acc_ui.active_field == 1 { 3 } else { 1 };
+                }
+                if is_key_pressed(KeyCode::Enter) {
+                    cmds.push(Cmd::AccountChangePassword);
+                }
             }
         } else {
             while get_char_pressed().is_some() {}
@@ -834,9 +876,31 @@ async fn main() {
                 Cmd::AccountLogout => {
                     acc_ui.active = None;
                     acc_ui.password.clear();
+                    acc_ui.new_password.clear();
+                    acc_ui.mode = 0;
                     save::clear_account_creds();
                     acc_ui.status = Some("Ви вийшли з акаунту".to_string());
                     g.say("Ви вийшли з акаунту", now);
+                }
+                Cmd::AccountChangePassword => {
+                    if acc_ui.mode == 2 {
+                        if acc_ui.password.is_empty() || acc_ui.new_password.is_empty() {
+                            acc_ui.status = Some("Помилка: Заповніть старий і новий пароль".to_string());
+                        } else if acc_ui.new_password.len() < 6 {
+                            acc_ui.status = Some("Помилка: Новий пароль має містити щонайменше 6 символів".to_string());
+                        } else {
+                            acc_ui.status = Some("Зміна пароля...".to_string());
+                            net.send(ClientMsg::ChangePassword {
+                                old_password: acc_ui.password.clone(),
+                                new_password: acc_ui.new_password.clone(),
+                            });
+                        }
+                    } else {
+                        acc_ui.mode = 2;
+                        acc_ui.active_field = 1;
+                        acc_ui.new_password.clear();
+                        acc_ui.status = None;
+                    }
                 }
                 Cmd::AccountSaveCloud => {
                     if acc_ui.active.is_some() {
@@ -1882,10 +1946,42 @@ fn draw_menu(
                 }
 
                 // Кнопки дій
-                let btn_w = (card_w - pad * 3.0) / 2.0;
+                let btn_w = (card_w - pad * 4.0) / 3.0;
                 let btn_h = fs * 2.2;
-                ui.button(font, Rect::new(card_x + pad, y, btn_w, btn_h), "☁️ Зберегти в хмару", Cmd::AccountSaveCloud, true, 0x27ae60, fs * 0.85);
-                ui.button(font, Rect::new(card_x + pad * 2.0 + btn_w, y, btn_w, btn_h), "🚪 Вийти", Cmd::AccountLogout, true, 0xc0392b, fs * 0.85);
+                ui.button(font, Rect::new(card_x + pad, y, btn_w, btn_h), "☁️ У хмару", Cmd::AccountSaveCloud, true, 0x27ae60, fs * 0.85);
+                let cp_label = if acc_ui.mode == 2 { "✖ Скасувати" } else { "🔑 Зміна пароля" };
+                ui.button(font, Rect::new(card_x + pad * 2.0 + btn_w, y, btn_w, btn_h), cp_label, Cmd::AccountChangePassword, true, 0x2980b9, fs * 0.85);
+                ui.button(font, Rect::new(card_x + pad * 3.0 + btn_w * 2.0, y, btn_w, btn_h), "🚪 Вийти", Cmd::AccountLogout, true, 0xc0392b, fs * 0.85);
+
+                if acc_ui.mode == 2 {
+                    y += btn_h + pad * 1.2;
+                    let field_w = card_w - pad * 2.0;
+                    let field_h = fs * 2.0;
+
+                    // Старий пароль
+                    let old_active = acc_ui.active_field == 1;
+                    let cur_old = if old_active && (now * 2.0) as i64 % 2 == 0 { "|" } else { "" };
+                    let old_masked = "*".repeat(acc_ui.password.len());
+                    let old_display = if acc_ui.password.is_empty() && !old_active { "🔒 Введіть поточний пароль...".to_string() } else { format!("🔒 {}{cur_old}", old_masked) };
+                    draw_rectangle(card_x + pad, y, field_w, field_h, hx(if old_active { 0x1f3a24 } else { 0x121411 }));
+                    draw_rectangle_lines(card_x + pad, y, field_w, field_h, 1.5, hx(if old_active { 0x2ecc71 } else { 0x3e4a39 }));
+                    text(font, &old_display, card_x + pad * 1.5, y + fs * 1.4, fs * 0.85, if acc_ui.password.is_empty() && !old_active { ha(0xffffff, 0.4) } else { WHITE });
+                    ui.button(font, Rect::new(card_x + pad, y, field_w, field_h), "", Cmd::AccountField(1), true, 0x000000, fs);
+                    y += field_h + pad * 0.8;
+
+                    // Новий пароль
+                    let new_active = acc_ui.active_field == 3;
+                    let cur_new = if new_active && (now * 2.0) as i64 % 2 == 0 { "|" } else { "" };
+                    let new_masked = "*".repeat(acc_ui.new_password.len());
+                    let new_display = if acc_ui.new_password.is_empty() && !new_active { "🔒 Новий пароль (мін. 6 симв.)...".to_string() } else { format!("🔒 {}{cur_new}", new_masked) };
+                    draw_rectangle(card_x + pad, y, field_w, field_h, hx(if new_active { 0x1f3a24 } else { 0x121411 }));
+                    draw_rectangle_lines(card_x + pad, y, field_w, field_h, 1.5, hx(if new_active { 0x2ecc71 } else { 0x3e4a39 }));
+                    text(font, &new_display, card_x + pad * 1.5, y + fs * 1.4, fs * 0.85, if acc_ui.new_password.is_empty() && !new_active { ha(0xffffff, 0.4) } else { WHITE });
+                    ui.button(font, Rect::new(card_x + pad, y, field_w, field_h), "", Cmd::AccountField(3), true, 0x000000, fs);
+                    y += field_h + pad * 0.8;
+
+                    ui.button(font, Rect::new(card_x + pad, y, field_w, fs * 2.2), "💾 Зберегти новий пароль", Cmd::AccountChangePassword, true, 0x27ae60, fs * 0.9);
+                }
             } else {
                 // Гравець НЕ авторизований: Форма Входу / Реєстрації
                 let card_w = (body.w - pad * 2.0).min(fs * 28.0);

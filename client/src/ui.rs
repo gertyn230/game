@@ -48,6 +48,7 @@ pub enum Cmd {
     AccountSwitchMode,
     AccountLogout,
     AccountSaveCloud,
+    AccountChangePassword,
 }
 
 pub struct Btn {

@@ -793,3 +793,45 @@ pub async fn admin_reset_account_password(
 
     Ok(res.rows_affected() > 0)
 }
+
+pub async fn change_account_password(
+    pool: &SqlitePool,
+    email: &str,
+    old_password: &str,
+    new_password: &str,
+) -> Result<(), String> {
+    let email = email.trim().to_lowercase();
+
+    if new_password.len() < 6 {
+        return Err("Новий пароль має містити щонайменше 6 символів".to_string());
+    }
+    if new_password.len() > 128 {
+        return Err("Пароль занадто довгий".to_string());
+    }
+
+    let row = sqlx::query("SELECT password_hash FROM accounts WHERE email = ?")
+        .bind(&email)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| format!("Помилка бази даних: {}", e))?;
+
+    let row = match row {
+        Some(r) => r,
+        None => return Err("Акаунт не знайдено".to_string()),
+    };
+
+    let stored_hash: String = row.get("password_hash");
+    if !verify_password(old_password, &stored_hash) {
+        return Err("Невірний поточний пароль".to_string());
+    }
+
+    let new_hash = hash_password(new_password);
+    sqlx::query("UPDATE accounts SET password_hash = ? WHERE email = ?")
+        .bind(&new_hash)
+        .bind(&email)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("Помилка збереження: {}", e))?;
+
+    Ok(())
+}

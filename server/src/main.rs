@@ -82,6 +82,7 @@ struct World {
     kicked: HashMap<String, i64>, // Player name -> expires_at unix timestamp
     ticket_rate_limit: HashMap<String, (u32, Instant)>, // IP -> (count, first_attempt)
     promo_rate_limit: HashMap<String, (u32, Instant)>, // IP -> (count, first_attempt)
+    auth_rate_limit: HashMap<String, (u32, Instant)>, // IP -> (count, first_attempt) for register/login
 }
 
 #[derive(Clone)]
@@ -261,6 +262,7 @@ async fn main() {
         .route("/api/account/login", post(api_account_login))
         .route("/api/admin/accounts", get(api_admin_accounts))
         .route("/api/admin/account/reset-password", post(api_admin_reset_password))
+        .route("/api/account/change-password", post(api_account_change_password))
         .route("/api/promo/redeem", post(api_redeem_promo))
         .route("/api/ticket/create", post(api_create_ticket))
         .route("/api/admin/config", get(api_get_config))
@@ -904,7 +906,23 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
             }
         }
         ClientMsg::Register { email, username, password, device_info } => {
+            // Rate limit: max 5 register/login attempts per 2 minutes per IP
+            let client_ip = w.players.get(&id).map(|c| c.ip.clone()).unwrap_or_default();
+            let entry = w.auth_rate_limit.entry(client_ip).or_insert((0, Instant::now()));
+            if entry.1.elapsed().as_secs() > 120 {
+                entry.0 = 0;
+                entry.1 = Instant::now();
+            }
+            entry.0 += 1;
+            if entry.0 > 5 {
+                if let Some(c) = w.players.get(&id) {
+                    reply(c, &ServerMsg::AuthFailed { reason: "Забагато спроб. Зачекайте 2 хвилини".to_string() });
+                }
+                return;
+            }
+            drop(w);
             let res = db::register_account(&app.db, &email, &username, &password).await;
+            let mut w = app.world.lock().await;
             match res {
                 Ok(account) => {
                     if let Some(c) = w.players.get_mut(&id) {
@@ -922,7 +940,23 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
             }
         }
         ClientMsg::Login { email, password, device_info } => {
+            // Rate limit: max 5 register/login attempts per 2 minutes per IP
+            let client_ip = w.players.get(&id).map(|c| c.ip.clone()).unwrap_or_default();
+            let entry = w.auth_rate_limit.entry(client_ip).or_insert((0, Instant::now()));
+            if entry.1.elapsed().as_secs() > 120 {
+                entry.0 = 0;
+                entry.1 = Instant::now();
+            }
+            entry.0 += 1;
+            if entry.0 > 5 {
+                if let Some(c) = w.players.get(&id) {
+                    reply(c, &ServerMsg::AuthFailed { reason: "Забагато спроб. Зачекайте 2 хвилини".to_string() });
+                }
+                return;
+            }
+            drop(w);
             let res = db::login_account(&app.db, &email, &password).await;
+            let mut w = app.world.lock().await;
             match res {
                 Ok(account) => {
                     if let Some(c) = w.players.get_mut(&id) {
@@ -956,6 +990,30 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
                 tokio::spawn(async move {
                     let _ = db::save_account_data(&db_pool, &email, gold, score, fish, big_fish, &inventory, &tools, houses, x, y).await;
                 });
+            }
+        }
+        ClientMsg::ChangePassword { old_password, new_password } => {
+            let email_opt = w.players.get(&id).and_then(|c| c.account_email.clone());
+            if let Some(email) = email_opt {
+                drop(w);
+                let res = db::change_account_password(&app.db, &email, &old_password, &new_password).await;
+                let w = app.world.lock().await;
+                match res {
+                    Ok(()) => {
+                        if let Some(c) = w.players.get(&id) {
+                            reply(c, &ServerMsg::PasswordChanged);
+                        }
+                    }
+                    Err(reason) => {
+                        if let Some(c) = w.players.get(&id) {
+                            reply(c, &ServerMsg::AuthFailed { reason });
+                        }
+                    }
+                }
+            } else {
+                if let Some(c) = w.players.get(&id) {
+                    reply(c, &ServerMsg::AuthFailed { reason: "Спочатку увійдіть в акаунт".to_string() });
+                }
             }
         }
     }
@@ -1490,8 +1548,26 @@ struct ApiResetPasswordReq {
 
 async fn api_account_register(
     State(app): State<App>,
+    headers: HeaderMap,
     Json(payload): Json<ApiRegisterReq>,
 ) -> Response {
+    // Rate limit: max 5 register attempts per 2 minutes per IP
+    let client_ip = get_client_ip(&headers);
+    {
+        let mut w = app.world.lock().await;
+        let entry = w.auth_rate_limit.entry(client_ip).or_insert((0, Instant::now()));
+        if entry.1.elapsed().as_secs() > 120 {
+            entry.0 = 0;
+            entry.1 = Instant::now();
+        }
+        entry.0 += 1;
+        if entry.0 > 5 {
+            return (
+                StatusCode::TOO_MANY_REQUESTS,
+                Json(serde_json::json!({ "success": false, "error": "Забагато спроб. Зачекайте 2 хвилини" })),
+            ).into_response();
+        }
+    }
     match db::register_account(&app.db, &payload.email, &payload.username, &payload.password).await {
         Ok(acc) => Json(serde_json::json!({ "success": true, "account": acc })).into_response(),
         Err(err) => (
@@ -1503,8 +1579,26 @@ async fn api_account_register(
 
 async fn api_account_login(
     State(app): State<App>,
+    headers: HeaderMap,
     Json(payload): Json<ApiLoginReq>,
 ) -> Response {
+    // Rate limit: max 5 login attempts per 2 minutes per IP
+    let client_ip = get_client_ip(&headers);
+    {
+        let mut w = app.world.lock().await;
+        let entry = w.auth_rate_limit.entry(client_ip).or_insert((0, Instant::now()));
+        if entry.1.elapsed().as_secs() > 120 {
+            entry.0 = 0;
+            entry.1 = Instant::now();
+        }
+        entry.0 += 1;
+        if entry.0 > 5 {
+            return (
+                StatusCode::TOO_MANY_REQUESTS,
+                Json(serde_json::json!({ "success": false, "error": "Забагато спроб. Зачекайте 2 хвилини" })),
+            ).into_response();
+        }
+    }
     match db::login_account(&app.db, &payload.email, &payload.password).await {
         Ok(acc) => Json(serde_json::json!({ "success": true, "account": acc })).into_response(),
         Err(err) => (
@@ -1560,6 +1654,45 @@ async fn api_admin_reset_password(
         Err(err) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({ "success": false, "error": err.to_string() })),
+        ).into_response(),
+    }
+}
+
+
+#[derive(serde::Deserialize)]
+struct ApiChangePasswordReq {
+    email: String,
+    old_password: String,
+    new_password: String,
+}
+
+async fn api_account_change_password(
+    State(app): State<App>,
+    headers: HeaderMap,
+    Json(payload): Json<ApiChangePasswordReq>,
+) -> Response {
+    // Rate limit: max 5 attempts per 2 minutes per IP
+    let client_ip = get_client_ip(&headers);
+    {
+        let mut w = app.world.lock().await;
+        let entry = w.auth_rate_limit.entry(client_ip).or_insert((0, Instant::now()));
+        if entry.1.elapsed().as_secs() > 120 {
+            entry.0 = 0;
+            entry.1 = Instant::now();
+        }
+        entry.0 += 1;
+        if entry.0 > 5 {
+            return (
+                StatusCode::TOO_MANY_REQUESTS,
+                Json(serde_json::json!({ "success": false, "error": "Забагато спроб. Зачекайте 2 хвилини" })),
+            ).into_response();
+        }
+    }
+    match db::change_account_password(&app.db, &payload.email, &payload.old_password, &payload.new_password).await {
+        Ok(()) => Json(serde_json::json!({ "success": true, "message": "Пароль успішно змінено" })).into_response(),
+        Err(err) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "success": false, "error": err })),
         ).into_response(),
     }
 }
