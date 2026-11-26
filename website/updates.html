@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Історія оновлень — Pixel Village</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=DM+Sans:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+:root{
+  --sheet:#0f1b16;--soft:#18271f;--ink:#e9f2ec;--mute:#9fb5a7;--leaf:#4fae5a;
+  --river:#38a3e0;--sun:#ffc83d;--line:rgba(233,242,236,.14);--bg:#121a22;
+}
+body{
+  font:500 16px/1.65 'DM Sans',system-ui,sans-serif;
+  color:var(--ink);
+  background:radial-gradient(ellipse at 50% 0%, #1a2f26 0%, #0d1612 100%);
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+h1,h2,h3,.logo{font-family:'Bricolage Grotesque',sans-serif}
+a{color:var(--sun);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 14px clamp(16px, 4vw, 40px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 27, 22, 0.85);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 20px;
+  color: #fff;
+  text-decoration: none;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  list-style: none;
+}
+.nav-links a {
+  color: var(--mute);
+  font-weight: 600;
+  font-size: 14.5px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  transition: all .2s;
+  text-decoration: none;
+}
+.nav-links a:hover, .nav-links a.active {
+  color: #fff;
+  background: rgba(255,255,255,0.1);
+}
+
+.container {
+  max-width: 900px;
+  width: 92%;
+  margin: 40px auto 60px;
+  flex: 1;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+.page-header h1 {
+  font-size: clamp(36px, 6vw, 56px);
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.page-header p {
+  color: var(--mute);
+  font-size: 18px;
+  margin-top: 10px;
+}
+
+.update-card {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 28px;
+  margin-bottom: 22px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  transition: transform .2s, border-color .2s;
+}
+.update-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255,200,61,0.4);
+}
+.update-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.badge-version {
+  background: var(--sun);
+  color: #10261c;
+  font: 800 14px 'Bricolage Grotesque',sans-serif;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+.update-date {
+  color: var(--mute);
+  font-size: 14px;
+  font-weight: 600;
+}
+.update-title {
+  font-size: 22px;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.update-desc {
+  color: var(--mute);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+footer {
+  text-align: center;
+  padding: 24px;
+  color: var(--mute);
+  font-size: 14px;
+  border-top: 1px solid var(--line);
+}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a class="logo" href="/">🏡 Pixel Village</a>
+  <ul class="nav-links">
+    <li><a href="/">Головна</a></li>
+    <li><a href="/updates.html" class="active">📰 Оновлення</a></li>
+    <li><a href="/wiki.html">📖 База знань</a></li>
+    <li><a href="/cabinet.html">👤 Кабінет</a></li>
+  </ul>
+</header>
+
+<div class="container">
+  <div class="page-header">
+    <h1>Журнал оновлень</h1>
+    <p>Історія патчів, нові можливості та вдосконалення Pixel Village</p>
+  </div>
+
+  <div id="updatesList">
+    <!-- Версія 1.8.0 -->
+    <div class="update-card" style="border:1.5px solid var(--leaf)">
+      <div class="update-meta">
+        <span class="badge-version" style="background:var(--leaf);color:#fff">v1.8.0 (Остання версія)</span>
+        <span class="update-date">26 Листопада 2026</span>
+      </div>
+      <h2 class="update-title">🔐 Обов'язкова авторизація, Google Вхід та Особистий кабінет</h2>
+      <p class="update-desc">
+        Повноцінна інтеграція системи акаунтів! Тепер весь ігровий прогрес гарантовано зберігається в хмарі на VPS.<br>
+        • Додано веб-кабінет гравця з онлайн-статистикою та генерацією одноразового коду швидкого входу.<br>
+        • Вхід через Google в один клік.<br>
+        • Захист від підбору паролів (Rate Limiting) та самостійна зміна пароля.<br>
+        • Активація промокодів та тікети підтримки прямо з сайту.
+      </p>
+    </div>
+
+    <!-- Версія 1.7.5 -->
+    <div class="update-card">
+      <div class="update-meta">
+        <span class="badge-version">v1.7.5</span>
+        <span class="update-date">21 Листопада 2026</span>
+      </div>
+      <h2 class="update-title">🌐 Онлайн мультиплеєр та оптимізація</h2>
+      <p class="update-desc">
+        Підключено високошвидкісний європейський сервер pixel-village.online, додано підтримку промокодів та систему тікетів для зв'язку з гравцями.
+      </p>
+    </div>
+
+    <!-- Версія 1.7.3 -->
+    <div class="update-card">
+      <div class="update-meta">
+        <span class="badge-version">v1.7.3</span>
+        <span class="update-date">18 Листопада 2026</span>
+      </div>
+      <h2 class="update-title">🎒 Новий інвентар та крафт</h2>
+      <p class="update-desc">
+        Додано крафт на гарячі клавіші, розширені налаштування керування та покращено штучний інтелект диких тварин і ворогів.
+      </p>
+    </div>
+
+    <!-- Версія 1.6.0 -->
+    <div class="update-card">
+      <div class="update-meta">
+        <span class="badge-version">v1.6.0</span>
+        <span class="update-date">12 Листопада 2026</span>
+      </div>
+      <h2 class="update-title">⚙️ Переробка меню налаштувань</h2>
+      <p class="update-desc">
+        Повністю переписане меню з 4 категоріями: Мова (UA, EN, RU), Аудіо, Керування, Графіка. Оптимізована архітектура гри.
+      </p>
+    </div>
+
+    <!-- Версія 1.5.0 -->
+    <div class="update-card">
+      <div class="update-meta">
+        <span class="badge-version">v1.5.0</span>
+        <span class="update-date">07 Листопада 2026</span>
+      </div>
+      <h2 class="update-title">🚀 Система автооновлення клієнта</h2>
+      <p class="update-desc">
+        Гра автоматично перевіряє наявність нових версій через GitHub Releases та завантажує оновлення прямо у клієнті.
+      </p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>© 2026 Pixel Village. <a href="/">Головна</a> • <a href="/cabinet.html">Особистий кабінет</a> • <a href="/wiki.html">База знань</a></p>
+</footer>
+
+<script>
+// Спроба динамічно довантажити оновлення з бекенду
+fetch('https://api.pixel-village.online/api/updates')
+  .then(res => res.json())
+  .then(data => {
+    if (Array.isArray(data) && data.length > 0) {
+      // Можна додати динамічний рендеринг за наявності нових записів
+    }
+  })
+  .catch(()=>{});
+</script>
+
+</body>
+</html>

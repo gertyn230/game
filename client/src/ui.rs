@@ -49,6 +49,9 @@ pub enum Cmd {
     AccountLogout,
     AccountSaveCloud,
     AccountChangePassword,
+    AccountGoogleLogin,
+    AccountCodeSubmit,
+    AccountSwitchModeTab(u8),
 }
 
 pub struct Btn {

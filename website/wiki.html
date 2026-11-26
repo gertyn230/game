@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>База знань та Гайд — Pixel Village</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=DM+Sans:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+:root{
+  --sheet:#0f1b16;--soft:#18271f;--ink:#e9f2ec;--mute:#9fb5a7;--leaf:#4fae5a;
+  --river:#38a3e0;--sun:#ffc83d;--line:rgba(233,242,236,.14);--bg:#121a22;
+}
+body{
+  font:500 16px/1.65 'DM Sans',system-ui,sans-serif;
+  color:var(--ink);
+  background:radial-gradient(ellipse at 50% 0%, #1a2f26 0%, #0d1612 100%);
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+h1,h2,h3,.logo{font-family:'Bricolage Grotesque',sans-serif}
+a{color:var(--sun);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 14px clamp(16px, 4vw, 40px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 27, 22, 0.85);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 20px;
+  color: #fff;
+  text-decoration: none;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  list-style: none;
+}
+.nav-links a {
+  color: var(--mute);
+  font-weight: 600;
+  font-size: 14.5px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  transition: all .2s;
+  text-decoration: none;
+}
+.nav-links a:hover, .nav-links a.active {
+  color: #fff;
+  background: rgba(255,255,255,0.1);
+}
+
+.container {
+  max-width: 960px;
+  width: 92%;
+  margin: 40px auto 60px;
+  flex: 1;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+.page-header h1 {
+  font-size: clamp(36px, 6vw, 56px);
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.page-header p {
+  color: var(--mute);
+  font-size: 18px;
+  margin-top: 10px;
+}
+
+.guide-sec {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: clamp(24px, 4vw, 36px);
+  margin-bottom: 28px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.guide-sec h2 {
+  font-size: 26px;
+  color: #fff;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.guide-item {
+  background: rgba(0,0,0,0.22);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+}
+.guide-item h3 {
+  font-size: 17px;
+  color: var(--sun);
+  margin-bottom: 6px;
+}
+.guide-item p {
+  color: var(--mute);
+  font-size: 14.5px;
+}
+
+.key-badge {
+  display: inline-block;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-family: monospace;
+  font-weight: 700;
+  color: #fff;
+}
+
+footer {
+  text-align: center;
+  padding: 24px;
+  color: var(--mute);
+  font-size: 14px;
+  border-top: 1px solid var(--line);
+}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a class="logo" href="/">🏡 Pixel Village</a>
+  <ul class="nav-links">
+    <li><a href="/">Головна</a></li>
+    <li><a href="/updates.html">📰 Оновлення</a></li>
+    <li><a href="/wiki.html" class="active">📖 База знань</a></li>
+    <li><a href="/cabinet.html">👤 Кабінет</a></li>
+  </ul>
+</header>
+
+<div class="container">
+  <div class="page-header">
+    <h1>База знань Pixel Village</h1>
+    <p>Все, що потрібно знати про виживання, крафт, інструменти та будівництво</p>
+  </div>
+
+  <!-- Керування -->
+  <div class="guide-sec">
+    <h2>🎮 Керування у грі</h2>
+    <div class="guide-grid">
+      <div class="guide-item">
+        <h3>Пересування</h3>
+        <p>Кнопки <span class="key-badge">W</span> <span class="key-badge">A</span> <span class="key-badge">S</span> <span class="key-badge">D</span> або стрілочки. На Android — віртуальний джойстик у лівій частині екрану.</p>
+      </div>
+      <div class="guide-item">
+        <h3>Дія / Видобуток</h3>
+        <p><span class="key-badge">Space</span> (пробіл) або лівий клік миші. На Android — велика кругла кнопка Дії праворуч.</p>
+      </div>
+      <div class="guide-item">
+        <h3>Меню та Інвентар</h3>
+        <p><span class="key-badge">I</span> — Інвентар, <span class="key-badge">C</span> — Крафт, <span class="key-badge">Esc</span> — Головне меню та налаштування гри.</p>
+      </div>
+      <div class="guide-item">
+        <h3>Швидкі дії</h3>
+        <p><span class="key-badge">F</span> — поїсти, <span class="key-badge">R</span> — попити, <span class="key-badge">G</span> — копати землю, <span class="key-badge">T</span> — приручити вовка, <span class="key-badge">B</span> — сісти у човен.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Показники виживання -->
+  <div class="guide-sec">
+    <h2>❤️ Показники виживання</h2>
+    <div class="guide-grid">
+      <div class="guide-item">
+        <h3>🍖 Голод (Hunger)</h3>
+        <p>Зменшується з часом. Збирайте ягоди з кущів або полюйте на тварин для м'яса. Натискайте <span class="key-badge">F</span> щоб поїсти.</p>
+      </div>
+      <div class="guide-item">
+        <h3>💧 Спрага (Thirst)</h3>
+        <p>Підійдіть до будь-якої водойми або річки та натисніть <span class="key-badge">R</span>, щоб відновити рівень води.</p>
+      </div>
+      <div class="guide-item">
+        <h3>⚡ Енергія (Energy)</h3>
+        <p>Витрачається на біг та рубку ресурсів. Відновлюється біля палаючого вогнища або під час відпочинку.</p>
+      </div>
+      <div class="guide-item">
+        <h3>❤️ Здоров'я (HP)</h3>
+        <p>Падає якщо ви голодні чи зневоднені, або якщо на вас нападають вовки чи ведмеді. Підтримуйте ситість для регенерації.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Інструменти та крафт -->
+  <div class="guide-sec">
+    <h2>🛠️ Інструменти та крафт</h2>
+    <div class="guide-grid">
+      <div class="guide-item">
+        <h3>🪵 Дерев'яна сокира та кирка</h3>
+        <p>Початкові інструменти. Дозволяють швидше рубати дерева та добувати каміння, мідну та залізну руду.</p>
+      </div>
+      <div class="guide-item">
+        <h3>⚔️ Мідне та залізне спорядження</h3>
+        <p>Спис збільшує радіус атаки та шкоду по тваринах. Залізний плащ захищає від нічного холоду та атак диких звірів.</p>
+      </div>
+      <div class="guide-item">
+        <h3>🎣 Вудка та Риболовля</h3>
+        <p>Скрафтіть вудку, підійдіть до води та закиньте гачок. Коли поплавок пірнає — підсікайте та балансуйте натяг лески!</p>
+      </div>
+      <div class="guide-item">
+        <h3>🏠 Будинки та Мости</h3>
+        <p>Будуйте мости через річки, щоб відкривати нові острови. Зводьте затишні будинки, розширюючи своє село!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Тварини та приручення -->
+  <div class="guide-sec">
+    <h2>🐺 Тварини та Пес-помічник</h2>
+    <div class="guide-grid">
+      <div class="guide-item">
+        <h3>🐇 Кролики та Олені</h3>
+        <p>Мирні тварини, які тікають при вашому наближенні. Джерело свіжого м'яса та шкіри.</p>
+      </div>
+      <div class="guide-item">
+        <h3>🐺 Приручення Вовка</h3>
+        <p>Якщо підійти до вовка зі шматком м'яса в інвентарі та натиснути <span class="key-badge">T</span>, він стане вашим вірним псом-охоронцем!</p>
+      </div>
+      <div class="guide-item">
+        <h3>🐻 Ведмеді</h3>
+        <p>Небезпечні лісові хижаки. Не підходьте без списа або теплого одягу!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>© 2026 Pixel Village. <a href="/">Головна</a> • <a href="/cabinet.html">Особистий кабінет</a> • <a href="/updates.html">Оновлення</a></p>
+</footer>
+
+</body>
+</html>

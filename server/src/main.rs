@@ -23,7 +23,7 @@ use shared::{
     Ban, ClientMsg, DeviceInfo, Mute, Offer, PlayerState, ServerMsg, ITEM_COUNT, MAX_NAME_CHARS, NODE_COUNT_MAX, RESPAWN_SECS, WORLD_SIZE,
 };
 use tokio::sync::{broadcast, mpsc, Mutex};
-use sqlx::SqlitePool;
+use sqlx::{SqlitePool, Row};
 
 const MAX_PLAYERS: usize = 200;
 const MAX_OFFERS: usize = 300;
@@ -263,6 +263,10 @@ async fn main() {
         .route("/api/admin/accounts", get(api_admin_accounts))
         .route("/api/admin/account/reset-password", post(api_admin_reset_password))
         .route("/api/account/change-password", post(api_account_change_password))
+        .route("/api/account/google", post(api_account_google))
+        .route("/api/account/one-time-code", post(api_account_one_time_code))
+        .route("/api/account/code-login", post(api_account_code_login))
+        .route("/api/account/profile", get(api_account_profile))
         .route("/api/promo/redeem", post(api_redeem_promo))
         .route("/api/ticket/create", post(api_create_ticket))
         .route("/api/admin/config", get(api_get_config))
@@ -323,18 +327,18 @@ async fn api_version() -> Json<serde_json::Value> {
     // Версія гри - змінюйте при кожному оновленні
     Json(serde_json::json!({
         "version": env!("CARGO_PKG_VERSION"),
-        "date": "2026-11-17",
+        "date": "2026-11-26",
         "changes": [
-            "✅ Виправлено відображення координат гравців в Admin Dashboard",
-            "✅ Виправлено Android touch controls (simulate_mouse_with_touch)",
-            "✅ Налаштовано production сервер (wss://api.pixel-village.online/ws)",
-            "✅ Додано Discord Rich Presence",
-            "✅ Виправлено баги компіляції та warnings",
-            "🎮 Multiplayer працює стабільно",
-            "🔧 Admin панель з real-time статистикою",
-            "🚀 Автоматичне оновлення через GitHub Releases"
+            "🔐 Обов'язкова авторизація перед грою (Email або Google)",
+            "🌐 Повноцінний особистий кабінет гравця на сайті",
+            "⚡ Швидкий вхід за одноразовим 6-значним кодом",
+            "🛡️ Захист акаунтів від підбору паролів (Rate Limiting)",
+            "🔑 Можливість самостійної зміни пароля в грі та на сайті",
+            "🎁 Активація промокодів онлайн у кабінеті гравця",
+            "📋 Підтримка та тікети безпосередньо з веб-кабінету",
+            "🚀 Багатосторінковий портал: Кабінет, База знань, Оновлення"
         ],
-        "download": "https://github.com/gertyn230/game/releases/latest"
+        "download": "https://pixel-village.online/cabinet.html"
     }))
 }
 
@@ -956,6 +960,56 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
             }
             drop(w);
             let res = db::login_account(&app.db, &email, &password).await;
+            let mut w = app.world.lock().await;
+            match res {
+                Ok(account) => {
+                    if let Some(c) = w.players.get_mut(&id) {
+                        c.account_email = Some(account.email.clone());
+                        c.state.name = account.username.clone();
+                        c.score = account.score;
+                        c.fish = account.fish;
+                        c.big = account.big_fish;
+                        c.state.x = account.x;
+                        c.state.y = account.y;
+                        c.device = device_info;
+                        reply(c, &ServerMsg::AuthSuccess { account });
+                    }
+                }
+                Err(reason) => {
+                    if let Some(c) = w.players.get(&id) {
+                        reply(c, &ServerMsg::AuthFailed { reason });
+                    }
+                }
+            }
+        }
+        ClientMsg::GoogleLogin { email, username, firebase_uid, device_info } => {
+            drop(w);
+            let res = db::google_login_account(&app.db, &email, &username, &firebase_uid).await;
+            let mut w = app.world.lock().await;
+            match res {
+                Ok(account) => {
+                    if let Some(c) = w.players.get_mut(&id) {
+                        c.account_email = Some(account.email.clone());
+                        c.state.name = account.username.clone();
+                        c.score = account.score;
+                        c.fish = account.fish;
+                        c.big = account.big_fish;
+                        c.state.x = account.x;
+                        c.state.y = account.y;
+                        c.device = device_info;
+                        reply(c, &ServerMsg::AuthSuccess { account });
+                    }
+                }
+                Err(reason) => {
+                    if let Some(c) = w.players.get(&id) {
+                        reply(c, &ServerMsg::AuthFailed { reason });
+                    }
+                }
+            }
+        }
+        ClientMsg::CodeLogin { code, device_info } => {
+            drop(w);
+            let res = db::login_with_code(&app.db, &code).await;
             let mut w = app.world.lock().await;
             match res {
                 Ok(account) => {
@@ -1694,5 +1748,122 @@ async fn api_account_change_password(
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "success": false, "error": err })),
         ).into_response(),
+    }
+}
+
+
+#[derive(serde::Deserialize)]
+struct ApiGoogleLoginReq {
+    email: String,
+    username: Option<String>,
+    firebase_uid: String,
+}
+
+async fn api_account_google(
+    State(app): State<App>,
+    Json(payload): Json<ApiGoogleLoginReq>,
+) -> Response {
+    let username = payload.username.unwrap_or_default();
+    match db::google_login_account(&app.db, &payload.email, &username, &payload.firebase_uid).await {
+        Ok(account) => Json(serde_json::json!({ "success": true, "account": account })).into_response(),
+        Err(err) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "success": false, "error": err })),
+        ).into_response(),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct ApiOneTimeCodeReq {
+    email: String,
+}
+
+async fn api_account_one_time_code(
+    State(app): State<App>,
+    Json(payload): Json<ApiOneTimeCodeReq>,
+) -> Response {
+    match db::generate_login_code(&app.db, &payload.email).await {
+        Ok(code) => Json(serde_json::json!({ "success": true, "code": code, "expires_in": 900 })).into_response(),
+        Err(err) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "success": false, "error": err })),
+        ).into_response(),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct ApiCodeLoginReq {
+    code: String,
+}
+
+async fn api_account_code_login(
+    State(app): State<App>,
+    Json(payload): Json<ApiCodeLoginReq>,
+) -> Response {
+    match db::login_with_code(&app.db, &payload.code).await {
+        Ok(account) => Json(serde_json::json!({ "success": true, "account": account })).into_response(),
+        Err(err) => (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({ "success": false, "error": err })),
+        ).into_response(),
+    }
+}
+
+async fn api_account_profile(
+    State(app): State<App>,
+    Query(q): Query<HashMap<String, String>>,
+) -> Response {
+    let email = match q.get("email") {
+        Some(e) if !e.trim().is_empty() => e.trim().to_lowercase(),
+        _ => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": "Потрібен email" }))).into_response(),
+    };
+
+    let row = sqlx::query(
+        r#"
+        SELECT id, email, username, gold, score, fish, big_fish,
+               inventory, tools, houses, last_x, last_y, created_at, last_login
+        FROM accounts WHERE email = ?
+        "#
+    )
+    .bind(&email)
+    .fetch_optional(&app.db)
+    .await;
+
+    match row {
+        Ok(Some(r)) => {
+            let inv_str: String = r.get("inventory");
+            let tools_str: String = r.get("tools");
+            let inventory: Vec<u32> = serde_json::from_str(&inv_str).unwrap_or_default();
+            let tools: Vec<i32> = serde_json::from_str(&tools_str).unwrap_or_default();
+
+            // Check if player is currently online
+            let is_online = {
+                let w = app.world.lock().await;
+                w.players.values().any(|c| c.account_email.as_deref() == Some(&email))
+            };
+
+            Json(serde_json::json!({
+                "success": true,
+                "profile": {
+                    "id": r.get::<i64, _>("id"),
+                    "email": r.get::<String, _>("email"),
+                    "username": r.get::<String, _>("username"),
+                    "gold": r.get::<i64, _>("gold"),
+                    "score": r.get::<i64, _>("score"),
+                    "fish": r.get::<i64, _>("fish"),
+                    "big_fish": r.get::<f64, _>("big_fish"),
+                    "houses": r.get::<i64, _>("houses"),
+                    "inventory": inventory,
+                    "tools": tools,
+                    "x": r.get::<f64, _>("last_x"),
+                    "y": r.get::<f64, _>("last_y"),
+                    "created_at": r.get::<i64, _>("created_at"),
+                    "last_login": r.get::<i64, _>("last_login"),
+                    "is_online": is_online
+                }
+            })).into_response()
+        }
+        Ok(None) => (StatusCode::NOT_FOUND, Json(serde_json::json!({ "error": "Акаунт не знайдено" }))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e.to_string() }))).into_response(),
     }
 }

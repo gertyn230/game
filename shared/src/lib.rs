@@ -130,6 +130,18 @@ pub enum ClientMsg {
         #[serde(default)]
         device_info: Option<DeviceInfo>,
     },
+    GoogleLogin {
+        email: String,
+        username: String,
+        firebase_uid: String,
+        #[serde(default)]
+        device_info: Option<DeviceInfo>,
+    },
+    CodeLogin {
+        code: String,
+        #[serde(default)]
+        device_info: Option<DeviceInfo>,
+    },
     SaveAccount {
         gold: u32,
         score: u32,

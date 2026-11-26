@@ -44,12 +44,13 @@ use world::*;
 #[derive(Default, Clone)]
 pub struct AccountUiState {
     pub active: Option<shared::AccountData>,
-    pub mode: u8, // 0 = login, 1 = register, 2 = change password
-    pub active_field: u8, // 0 = email, 1 = password, 2 = username, 3 = new_password
+    pub mode: u8, // 0 = login, 1 = register, 2 = change password, 3 = code
+    pub active_field: u8, // 0 = email, 1 = password, 2 = username, 3 = new_password, 4 = code
     pub email: String,
     pub password: String,
     pub username: String,
     pub new_password: String,
+    pub code: String,
     pub status: Option<String>,
 }
 
@@ -321,6 +322,12 @@ async fn main() {
             continue;
         }
 
+        // Обов'язкова авторизація перед грою
+        if acc_ui.active.is_none() {
+            ui.menu = true;
+            ui.tab = 5;
+        }
+
         // ---------- сеть ----------
         while let Ok(ev) = net.in_rx.try_recv() {
             match ev {
@@ -554,6 +561,7 @@ async fn main() {
                             0 => if acc_ui.email.len() < 50 { acc_ui.email.push(c); },
                             1 => if acc_ui.password.len() < 32 { acc_ui.password.push(c); },
                             2 => if acc_ui.username.len() < 20 { acc_ui.username.push(c); },
+                            4 => if acc_ui.code.len() < 8 && (c.is_ascii_digit() || c.is_alphabetic()) { acc_ui.code.push(c); },
                             _ => {}
                         }
                     }
@@ -563,15 +571,25 @@ async fn main() {
                         0 => { acc_ui.email.pop(); },
                         1 => { acc_ui.password.pop(); },
                         2 => { acc_ui.username.pop(); },
+                        4 => { acc_ui.code.pop(); },
                         _ => {}
                     }
                 }
                 if is_key_pressed(KeyCode::Tab) {
-                    let max_f = if acc_ui.mode == 0 { 2 } else { 3 };
-                    acc_ui.active_field = (acc_ui.active_field + 1) % max_f;
+                    if acc_ui.mode == 0 {
+                        acc_ui.active_field = (acc_ui.active_field + 1) % 2;
+                    } else if acc_ui.mode == 1 {
+                        acc_ui.active_field = (acc_ui.active_field + 1) % 3;
+                    } else if acc_ui.mode == 3 {
+                        acc_ui.active_field = 4;
+                    }
                 }
                 if is_key_pressed(KeyCode::Enter) {
-                    cmds.push(Cmd::AccountSubmit);
+                    if acc_ui.mode == 3 {
+                        cmds.push(Cmd::AccountCodeSubmit);
+                    } else {
+                        cmds.push(Cmd::AccountSubmit);
+                    }
                 }
             } else if acc_ui.mode == 2 {
                 // Change password mode: 1 = old password, 3 = new password
@@ -721,8 +739,14 @@ async fn main() {
                     audio.play("craft");
                 }
                 Cmd::Close => {
-                    ui.menu = false;
-                    ui.rebinding = None;
+                    if acc_ui.active.is_none() {
+                        acc_ui.status = Some("⚠️ Для гри потрібна обов'язкова авторизація!".to_string());
+                        ui.menu = true;
+                        ui.tab = 5;
+                    } else {
+                        ui.menu = false;
+                        ui.rebinding = None;
+                    }
                 }
                 Cmd::Quit => {
                     // Зберігаємо гру перед виходом
@@ -842,6 +866,45 @@ async fn main() {
                 Cmd::AccountSwitchMode => {
                     acc_ui.mode = if acc_ui.mode == 0 { 1 } else { 0 };
                     acc_ui.status = None;
+                }
+                Cmd::AccountSwitchModeTab(m) => {
+                    acc_ui.mode = m;
+                    acc_ui.active_field = match m {
+                        0 => 0,
+                        1 => 0,
+                        3 => 4,
+                        _ => 0,
+                    };
+                    acc_ui.status = None;
+                }
+                Cmd::AccountGoogleLogin => {
+                    #[cfg(target_os = "windows")]
+                    {
+                        let _ = std::process::Command::new("rundll32")
+                            .args(["url.dll,FileProtocolHandler", "https://pixel-village.online/cabinet.html"])
+                            .spawn();
+                    }
+                    #[cfg(not(target_os = "windows"))]
+                    {
+                        let _ = std::process::Command::new("xdg-open")
+                            .arg("https://pixel-village.online/cabinet.html")
+                            .spawn();
+                    }
+                    acc_ui.mode = 3;
+                    acc_ui.active_field = 4;
+                    acc_ui.status = Some("Відкрито кабінет у браузері. Увійдіть через Google та введіть 6-значний код:".to_string());
+                }
+                Cmd::AccountCodeSubmit => {
+                    let clean_code = acc_ui.code.trim();
+                    if clean_code.is_empty() {
+                        acc_ui.status = Some("Помилка: Введіть 6-значний код з кабінету".to_string());
+                    } else {
+                        acc_ui.status = Some("Перевірка коду...".to_string());
+                        net.send(ClientMsg::CodeLogin {
+                            code: clean_code.to_string(),
+                            device_info: Some(DeviceInfo::detect()),
+                        });
+                    }
                 }
                 Cmd::AccountSubmit => {
                     if acc_ui.mode == 0 {
@@ -1983,66 +2046,90 @@ fn draw_menu(
                     ui.button(font, Rect::new(card_x + pad, y, field_w, fs * 2.2), "💾 Зберегти новий пароль", Cmd::AccountChangePassword, true, 0x27ae60, fs * 0.9);
                 }
             } else {
-                // Гравець НЕ авторизований: Форма Входу / Реєстрації
+                // Гравець НЕ авторизований: Форма Входу / Реєстрації / Google
                 let card_w = (body.w - pad * 2.0).min(fs * 28.0);
                 let card_x = body.x + (body.w - card_w) / 2.0;
-                let card_h = (body.h - pad * 2.0).min(fs * 24.0);
+                let card_h = (body.h - pad * 2.0).min(fs * 26.0);
                 draw_rectangle(card_x, y, card_w, card_h, ha(0x181a17, 0.95));
                 draw_rectangle_lines(card_x, y, card_w, card_h, 2.0, hx(0x4a3a28));
 
-                // Перемикач Вхід / Реєстрація
-                let tab_w = (card_w - pad * 3.0) / 2.0;
-                let tab_h = fs * 2.2;
-                ui.button(font, Rect::new(card_x + pad, y + pad, tab_w, tab_h), "🔑 Вхід", Cmd::AccountSwitchMode, true, if acc_ui.mode == 0 { 0x2f7d36 } else { 0x3d4238 }, fs * 0.9);
-                ui.button(font, Rect::new(card_x + pad * 2.0 + tab_w, y + pad, tab_w, tab_h), "✨ Реєстрація", Cmd::AccountSwitchMode, true, if acc_ui.mode == 1 { 0x2f7d36 } else { 0x3d4238 }, fs * 0.9);
-                y += pad * 2.0 + tab_h + fs * 0.4;
+                // Кнопка швидкого входу через Google
+                ui.button(font, Rect::new(card_x + pad, y + pad, card_w - pad * 2.0, fs * 2.2), "🌐 Увійти через Google (через браузер)", Cmd::AccountGoogleLogin, true, 0x2c6cb0, fs * 0.85);
+                y += pad * 1.5 + fs * 2.4;
+
+                // Перемикач Вхід / Реєстрація / Код
+                let tab_w = (card_w - pad * 4.0) / 3.0;
+                let tab_h = fs * 2.0;
+                ui.button(font, Rect::new(card_x + pad, y, tab_w, tab_h), "🔑 Вхід (Email)", Cmd::AccountSwitchModeTab(0), true, if acc_ui.mode == 0 { 0x2f7d36 } else { 0x3d4238 }, fs * 0.8);
+                ui.button(font, Rect::new(card_x + pad * 2.0 + tab_w, y, tab_w, tab_h), "✨ Реєстрація", Cmd::AccountSwitchModeTab(1), true, if acc_ui.mode == 1 { 0x2f7d36 } else { 0x3d4238 }, fs * 0.8);
+                ui.button(font, Rect::new(card_x + pad * 3.0 + tab_w * 2.0, y, tab_w, tab_h), "⚡ Код з сайту", Cmd::AccountSwitchModeTab(3), true, if acc_ui.mode == 3 { 0x2f7d36 } else { 0x3d4238 }, fs * 0.8);
+                y += tab_h + pad * 1.0;
 
                 let field_w = card_w - pad * 2.0;
                 let field_h = fs * 2.2;
 
-                // Поле 0: Електронна пошта
-                let email_active = acc_ui.active_field == 0;
-                let email_col = if email_active { 0x1f3a24 } else { 0x121411 };
-                let email_border = if email_active { 0x2ecc71 } else { 0x3e4a39 };
-                draw_rectangle(card_x + pad, y, field_w, field_h, hx(email_col));
-                draw_rectangle_lines(card_x + pad, y, field_w, field_h, 1.5, hx(email_border));
-                let cur0 = if email_active && (now * 2.0) as i64 % 2 == 0 { "|" } else { "" };
-                let email_display = if acc_ui.email.is_empty() && !email_active { "📧 Натисніть для вводу пошти...".to_string() } else { format!("📧 {}{cur0}", acc_ui.email) };
-                text(font, &email_display, card_x + pad * 1.5, y + fs * 1.5, fs * 0.85, if acc_ui.email.is_empty() && !email_active { ha(0xffffff, 0.4) } else { WHITE });
-                ui.button(font, Rect::new(card_x + pad, y, field_w, field_h), "", Cmd::AccountField(0), true, 0x000000, fs);
-                y += field_h + pad * 0.8;
+                if acc_ui.mode == 3 {
+                    // Режим входу за одноразовим кодом
+                    text(font, "Введіть 6-значний код з особистого кабінету:", card_x + pad, y + fs * 0.8, fs * 0.8, hx(0xf1c40f));
+                    y += fs * 1.4;
 
-                // Якщо Реєстрація: Поле 2: Нікнейм
-                if acc_ui.mode == 1 {
-                    let user_active = acc_ui.active_field == 2;
-                    let user_col = if user_active { 0x1f3a24 } else { 0x121411 };
-                    let user_border = if user_active { 0x2ecc71 } else { 0x3e4a39 };
-                    draw_rectangle(card_x + pad, y, field_w, field_h, hx(user_col));
-                    draw_rectangle_lines(card_x + pad, y, field_w, field_h, 1.5, hx(user_border));
-                    let cur2 = if user_active && (now * 2.0) as i64 % 2 == 0 { "|" } else { "" };
-                    let user_display = if acc_ui.username.is_empty() && !user_active { "👤 Нікнейм (2-20 символів)...".to_string() } else { format!("👤 {}{cur2}", acc_ui.username) };
-                    text(font, &user_display, card_x + pad * 1.5, y + fs * 1.5, fs * 0.85, if acc_ui.username.is_empty() && !user_active { ha(0xffffff, 0.4) } else { WHITE });
-                    ui.button(font, Rect::new(card_x + pad, y, field_w, field_h), "", Cmd::AccountField(2), true, 0x000000, fs);
+                    let code_active = acc_ui.active_field == 4;
+                    let cur4 = if code_active && (now * 2.0) as i64 % 2 == 0 { "|" } else { "" };
+                    let code_display = if acc_ui.code.is_empty() && !code_active { "🔢 Натисніть для вводу коду (6 цифр)...".to_string() } else { format!("🔢 {}{cur4}", acc_ui.code) };
+                    draw_rectangle(card_x + pad, y, field_w, field_h, hx(if code_active { 0x1f3a24 } else { 0x121411 }));
+                    draw_rectangle_lines(card_x + pad, y, field_w, field_h, 1.5, hx(if code_active { 0x2ecc71 } else { 0x3e4a39 }));
+                    text(font, &code_display, card_x + pad * 1.5, y + fs * 1.5, fs * 0.9, if acc_ui.code.is_empty() && !code_active { ha(0xffffff, 0.4) } else { WHITE });
+                    ui.button(font, Rect::new(card_x + pad, y, field_w, field_h), "", Cmd::AccountField(4), true, 0x000000, fs);
+                    y += field_h + pad * 1.0;
+
+                    ui.button(font, Rect::new(card_x + pad, y, field_w, fs * 2.2), "🚀 Увійти за кодом", Cmd::AccountCodeSubmit, true, 0x27ae60, fs * 0.9);
+                    y += fs * 2.6;
+                } else {
+                    // Режим входу або реєстрації через Email + Пароль
+                    // Поле 0: Електронна пошта
+                    let email_active = acc_ui.active_field == 0;
+                    let email_col = if email_active { 0x1f3a24 } else { 0x121411 };
+                    let email_border = if email_active { 0x2ecc71 } else { 0x3e4a39 };
+                    draw_rectangle(card_x + pad, y, field_w, field_h, hx(email_col));
+                    draw_rectangle_lines(card_x + pad, y, field_w, field_h, 1.5, hx(email_border));
+                    let cur0 = if email_active && (now * 2.0) as i64 % 2 == 0 { "|" } else { "" };
+                    let email_display = if acc_ui.email.is_empty() && !email_active { "📧 Натисніть для вводу пошти...".to_string() } else { format!("📧 {}{cur0}", acc_ui.email) };
+                    text(font, &email_display, card_x + pad * 1.5, y + fs * 1.5, fs * 0.85, if acc_ui.email.is_empty() && !email_active { ha(0xffffff, 0.4) } else { WHITE });
+                    ui.button(font, Rect::new(card_x + pad, y, field_w, field_h), "", Cmd::AccountField(0), true, 0x000000, fs);
                     y += field_h + pad * 0.8;
+
+                    // Якщо Реєстрація: Поле 2: Нікнейм
+                    if acc_ui.mode == 1 {
+                        let user_active = acc_ui.active_field == 2;
+                        let user_col = if user_active { 0x1f3a24 } else { 0x121411 };
+                        let user_border = if user_active { 0x2ecc71 } else { 0x3e4a39 };
+                        draw_rectangle(card_x + pad, y, field_w, field_h, hx(user_col));
+                        draw_rectangle_lines(card_x + pad, y, field_w, field_h, 1.5, hx(user_border));
+                        let cur2 = if user_active && (now * 2.0) as i64 % 2 == 0 { "|" } else { "" };
+                        let user_display = if acc_ui.username.is_empty() && !user_active { "👤 Нікнейм (2-20 символів)...".to_string() } else { format!("👤 {}{cur2}", acc_ui.username) };
+                        text(font, &user_display, card_x + pad * 1.5, y + fs * 1.5, fs * 0.85, if acc_ui.username.is_empty() && !user_active { ha(0xffffff, 0.4) } else { WHITE });
+                        ui.button(font, Rect::new(card_x + pad, y, field_w, field_h), "", Cmd::AccountField(2), true, 0x000000, fs);
+                        y += field_h + pad * 0.8;
+                    }
+
+                    // Поле 1: Пароль
+                    let pass_active = acc_ui.active_field == 1;
+                    let pass_col = if pass_active { 0x1f3a24 } else { 0x121411 };
+                    let pass_border = if pass_active { 0x2ecc71 } else { 0x3e4a39 };
+                    draw_rectangle(card_x + pad, y, field_w, field_h, hx(pass_col));
+                    draw_rectangle_lines(card_x + pad, y, field_w, field_h, 1.5, hx(pass_border));
+                    let cur1 = if pass_active && (now * 2.0) as i64 % 2 == 0 { "|" } else { "" };
+                    let masked = "*".repeat(acc_ui.password.len());
+                    let pass_display = if acc_ui.password.is_empty() && !pass_active { "🔒 Введіть пароль (мін. 6 симв.)...".to_string() } else { format!("🔒 {}{cur1}", masked) };
+                    text(font, &pass_display, card_x + pad * 1.5, y + fs * 1.5, fs * 0.85, if acc_ui.password.is_empty() && !pass_active { ha(0xffffff, 0.4) } else { WHITE });
+                    ui.button(font, Rect::new(card_x + pad, y, field_w, field_h), "", Cmd::AccountField(1), true, 0x000000, fs);
+                    y += field_h + pad * 1.0;
+
+                    // Кнопка відправки форми
+                    let submit_label = if acc_ui.mode == 0 { "🚀 Увійти в акаунт" } else { "✨ Зареєструватися" };
+                    ui.button(font, Rect::new(card_x + pad, y, field_w, fs * 2.2), submit_label, Cmd::AccountSubmit, true, 0x27ae60, fs * 0.9);
+                    y += fs * 2.6;
                 }
-
-                // Поле 1: Пароль
-                let pass_active = acc_ui.active_field == 1;
-                let pass_col = if pass_active { 0x1f3a24 } else { 0x121411 };
-                let pass_border = if pass_active { 0x2ecc71 } else { 0x3e4a39 };
-                draw_rectangle(card_x + pad, y, field_w, field_h, hx(pass_col));
-                draw_rectangle_lines(card_x + pad, y, field_w, field_h, 1.5, hx(pass_border));
-                let cur1 = if pass_active && (now * 2.0) as i64 % 2 == 0 { "|" } else { "" };
-                let masked = "*".repeat(acc_ui.password.len());
-                let pass_display = if acc_ui.password.is_empty() && !pass_active { "🔒 Введіть пароль (мін. 6 симв.)...".to_string() } else { format!("🔒 {}{cur1}", masked) };
-                text(font, &pass_display, card_x + pad * 1.5, y + fs * 1.5, fs * 0.85, if acc_ui.password.is_empty() && !pass_active { ha(0xffffff, 0.4) } else { WHITE });
-                ui.button(font, Rect::new(card_x + pad, y, field_w, field_h), "", Cmd::AccountField(1), true, 0x000000, fs);
-                y += field_h + pad * 1.0;
-
-                // Кнопка відправки форми
-                let submit_label = if acc_ui.mode == 0 { "🚀 Увійти в акаунт" } else { "✨ Зареєструватися" };
-                ui.button(font, Rect::new(card_x + pad, y, field_w, fs * 2.2), submit_label, Cmd::AccountSubmit, true, 0x27ae60, fs * 0.9);
-                y += fs * 2.6;
 
                 // Статус / Повідомлення про помилку
                 if let Some(msg) = &acc_ui.status {

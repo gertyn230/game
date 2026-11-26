@@ -64,7 +64,7 @@ admin.pixel-village.online {
 http://pixel-village.online, http://www.pixel-village.online, https://pixel-village.online, https://www.pixel-village.online {
     root * /var/www/pixel-village
     file_server
-    try_files {path} /index.html
+    try_files {path} {path}.html /index.html
     log {
         output file /var/log/caddy/www.log
         format json

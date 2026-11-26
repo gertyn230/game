@@ -157,6 +157,18 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
         .execute(&pool)
         .await;
 
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS login_codes (
+            code TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            expires_at INTEGER NOT NULL
+        )
+        "#
+    )
+    .execute(&pool)
+    .await?;
+
     // Add multilang columns (ignore errors if they already exist)
     let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN title_en TEXT DEFAULT ''").execute(&pool).await;
     let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN description_en TEXT DEFAULT ''").execute(&pool).await;
@@ -167,6 +179,14 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
         .fetch_one(&pool)
         .await
         .unwrap_or(0);
+
+    let has_180: Option<i64> = sqlx::query_scalar("SELECT 1 FROM game_updates WHERE version = 'v1.8.0'")
+        .fetch_optional(&pool)
+        .await
+        .unwrap_or(None);
+    if has_180.is_none() {
+        let _ = create_game_update(&pool, "v1.8.0", "Особистий кабінет, Google авторизація та обов'язковий вхід", "Додано багатосторінковий портал з особистим кабінетом, вхід через Google та 6-значний код, обов'язкову авторизацію перед грою та самостійну зміну пароля.", "26 Листопада 2026", "Player cabinet, Google Auth and mandatory login", "Added multi-page portal with player cabinet, Google login and one-time code, mandatory authorization before playing and password change.", "Личный кабинет, Google авторизация и обязательный вход", "Добавлен многостраничный портал с личным кабинетом, вход через Google и 6-значный код, обязательная авторизация перед игрой и смена пароля.").await;
+    }
 
     if upd_count == 0 {
         let _ = create_game_update(&pool, "v1.7.5", "Онлайн мультиплеєр та оптимізація", "Підключено високошвидкісний європейський сервер pixel-village.online, додано підтримку промокодів та систему тікетів.", "21 Листопада 2026", "Online multiplayer and optimization", "Connected high-speed European server pixel-village.online, added promo code support and ticket system.", "Онлайн мультиплеер и оптимизация", "Подключен высокоскоростной европейский сервер pixel-village.online, добавлена поддержка промокодов и система тикетов.").await;
@@ -834,4 +854,206 @@ pub async fn change_account_password(
         .map_err(|e| format!("Помилка збереження: {}", e))?;
 
     Ok(())
+}
+
+
+pub async fn google_login_account(
+    pool: &SqlitePool,
+    email: &str,
+    username: &str,
+    firebase_uid: &str,
+) -> Result<AccountData, String> {
+    let email = email.trim().to_lowercase();
+    let mut username = username.trim().to_string();
+
+    if email.is_empty() || !email.contains('@') {
+        return Err("Некоректний email від Google".to_string());
+    }
+
+    if username.is_empty() {
+        username = email.split('@').next().unwrap_or("Player").to_string();
+    }
+    if username.len() > 24 {
+        username.truncate(24);
+    }
+    if username.len() < 2 {
+        username = format!("User_{}", &email[..email.find('@').unwrap_or(email.len()).min(8)]);
+    }
+
+    let existing = sqlx::query(
+        r#"
+        SELECT email, username, gold, score, fish, big_fish,
+               inventory, tools, houses, last_x, last_y
+        FROM accounts WHERE email = ?
+        "#
+    )
+    .bind(&email)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| format!("Помилка бази даних: {}", e))?;
+
+    let now = chrono::Utc::now().timestamp();
+
+    if let Some(row) = existing {
+        // Update firebase_uid and last_login
+        let _ = sqlx::query("UPDATE accounts SET firebase_uid = ?, last_login = ? WHERE email = ?")
+            .bind(firebase_uid)
+            .bind(now)
+            .bind(&email)
+            .execute(pool)
+            .await;
+
+        let uname: String = row.get("username");
+        let gold: i64 = row.get("gold");
+        let score: i64 = row.get("score");
+        let fish: i64 = row.get("fish");
+        let big_fish: f64 = row.get("big_fish");
+        let inv_str: String = row.get("inventory");
+        let tools_str: String = row.get("tools");
+        let houses: i64 = row.get("houses");
+        let x: f64 = row.get("last_x");
+        let y: f64 = row.get("last_y");
+
+        let inventory: Vec<u32> = serde_json::from_str(&inv_str).unwrap_or_default();
+        let tools: Vec<i32> = serde_json::from_str(&tools_str).unwrap_or_default();
+
+        Ok(AccountData {
+            email,
+            username: uname,
+            gold: gold.max(0) as u32,
+            score: score.max(0) as u32,
+            fish: fish.max(0) as u32,
+            big_fish: big_fish as f32,
+            inventory,
+            tools,
+            houses: houses.max(0) as u32,
+            x: x as f32,
+            y: y as f32,
+        })
+    } else {
+        // Create new account via Google
+        let mut random_pwd = [0u8; 16];
+        rand::thread_rng().fill(&mut random_pwd);
+        let random_pwd_str = hex::encode(random_pwd);
+        let password_hash = hash_password(&random_pwd_str);
+
+        sqlx::query(
+            r#"
+            INSERT INTO accounts (
+                email, username, password_hash, firebase_uid, gold, score, fish, big_fish,
+                inventory, tools, houses, last_x, last_y, created_at, last_login
+            ) VALUES (?, ?, ?, ?, 0, 0, 0, 0.0, '[]', '[]', 0, 20.5, 20.5, ?, ?)
+            "#
+        )
+        .bind(&email)
+        .bind(&username)
+        .bind(&password_hash)
+        .bind(firebase_uid)
+        .bind(now)
+        .bind(now)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("Помилка створення акаунту через Google: {}", e))?;
+
+        Ok(AccountData {
+            email,
+            username,
+            gold: 0,
+            score: 0,
+            fish: 0,
+            big_fish: 0.0,
+            inventory: Vec::new(),
+            tools: Vec::new(),
+            houses: 0,
+            x: 20.5,
+            y: 20.5,
+        })
+    }
+}
+
+pub async fn generate_login_code(pool: &SqlitePool, email: &str) -> Result<String, String> {
+    let email = email.trim().to_lowercase();
+    let code: u32 = rand::thread_rng().gen_range(100_000..999_999);
+    let code_str = code.to_string();
+    let expires_at = chrono::Utc::now().timestamp() + 900; // 15 mins
+
+    sqlx::query("INSERT OR REPLACE INTO login_codes (code, email, expires_at) VALUES (?, ?, ?)")
+        .bind(&code_str)
+        .bind(&email)
+        .bind(expires_at)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("Помилка збереження коду: {}", e))?;
+
+    Ok(code_str)
+}
+
+pub async fn login_with_code(pool: &SqlitePool, code: &str) -> Result<AccountData, String> {
+    let code = code.trim();
+    let now = chrono::Utc::now().timestamp();
+
+    let row = sqlx::query("SELECT email, expires_at FROM login_codes WHERE code = ?")
+        .bind(code)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| format!("Помилка бази даних: {}", e))?;
+
+    let row = match row {
+        Some(r) => r,
+        None => return Err("Невірний або застарілий код входу".to_string()),
+    };
+
+    let expires_at: i64 = row.get("expires_at");
+    if expires_at < now {
+        let _ = sqlx::query("DELETE FROM login_codes WHERE code = ?").bind(code).execute(pool).await;
+        return Err("Термін дії коду вичерпано. Згенеруйте новий в кабінеті".to_string());
+    }
+
+    let email: String = row.get("email");
+    let _ = sqlx::query("DELETE FROM login_codes WHERE code = ?").bind(code).execute(pool).await;
+
+    let acc_row = sqlx::query(
+        r#"
+        SELECT email, username, gold, score, fish, big_fish,
+               inventory, tools, houses, last_x, last_y
+        FROM accounts WHERE email = ?
+        "#
+    )
+    .bind(&email)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| format!("Помилка: {}", e))?;
+
+    let acc_row = match acc_row {
+        Some(r) => r,
+        None => return Err("Акаунт не знайдено".to_string()),
+    };
+
+    let username: String = acc_row.get("username");
+    let gold: i64 = acc_row.get("gold");
+    let score: i64 = acc_row.get("score");
+    let fish: i64 = acc_row.get("fish");
+    let big_fish: f64 = acc_row.get("big_fish");
+    let inv_str: String = acc_row.get("inventory");
+    let tools_str: String = acc_row.get("tools");
+    let houses: i64 = acc_row.get("houses");
+    let x: f64 = acc_row.get("last_x");
+    let y: f64 = acc_row.get("last_y");
+
+    let inventory: Vec<u32> = serde_json::from_str(&inv_str).unwrap_or_default();
+    let tools: Vec<i32> = serde_json::from_str(&tools_str).unwrap_or_default();
+
+    Ok(AccountData {
+        email,
+        username,
+        gold: gold.max(0) as u32,
+        score: score.max(0) as u32,
+        fish: fish.max(0) as u32,
+        big_fish: big_fish as f32,
+        inventory,
+        tools,
+        houses: houses.max(0) as u32,
+        x: x as f32,
+        y: y as f32,
+    })
 }
