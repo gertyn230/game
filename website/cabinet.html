@@ -621,7 +621,16 @@ async function handleGoogleSignIn() {
       showAlert('authAlert', data.error || 'Помилка авторизації через Google');
     }
   } catch (err) {
-    showAlert('authAlert', 'Google Sign-In: ' + (err.message || 'Скасовано або помилка підключення'));
+    console.error("Google Auth error:", err);
+    let msg = err.message || 'Скасовано або помилка підключення';
+    if (err.code === 'auth/unauthorized-domain') {
+      msg = 'Домен pixel-village.online не додано до Authorized domains у Firebase Console.';
+    } else if (err.code === 'auth/popup-blocked') {
+      msg = 'Браузер заблокував спливаюче вікно входу. Дозвольте спливаючі вікна для цього сайту.';
+    } else if (msg.includes('Failed to fetch') || err.name === 'TypeError') {
+      msg = 'Запит заблоковано блокувальником реклами (AdBlock / Brave Shields) або відсутній домен у Firebase. Будь ласка, призупиніть AdBlock для цього сайту!';
+    }
+    showAlert('authAlert', 'Google Sign-In: ' + msg);
   }
 }
 
