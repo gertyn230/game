@@ -24,17 +24,21 @@ h1,h2,h3,.logo{font-family:'Bricolage Grotesque',sans-serif}
 a{color:var(--sun);text-decoration:none}
 a:hover{text-decoration:underline}
 
+/* Header */
 .nav {
   position: sticky;
   top: 0;
   z-index: 100;
-  padding: 14px clamp(16px, 4vw, 40px);
+  padding: 0 clamp(16px, 3.5vw, 44px);
+  height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: rgba(15, 27, 22, 0.85);
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--line);
+  box-sizing: border-box;
 }
 .logo {
   display: flex;
@@ -44,25 +48,50 @@ a:hover{text-decoration:underline}
   font-size: 20px;
   color: #fff;
   text-decoration: none;
+  white-space: nowrap;
 }
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: clamp(6px, 1.2vw, 14px);
   list-style: none;
+  white-space: nowrap;
+  padding: 0;
+}
+.nav-links li {
+  white-space: nowrap;
 }
 .nav-links a {
   color: var(--mute);
   font-weight: 600;
-  font-size: 14.5px;
-  padding: 6px 12px;
+  font-size: 14px;
+  padding: 6px 14px;
   border-radius: 999px;
   transition: all .2s;
   text-decoration: none;
+  white-space: nowrap;
 }
 .nav-links a:hover, .nav-links a.active {
   color: #fff;
-  background: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.12);
+}
+.btn-nav-dl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--sun);
+  color: #10261c !important;
+  font-weight: 800;
+  font-size: 13.5px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(255, 200, 61, 0.3);
+  transition: transform .15s;
+}
+.btn-nav-dl:hover {
+  transform: translateY(-2px);
 }
 
 .container {
@@ -150,6 +179,7 @@ footer {
     <li><a href="/updates.html" class="active">📰 Оновлення</a></li>
     <li><a href="/wiki.html">📖 База знань</a></li>
     <li><a href="/cabinet.html">👤 Кабінет</a></li>
+    <li><a href="/#download" class="btn-nav-dl">Завантажити</a></li>
   </ul>
 </header>
 

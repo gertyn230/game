@@ -33,13 +33,16 @@ a:hover{text-decoration:underline}
   position: sticky;
   top: 0;
   z-index: 100;
-  padding: 14px clamp(16px, 4vw, 40px);
+  padding: 0 clamp(16px, 3.5vw, 44px);
+  height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: rgba(15, 27, 22, 0.85);
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--line);
+  box-sizing: border-box;
 }
 .logo {
   display: flex;
@@ -49,25 +52,50 @@ a:hover{text-decoration:underline}
   font-size: 20px;
   color: #fff;
   text-decoration: none;
+  white-space: nowrap;
 }
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: clamp(6px, 1.2vw, 14px);
   list-style: none;
+  white-space: nowrap;
+  padding: 0;
+}
+.nav-links li {
+  white-space: nowrap;
 }
 .nav-links a {
   color: var(--mute);
   font-weight: 600;
-  font-size: 14.5px;
-  padding: 6px 12px;
+  font-size: 14px;
+  padding: 6px 14px;
   border-radius: 999px;
   transition: all .2s;
   text-decoration: none;
+  white-space: nowrap;
 }
 .nav-links a:hover, .nav-links a.active {
   color: #fff;
-  background: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.12);
+}
+.btn-nav-dl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--sun);
+  color: #10261c !important;
+  font-weight: 800;
+  font-size: 13.5px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(255, 200, 61, 0.3);
+  transition: transform .15s;
+}
+.btn-nav-dl:hover {
+  transform: translateY(-2px);
 }
 
 /* Container */
@@ -359,7 +387,8 @@ footer {
     <li><a href="/">Головна</a></li>
     <li><a href="/updates.html">📰 Оновлення</a></li>
     <li><a href="/wiki.html">📖 База знань</a></li>
-    <li><a href="/cabinet.html" class="active">👤 Кабінет</a></li>
+    <li><a href="/cabinet.html" class="active" style="color:var(--leaf);font-weight:700">👤 Кабінет</a></li>
+    <li><a href="/#download" class="btn-nav-dl">Завантажити</a></li>
   </ul>
 </header>
 
@@ -514,16 +543,37 @@ footer {
 </footer>
 
 <script>
-// Firebase Config
-const firebaseConfig = {
-  projectId: "pixel-village-3a275",
-  authDomain: "pixel-village-3a275.firebaseapp.com"
-};
-try {
-  firebase.initializeApp(firebaseConfig);
-} catch(e) {}
-const auth = firebase.auth();
-const googleProvider = new firebase.auth.GoogleAuthProvider();
+// Safe Firebase Initialization
+let auth = null;
+let googleProvider = null;
+
+function tryInitFirebase(apiKey) {
+  if (!apiKey) return false;
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp({
+        apiKey: apiKey,
+        authDomain: "pixel-village-3a275.firebaseapp.com",
+        projectId: "pixel-village-3a275",
+        storageBucket: "pixel-village-3a275.appspot.com",
+        messagingSenderId: "429964932854",
+        appId: "1:429964932854:web:e051c5040d"
+      });
+    }
+    auth = firebase.auth();
+    googleProvider = new firebase.auth.GoogleAuthProvider();
+    return true;
+  } catch (err) {
+    console.warn("Firebase init error:", err);
+    return false;
+  }
+}
+
+// Check if user has saved API key
+let savedApiKey = localStorage.getItem('pv_firebase_web_key') || "";
+if (savedApiKey) {
+  tryInitFirebase(savedApiKey);
+}
 
 let currentAuthMode = 0; // 0 = login, 1 = register
 let currentUser = null;
@@ -551,9 +601,29 @@ function hideAlert(id) {
   el.style.display = 'none';
 }
 
-// Google Sign-In
+// Google Sign-In with safe fallback
 async function handleGoogleSignIn() {
   hideAlert('authAlert');
+
+  if (!auth) {
+    const enteredKey = prompt(
+      "Для активації входу через Google потрібен Web API Key з вашої Firebase Console (Проєкт: pixel-village-3a275).\n\n" +
+      "Введіть ваш Web API Key (починається з AIza...):\n" +
+      "(Або скористайтеся входом / реєстрацією через Email + Пароль нижче)"
+    );
+    if (!enteredKey || !enteredKey.trim()) {
+      showAlert('authAlert', 'Google Sign-In потребує Web API Key. Також ви можете прямо зараз зареєструватися через Email + Пароль нижче!');
+      return;
+    }
+    const cleanKey = enteredKey.trim();
+    if (tryInitFirebase(cleanKey)) {
+      localStorage.setItem('pv_firebase_web_key', cleanKey);
+    } else {
+      showAlert('authAlert', 'Не вдалося підключитися до Firebase. Перевірте ключ або увійдіть через Email + Пароль.');
+      return;
+    }
+  }
+
   try {
     const result = await auth.signInWithPopup(googleProvider);
     const user = result.user;
@@ -614,7 +684,9 @@ function saveSession(account) {
 function handleLogout() {
   localStorage.removeItem('pv_account');
   currentUser = null;
-  auth.signOut().catch(()=>{});
+  if (auth) {
+    auth.signOut().catch(()=>{});
+  }
   document.getElementById('authSection').style.display = 'block';
   document.getElementById('dashSection').style.display = 'none';
 }
