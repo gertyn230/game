@@ -41,6 +41,17 @@ use settings::*;
 use ui::*;
 use world::*;
 
+#[derive(Default, Clone)]
+pub struct AccountUiState {
+    pub active: Option<shared::AccountData>,
+    pub mode: u8, // 0 = login, 1 = register
+    pub active_field: u8, // 0 = email, 1 = password, 2 = username
+    pub email: String,
+    pub password: String,
+    pub username: String,
+    pub status: Option<String>,
+}
+
 /// Адрес сервера. При сборке можно задать переменной окружения PV_SERVER.
 const SERVER_URL: &str = match option_env!("PV_SERVER") {
     Some(u) if !u.is_empty() => u,
@@ -254,6 +265,12 @@ async fn main() {
     let mut act_id: Option<u64> = None;
     let mut scroll_id: Option<(u64, f32)> = None;
     let mut floating_texts: Vec<FloatingText> = Vec::new();
+    let mut acc_ui = AccountUiState::default();
+    if let Some(creds) = save::load_account_creds() {
+        acc_ui.email = creds.email;
+        acc_ui.password = creds.password;
+        acc_ui.username = creds.username;
+    }
 
     loop {
         let dt = get_frame_time().min(0.05);
@@ -261,6 +278,19 @@ async fn main() {
 
         // Перевірка закриття вікна (працює завжди, незалежно від стану гри)
         if is_quit_requested() {
+            if acc_ui.active.is_some() {
+                net.send(ClientMsg::SaveAccount {
+                    gold: g.gold,
+                    score: g.score(),
+                    fish: g.caught,
+                    big_fish: g.biggest,
+                    inventory: g.inv.to_vec(),
+                    tools: g.tools.to_vec(),
+                    houses: g.houses,
+                    x: g.x,
+                    y: g.y,
+                });
+            }
             save::store(&snapshot(&g, now, &name, &posted));
             break;
         }
@@ -293,7 +323,16 @@ async fn main() {
         // ---------- сеть ----------
         while let Ok(ev) = net.in_rx.try_recv() {
             match ev {
-                NetEvent::Connected => connected = true,
+                NetEvent::Connected => {
+                    connected = true;
+                    if !acc_ui.email.is_empty() && !acc_ui.password.is_empty() {
+                        net.send(ClientMsg::Login {
+                            email: acc_ui.email.clone(),
+                            password: acc_ui.password.clone(),
+                            device_info: Some(DeviceInfo::detect()),
+                        });
+                    }
+                }
                 NetEvent::Disconnected => {
                     if connected {
                         // TODO #2: Market items should be server-authoritative, don't refund on disconnect
@@ -372,6 +411,38 @@ async fn main() {
                         g.say(&format!("{}: {} ×{}", texts.bought, texts.item_names[(offer.item as usize).min(NI - 1)], offer.qty), now);
                     }
                     ServerMsg::Err { text } => g.say(translate_messages::translate_message(&text, texts), now),
+                    ServerMsg::AuthSuccess { account } => {
+                        let is_first = acc_ui.active.is_none();
+                        acc_ui.active = Some(account.clone());
+                        acc_ui.username = account.username.clone();
+                        acc_ui.status = Some(format!("Успішний вхід як {}", account.username));
+                        name = account.username.clone();
+                        g.gold = account.gold;
+                        g.caught = account.fish;
+                        g.biggest = account.big_fish;
+                        g.houses = account.houses;
+                        for (i, v) in account.inventory.iter().enumerate().take(NI) {
+                            g.inv[i] = *v;
+                        }
+                        for (i, v) in account.tools.iter().enumerate().take(NT) {
+                            g.tools[i] = *v;
+                        }
+                        if is_first && account.x > 0.0 && account.y > 0.0 {
+                            g.x = account.x;
+                            g.y = account.y;
+                        }
+                        save::store_account_creds(&save::AccountCredentials {
+                            email: account.email.clone(),
+                            password: acc_ui.password.clone(),
+                            username: account.username.clone(),
+                        });
+                        save::store(&snapshot(&g, now, &name, &posted));
+                        g.say(&format!("Вхід: {}", account.username), now);
+                    }
+                    ServerMsg::AuthFailed { reason } => {
+                        acc_ui.status = Some(format!("Помилка: {}", reason));
+                        g.say(&format!("Помилка акаунту: {}", reason), now);
+                    }
                 },
             }
         }
@@ -458,6 +529,32 @@ async fn main() {
             }
             if is_key_pressed(KeyCode::Enter) {
                 cmds.push(Cmd::NameOk);
+            }
+        } else if ui.menu && ui.tab == 5 && acc_ui.active.is_none() {
+            while let Some(c) = get_char_pressed() {
+                if !c.is_control() {
+                    match acc_ui.active_field {
+                        0 => if acc_ui.email.len() < 50 { acc_ui.email.push(c); },
+                        1 => if acc_ui.password.len() < 32 { acc_ui.password.push(c); },
+                        2 => if acc_ui.username.len() < 20 { acc_ui.username.push(c); },
+                        _ => {}
+                    }
+                }
+            }
+            if is_key_pressed(KeyCode::Backspace) {
+                match acc_ui.active_field {
+                    0 => { acc_ui.email.pop(); },
+                    1 => { acc_ui.password.pop(); },
+                    2 => { acc_ui.username.pop(); },
+                    _ => {}
+                }
+            }
+            if is_key_pressed(KeyCode::Tab) {
+                let max_f = if acc_ui.mode == 0 { 2 } else { 3 };
+                acc_ui.active_field = (acc_ui.active_field + 1) % max_f;
+            }
+            if is_key_pressed(KeyCode::Enter) {
+                cmds.push(Cmd::AccountSubmit);
             }
         } else {
             while get_char_pressed().is_some() {}
@@ -697,6 +794,67 @@ async fn main() {
                     }
                 }
                 Cmd::Act => {}
+                Cmd::AccountField(f) => {
+                    acc_ui.active_field = f;
+                }
+                Cmd::AccountSwitchMode => {
+                    acc_ui.mode = if acc_ui.mode == 0 { 1 } else { 0 };
+                    acc_ui.status = None;
+                }
+                Cmd::AccountSubmit => {
+                    if acc_ui.mode == 0 {
+                        // Login
+                        if acc_ui.email.trim().is_empty() || acc_ui.password.is_empty() {
+                            acc_ui.status = Some("Помилка: Заповніть пошту та пароль".to_string());
+                        } else {
+                            acc_ui.status = Some("Авторизація...".to_string());
+                            net.send(ClientMsg::Login {
+                                email: acc_ui.email.trim().to_string(),
+                                password: acc_ui.password.clone(),
+                                device_info: Some(DeviceInfo::detect()),
+                            });
+                        }
+                    } else {
+                        // Register
+                        if acc_ui.email.trim().is_empty() || acc_ui.password.is_empty() || acc_ui.username.trim().is_empty() {
+                            acc_ui.status = Some("Помилка: Заповніть всі поля".to_string());
+                        } else if acc_ui.password.len() < 6 {
+                            acc_ui.status = Some("Помилка: Пароль має містити щонайменше 6 символів".to_string());
+                        } else {
+                            acc_ui.status = Some("Реєстрація акаунту...".to_string());
+                            net.send(ClientMsg::Register {
+                                email: acc_ui.email.trim().to_string(),
+                                username: acc_ui.username.trim().to_string(),
+                                password: acc_ui.password.clone(),
+                                device_info: Some(DeviceInfo::detect()),
+                            });
+                        }
+                    }
+                }
+                Cmd::AccountLogout => {
+                    acc_ui.active = None;
+                    acc_ui.password.clear();
+                    save::clear_account_creds();
+                    acc_ui.status = Some("Ви вийшли з акаунту".to_string());
+                    g.say("Ви вийшли з акаунту", now);
+                }
+                Cmd::AccountSaveCloud => {
+                    if acc_ui.active.is_some() {
+                        net.send(ClientMsg::SaveAccount {
+                            gold: g.gold,
+                            score: g.score(),
+                            fish: g.caught,
+                            big_fish: g.biggest,
+                            inventory: g.inv.to_vec(),
+                            tools: g.tools.to_vec(),
+                            houses: g.houses,
+                            x: g.x,
+                            y: g.y,
+                        });
+                        acc_ui.status = Some("Прогрес надіслано в хмару!".to_string());
+                        g.say("Прогрес збережено в хмару!", now);
+                    }
+                }
             }
         }
 
@@ -745,6 +903,19 @@ async fn main() {
         if save_t > 8.0 {
             save_t = 0.0;
             save::store(&snapshot(&g, now, &name, &posted));
+            if acc_ui.active.is_some() {
+                net.send(ClientMsg::SaveAccount {
+                    gold: g.gold,
+                    score: g.score(),
+                    fish: g.caught,
+                    big_fish: g.biggest,
+                    inventory: g.inv.to_vec(),
+                    tools: g.tools.to_vec(),
+                    houses: g.houses,
+                    x: g.x,
+                    y: g.y,
+                });
+            }
         }
         let held = g.held();
         let cs = (px, py, g.face, g.moving, g.in_boat, g.tool(Tl::Coat), held);
@@ -1129,7 +1300,7 @@ async fn main() {
                 text_c(&font, hint_str, sw / 2.0, bar_y + bar_h * 0.65, hint_fs, Color::from_rgba(226, 232, 240, 240));
             }
         } else {
-            draw_menu(&mut ui, &font, &g, now, sw, sh, fs, &market, &posted, my_id, &board_score, &board_fish, &settings, texts);
+            draw_menu(&mut ui, &font, &g, now, sw, sh, fs, &market, &posted, my_id, &board_score, &board_fish, &settings, texts, &acc_ui);
         }
         // джойстик (лише для мобільних)
         if is_mobile && joy_id.is_some() && !ui.menu {
@@ -1195,6 +1366,7 @@ fn draw_menu(
     board_fish: &[(String, f32, u32)],
     settings: &Settings,
     texts: &Texts,
+    acc_ui: &AccountUiState,
 ) {
     let pad = fs * 0.6;
     let p = Rect::new(sw * 0.03, sh * 0.03, sw * 0.94, sh * 0.94);
@@ -1210,9 +1382,14 @@ fn draw_menu(
     // Рамка
     draw_rectangle_lines(p.x, p.y, p.w, p.h, 3.0, hx(0x8b7a55));
     draw_rectangle_lines(p.x + 2.0, p.y + 2.0, p.w - 4.0, p.h - 4.0, 1.0, ha(0xffffff, 0.08));
-    // вкладки (5 вкладок: Інвентар, Крафт, Ринок, Таблиця, Налаштування)
-    let tabs = [texts.inventory, texts.craft, texts.market, texts.leaderboard, texts.settings];
-    let tw = (p.w - pad * 3.0 - fs * 6.5 - 20.0) / 5.0;
+    // вкладки (6 вкладок: Інвентар, Крафт, Ринок, Таблиця, Налаштування, Акаунт)
+    let account_label = match settings.language {
+        Language::Ukrainian => "Акаунт",
+        Language::English => "Account",
+        Language::Russian => "Аккаунт",
+    };
+    let tabs = [texts.inventory, texts.craft, texts.market, texts.leaderboard, texts.settings, account_label];
+    let tw = (p.w - pad * 3.0 - fs * 6.5 - 24.0) / 6.0;
     for (i, t) in tabs.iter().enumerate() {
         let r = Rect::new(p.x + pad + i as f32 * (tw + 4.0), p.y + pad, tw, fs * 2.4);
         ui.button(font, r, t, Cmd::Tab(i as u8), true, if ui.tab == i as u8 { 0x2f7d36 } else { 0x4a4f44 }, fs);
@@ -1504,7 +1681,7 @@ fn draw_menu(
                 text(font, texts.leaderboard_pending, body.x, y + fs * 2.0, fs * 0.9, ha(0xffffff, 0.6));
             }
         }
-        _ => {
+        4 => {
             // === СУЧАСНІ НАЛАШТУВАННЯ (MODERN SETTINGS) ===
             let subtab_h = fs * 2.2;
             let subtabs = [
@@ -1664,6 +1841,127 @@ fn draw_menu(
                 }
             }
         }
+        5 => {
+            // === ВКЛАДКА АКАУНТУ (ACCOUNT TAB) ===
+            let mut y = body.y + pad;
+            if let Some(acc) = &acc_ui.active {
+                // Гравець авторизований
+                let card_w = (body.w - pad * 2.0).min(fs * 28.0);
+                let card_x = body.x + (body.w - card_w) / 2.0;
+                let card_h = (body.h - pad * 2.0).min(fs * 22.0);
+                draw_rectangle(card_x, y, card_w, card_h, ha(0x181a17, 0.95));
+                draw_rectangle_lines(card_x, y, card_w, card_h, 2.0, hx(0x3e5235));
+
+                // Шапка акаунту
+                draw_rectangle(card_x, y, card_w, fs * 2.6, ha(0x233120, 0.9));
+                text(font, "👤 ОБЛІКОВИЙ ЗАПИС ГРАВЦЯ", card_x + pad, y + fs * 1.7, fs * 1.1, hx(0x73d16b));
+                y += fs * 3.4;
+
+                text(font, &format!("Нікнейм: {}", acc.username), card_x + pad, y, fs * 1.05, WHITE);
+                y += fs * 1.6;
+                text(font, &format!("Електронна пошта: {}", acc.email), card_x + pad, y, fs * 0.9, hx(0xa1b2c4));
+                y += fs * 1.8;
+
+                // Статус синхронізації
+                draw_rectangle(card_x + pad, y, card_w - pad * 2.0, fs * 2.0, ha(0x122416, 0.85));
+                draw_rectangle_lines(card_x + pad, y, card_w - pad * 2.0, fs * 2.0, 1.0, hx(0x27ae60));
+                text(font, "🟢 Хмарна синхронізація активна (VPS SQLite)", card_x + pad * 1.5, y + fs * 1.35, fs * 0.8, hx(0x2ecc71));
+                y += fs * 2.8;
+
+                // Статистика
+                text(font, "Збережений хмарний прогрес:", card_x + pad, y, fs * 0.95, hx(0xf1c40f));
+                y += fs * 1.5;
+                text(font, &format!("🪙 Золото: {}   |   🏆 Очки: {}", g.gold, g.score()), card_x + pad * 1.5, y, fs * 0.85, WHITE);
+                y += fs * 1.4;
+                text(font, &format!("🐟 Риба: {} (макс. {:.2} кг)   |   🏠 Будинки: {}", g.caught, g.biggest, g.houses), card_x + pad * 1.5, y, fs * 0.85, WHITE);
+                y += fs * 2.2;
+
+                if let Some(msg) = &acc_ui.status {
+                    text(font, msg, card_x + pad, y, fs * 0.85, hx(0x5dade2));
+                    y += fs * 1.8;
+                }
+
+                // Кнопки дій
+                let btn_w = (card_w - pad * 3.0) / 2.0;
+                let btn_h = fs * 2.2;
+                ui.button(font, Rect::new(card_x + pad, y, btn_w, btn_h), "☁️ Зберегти в хмару", Cmd::AccountSaveCloud, true, 0x27ae60, fs * 0.85);
+                ui.button(font, Rect::new(card_x + pad * 2.0 + btn_w, y, btn_w, btn_h), "🚪 Вийти", Cmd::AccountLogout, true, 0xc0392b, fs * 0.85);
+            } else {
+                // Гравець НЕ авторизований: Форма Входу / Реєстрації
+                let card_w = (body.w - pad * 2.0).min(fs * 28.0);
+                let card_x = body.x + (body.w - card_w) / 2.0;
+                let card_h = (body.h - pad * 2.0).min(fs * 24.0);
+                draw_rectangle(card_x, y, card_w, card_h, ha(0x181a17, 0.95));
+                draw_rectangle_lines(card_x, y, card_w, card_h, 2.0, hx(0x4a3a28));
+
+                // Перемикач Вхід / Реєстрація
+                let tab_w = (card_w - pad * 3.0) / 2.0;
+                let tab_h = fs * 2.2;
+                ui.button(font, Rect::new(card_x + pad, y + pad, tab_w, tab_h), "🔑 Вхід", Cmd::AccountSwitchMode, true, if acc_ui.mode == 0 { 0x2f7d36 } else { 0x3d4238 }, fs * 0.9);
+                ui.button(font, Rect::new(card_x + pad * 2.0 + tab_w, y + pad, tab_w, tab_h), "✨ Реєстрація", Cmd::AccountSwitchMode, true, if acc_ui.mode == 1 { 0x2f7d36 } else { 0x3d4238 }, fs * 0.9);
+                y += pad * 2.0 + tab_h + fs * 0.4;
+
+                let field_w = card_w - pad * 2.0;
+                let field_h = fs * 2.2;
+
+                // Поле 0: Електронна пошта
+                let email_active = acc_ui.active_field == 0;
+                let email_col = if email_active { 0x1f3a24 } else { 0x121411 };
+                let email_border = if email_active { 0x2ecc71 } else { 0x3e4a39 };
+                draw_rectangle(card_x + pad, y, field_w, field_h, hx(email_col));
+                draw_rectangle_lines(card_x + pad, y, field_w, field_h, 1.5, hx(email_border));
+                let cur0 = if email_active && (now * 2.0) as i64 % 2 == 0 { "|" } else { "" };
+                let email_display = if acc_ui.email.is_empty() && !email_active { "📧 Натисніть для вводу пошти...".to_string() } else { format!("📧 {}{cur0}", acc_ui.email) };
+                text(font, &email_display, card_x + pad * 1.5, y + fs * 1.5, fs * 0.85, if acc_ui.email.is_empty() && !email_active { ha(0xffffff, 0.4) } else { WHITE });
+                ui.button(font, Rect::new(card_x + pad, y, field_w, field_h), "", Cmd::AccountField(0), true, 0x000000, fs);
+                y += field_h + pad * 0.8;
+
+                // Якщо Реєстрація: Поле 2: Нікнейм
+                if acc_ui.mode == 1 {
+                    let user_active = acc_ui.active_field == 2;
+                    let user_col = if user_active { 0x1f3a24 } else { 0x121411 };
+                    let user_border = if user_active { 0x2ecc71 } else { 0x3e4a39 };
+                    draw_rectangle(card_x + pad, y, field_w, field_h, hx(user_col));
+                    draw_rectangle_lines(card_x + pad, y, field_w, field_h, 1.5, hx(user_border));
+                    let cur2 = if user_active && (now * 2.0) as i64 % 2 == 0 { "|" } else { "" };
+                    let user_display = if acc_ui.username.is_empty() && !user_active { "👤 Нікнейм (2-20 символів)...".to_string() } else { format!("👤 {}{cur2}", acc_ui.username) };
+                    text(font, &user_display, card_x + pad * 1.5, y + fs * 1.5, fs * 0.85, if acc_ui.username.is_empty() && !user_active { ha(0xffffff, 0.4) } else { WHITE });
+                    ui.button(font, Rect::new(card_x + pad, y, field_w, field_h), "", Cmd::AccountField(2), true, 0x000000, fs);
+                    y += field_h + pad * 0.8;
+                }
+
+                // Поле 1: Пароль
+                let pass_active = acc_ui.active_field == 1;
+                let pass_col = if pass_active { 0x1f3a24 } else { 0x121411 };
+                let pass_border = if pass_active { 0x2ecc71 } else { 0x3e4a39 };
+                draw_rectangle(card_x + pad, y, field_w, field_h, hx(pass_col));
+                draw_rectangle_lines(card_x + pad, y, field_w, field_h, 1.5, hx(pass_border));
+                let cur1 = if pass_active && (now * 2.0) as i64 % 2 == 0 { "|" } else { "" };
+                let masked = "*".repeat(acc_ui.password.len());
+                let pass_display = if acc_ui.password.is_empty() && !pass_active { "🔒 Введіть пароль (мін. 6 симв.)...".to_string() } else { format!("🔒 {}{cur1}", masked) };
+                text(font, &pass_display, card_x + pad * 1.5, y + fs * 1.5, fs * 0.85, if acc_ui.password.is_empty() && !pass_active { ha(0xffffff, 0.4) } else { WHITE });
+                ui.button(font, Rect::new(card_x + pad, y, field_w, field_h), "", Cmd::AccountField(1), true, 0x000000, fs);
+                y += field_h + pad * 1.0;
+
+                // Кнопка відправки форми
+                let submit_label = if acc_ui.mode == 0 { "🚀 Увійти в акаунт" } else { "✨ Зареєструватися" };
+                ui.button(font, Rect::new(card_x + pad, y, field_w, fs * 2.2), submit_label, Cmd::AccountSubmit, true, 0x27ae60, fs * 0.9);
+                y += fs * 2.6;
+
+                // Статус / Повідомлення про помилку
+                if let Some(msg) = &acc_ui.status {
+                    let col = if msg.starts_with("Помилка") { 0xe74c3c } else { 0x2ecc71 };
+                    text(font, msg, card_x + pad, y, fs * 0.8, hx(col));
+                    y += fs * 1.5;
+                }
+
+                // Підказка
+                text(font, "💡 Збереження золота, предметів та будинку на сервері.", card_x + pad, y, fs * 0.72, ha(0xffffff, 0.6));
+                y += fs * 1.1;
+                text(font, "Грайте з будь-якого пристрою під своїм акаунтом!", card_x + pad, y, fs * 0.72, ha(0xffffff, 0.6));
+            }
+        }
+        _ => {}
     }
 
     // Кнопка "Вийти з гри" внизу меню

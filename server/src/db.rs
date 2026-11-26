@@ -1,6 +1,9 @@
 //! База даних для адмінки: логи, налаштування, історія дій
 use sqlx::{SqlitePool, Row};
 use serde::{Serialize, Deserialize};
+use sha2::{Digest, Sha256};
+use rand::Rng;
+use shared::AccountData;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AdminLog {
@@ -124,6 +127,35 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
     )
     .execute(&pool)
     .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL COLLATE NOCASE,
+            username TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            firebase_uid TEXT,
+            gold INTEGER NOT NULL DEFAULT 0,
+            score INTEGER NOT NULL DEFAULT 0,
+            fish INTEGER NOT NULL DEFAULT 0,
+            big_fish REAL NOT NULL DEFAULT 0.0,
+            inventory TEXT NOT NULL DEFAULT '[]',
+            tools TEXT NOT NULL DEFAULT '[]',
+            houses INTEGER NOT NULL DEFAULT 0,
+            last_x REAL NOT NULL DEFAULT 20.5,
+            last_y REAL NOT NULL DEFAULT 20.5,
+            created_at INTEGER NOT NULL,
+            last_login INTEGER NOT NULL
+        )
+        "#
+    )
+    .execute(&pool)
+    .await?;
+
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email)")
+        .execute(&pool)
+        .await;
 
     // Add multilang columns (ignore errors if they already exist)
     let _ = sqlx::query("ALTER TABLE game_updates ADD COLUMN title_en TEXT DEFAULT ''").execute(&pool).await;
@@ -481,4 +513,283 @@ pub async fn delete_game_update(pool: &SqlitePool, id: i64) -> Result<(), sqlx::
         .execute(pool)
         .await?;
     Ok(())
+}
+
+// ---------------------------------------------------------
+// Система акаунтів (Email + Пароль)
+// ---------------------------------------------------------
+
+pub fn hash_password(password: &str) -> String {
+    let mut salt_bytes = [0u8; 16];
+    rand::thread_rng().fill(&mut salt_bytes);
+    let salt = hex::encode(salt_bytes);
+    let mut hasher = Sha256::new();
+    hasher.update(salt.as_bytes());
+    hasher.update(password.as_bytes());
+    let hash = hex::encode(hasher.finalize());
+    format!("{}:{}", salt, hash)
+}
+
+pub fn verify_password(password: &str, stored: &str) -> bool {
+    let parts: Vec<&str> = stored.split(':').collect();
+    if parts.len() != 2 {
+        return false;
+    }
+    let salt = parts[0];
+    let expected_hash = parts[1];
+    let mut hasher = Sha256::new();
+    hasher.update(salt.as_bytes());
+    hasher.update(password.as_bytes());
+    let hash = hex::encode(hasher.finalize());
+    hash == expected_hash
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AccountAdminView {
+    pub id: i64,
+    pub email: String,
+    pub username: String,
+    pub gold: i64,
+    pub score: i64,
+    pub fish: i64,
+    pub houses: i64,
+    pub created_at: i64,
+    pub last_login: i64,
+}
+
+pub async fn register_account(
+    pool: &SqlitePool,
+    email: &str,
+    username: &str,
+    password: &str,
+) -> Result<AccountData, String> {
+    let email = email.trim().to_lowercase();
+    let username = username.trim().to_string();
+
+    if email.len() < 5 || email.len() > 100 || !email.contains('@') || !email.contains('.') {
+        return Err("Введіть коректну адресу електронної пошти (наприклад: name@gmail.com)".to_string());
+    }
+
+    if username.len() < 2 || username.len() > 24 {
+        return Err("Нікнейм має містити від 2 до 24 символів".to_string());
+    }
+
+    if password.len() < 6 {
+        return Err("Пароль має містити щонайменше 6 символів".to_string());
+    }
+
+    if password.len() > 128 {
+        return Err("Пароль занадто довгий".to_string());
+    }
+
+    // Перевірка чи пошта вже зайнята
+    let existing: Option<i64> = sqlx::query_scalar("SELECT id FROM accounts WHERE email = ?")
+        .bind(&email)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| format!("Помилка бази даних: {}", e))?;
+
+    if existing.is_some() {
+        return Err("Акаунт з такою поштою вже існує. Будь ласка, увійдіть".to_string());
+    }
+
+    let password_hash = hash_password(password);
+    let now = chrono::Utc::now().timestamp();
+
+    let res = sqlx::query(
+        r#"
+        INSERT INTO accounts (
+            email, username, password_hash, gold, score, fish, big_fish,
+            inventory, tools, houses, last_x, last_y, created_at, last_login
+        ) VALUES (?, ?, ?, 0, 0, 0, 0.0, '[]', '[]', 0, 20.5, 20.5, ?, ?)
+        "#
+    )
+    .bind(&email)
+    .bind(&username)
+    .bind(&password_hash)
+    .bind(now)
+    .bind(now)
+    .execute(pool)
+    .await
+    .map_err(|e| format!("Помилка збереження акаунту: {}", e))?;
+
+    if res.rows_affected() == 0 {
+        return Err("Не вдалося створити акаунт".to_string());
+    }
+
+    Ok(AccountData {
+        email,
+        username,
+        gold: 0,
+        score: 0,
+        fish: 0,
+        big_fish: 0.0,
+        inventory: Vec::new(),
+        tools: Vec::new(),
+        houses: 0,
+        x: 20.5,
+        y: 20.5,
+    })
+}
+
+pub async fn login_account(
+    pool: &SqlitePool,
+    email: &str,
+    password: &str,
+) -> Result<AccountData, String> {
+    let email = email.trim().to_lowercase();
+
+    let row = sqlx::query(
+        r#"
+        SELECT email, username, password_hash, gold, score, fish, big_fish,
+               inventory, tools, houses, last_x, last_y
+        FROM accounts WHERE email = ?
+        "#
+    )
+    .bind(&email)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| format!("Помилка бази даних: {}", e))?;
+
+    let row = match row {
+        Some(r) => r,
+        None => return Err("Акаунт з такою поштою не знайдено".to_string()),
+    };
+
+    let stored_hash: String = row.get("password_hash");
+    if !verify_password(password, &stored_hash) {
+        return Err("Невірний пароль".to_string());
+    }
+
+    let now = chrono::Utc::now().timestamp();
+    let _ = sqlx::query("UPDATE accounts SET last_login = ? WHERE email = ?")
+        .bind(now)
+        .bind(&email)
+        .execute(pool)
+        .await;
+
+    let username: String = row.get("username");
+    let gold: i64 = row.get("gold");
+    let score: i64 = row.get("score");
+    let fish: i64 = row.get("fish");
+    let big_fish: f64 = row.get("big_fish");
+    let inv_str: String = row.get("inventory");
+    let tools_str: String = row.get("tools");
+    let houses: i64 = row.get("houses");
+    let x: f64 = row.get("last_x");
+    let y: f64 = row.get("last_y");
+
+    let inventory: Vec<u32> = serde_json::from_str(&inv_str).unwrap_or_default();
+    let tools: Vec<i32> = serde_json::from_str(&tools_str).unwrap_or_default();
+
+    Ok(AccountData {
+        email,
+        username,
+        gold: gold.max(0) as u32,
+        score: score.max(0) as u32,
+        fish: fish.max(0) as u32,
+        big_fish: big_fish as f32,
+        inventory,
+        tools,
+        houses: houses.max(0) as u32,
+        x: x as f32,
+        y: y as f32,
+    })
+}
+
+pub async fn save_account_data(
+    pool: &SqlitePool,
+    email: &str,
+    gold: u32,
+    score: u32,
+    fish: u32,
+    big_fish: f32,
+    inventory: &[u32],
+    tools: &[i32],
+    houses: u32,
+    x: f32,
+    y: f32,
+) -> Result<(), sqlx::Error> {
+    let email = email.trim().to_lowercase();
+    let inv_json = serde_json::to_string(inventory).unwrap_or_else(|_| "[]".to_string());
+    let tools_json = serde_json::to_string(tools).unwrap_or_else(|_| "[]".to_string());
+
+    sqlx::query(
+        r#"
+        UPDATE accounts SET
+            gold = ?,
+            score = ?,
+            fish = ?,
+            big_fish = ?,
+            inventory = ?,
+            tools = ?,
+            houses = ?,
+            last_x = ?,
+            last_y = ?
+        WHERE email = ?
+        "#
+    )
+    .bind(gold as i64)
+    .bind(score as i64)
+    .bind(fish as i64)
+    .bind(big_fish as f64)
+    .bind(inv_json)
+    .bind(tools_json)
+    .bind(houses as i64)
+    .bind(x as f64)
+    .bind(y as f64)
+    .bind(&email)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn admin_list_accounts(
+    pool: &SqlitePool,
+    limit: i64,
+) -> Result<Vec<AccountAdminView>, sqlx::Error> {
+    let rows = sqlx::query(
+        r#"
+        SELECT id, email, username, gold, score, fish, houses, created_at, last_login
+        FROM accounts
+        ORDER BY last_login DESC
+        LIMIT ?
+        "#
+    )
+    .bind(limit)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .iter()
+        .map(|row| AccountAdminView {
+            id: row.get("id"),
+            email: row.get("email"),
+            username: row.get("username"),
+            gold: row.get("gold"),
+            score: row.get("score"),
+            fish: row.get("fish"),
+            houses: row.get("houses"),
+            created_at: row.get("created_at"),
+            last_login: row.get("last_login"),
+        })
+        .collect())
+}
+
+pub async fn admin_reset_account_password(
+    pool: &SqlitePool,
+    email: &str,
+    new_password: &str,
+) -> Result<bool, sqlx::Error> {
+    let email = email.trim().to_lowercase();
+    let new_hash = hash_password(new_password);
+
+    let res = sqlx::query("UPDATE accounts SET password_hash = ? WHERE email = ?")
+        .bind(new_hash)
+        .bind(&email)
+        .execute(pool)
+        .await?;
+
+    Ok(res.rows_affected() > 0)
 }

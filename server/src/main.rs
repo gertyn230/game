@@ -65,6 +65,7 @@ struct Conn {
     big: f32,
     fish: u32,
     device: Option<DeviceInfo>,
+    account_email: Option<String>,
 }
 
 #[derive(Default)]
@@ -256,6 +257,10 @@ async fn main() {
         .route("/api/admin/update/create", post(api_create_update))
         .route("/api/admin/update/edit", post(api_edit_update))
         .route("/api/admin/update/delete", post(api_delete_update))
+        .route("/api/account/register", post(api_account_register))
+        .route("/api/account/login", post(api_account_login))
+        .route("/api/admin/accounts", get(api_admin_accounts))
+        .route("/api/admin/account/reset-password", post(api_admin_reset_password))
         .route("/api/promo/redeem", post(api_redeem_promo))
         .route("/api/ticket/create", post(api_create_ticket))
         .route("/api/admin/config", get(api_get_config))
@@ -668,6 +673,7 @@ async fn client_loop(socket: WebSocket, app: App, client_ip: String) {
                 big: 0.0,
                 fish: 0,
                 device: None,
+                account_email: None,
             },
         );
         let dead: Vec<(u32, u32)> = w
@@ -711,11 +717,27 @@ async fn client_loop(socket: WebSocket, app: App, client_ip: String) {
 
     // Игрок вышел: его предложения снимаются (клиент вернёт предметы себе сам).
     let mut w = app.world.lock().await;
-    w.players.remove(&id);
+    let removed = w.players.remove(&id);
     let before = w.offers.len();
     w.offers.retain(|o| o.seller != id);
     if w.offers.len() != before {
         let _ = app.tx.send(enc(&ServerMsg::Market { offers: w.offers.clone() }));
+    }
+
+    if let Some(c) = removed {
+        if let Some(email) = c.account_email {
+            let pool = app.db.clone();
+            tokio::spawn(async move {
+                let _ = sqlx::query("UPDATE accounts SET last_x = ?, last_y = ?, score = ?, fish = ? WHERE email = ?")
+                    .bind(c.state.x as f64)
+                    .bind(c.state.y as f64)
+                    .bind(c.score as i64)
+                    .bind(c.fish as i64)
+                    .bind(&email)
+                    .execute(&pool)
+                    .await;
+            });
+        }
     }
 }
 
@@ -879,6 +901,61 @@ async fn handle_msg(app: &App, id: u32, text: &str) {
                     reply(c, &ServerMsg::Withdrawn { offer });
                 }
                 let _ = app.tx.send(enc(&ServerMsg::Market { offers: w.offers.clone() }));
+            }
+        }
+        ClientMsg::Register { email, username, password, device_info } => {
+            let res = db::register_account(&app.db, &email, &username, &password).await;
+            match res {
+                Ok(account) => {
+                    if let Some(c) = w.players.get_mut(&id) {
+                        c.account_email = Some(account.email.clone());
+                        c.state.name = account.username.clone();
+                        c.device = device_info;
+                        reply(c, &ServerMsg::AuthSuccess { account });
+                    }
+                }
+                Err(reason) => {
+                    if let Some(c) = w.players.get(&id) {
+                        reply(c, &ServerMsg::AuthFailed { reason });
+                    }
+                }
+            }
+        }
+        ClientMsg::Login { email, password, device_info } => {
+            let res = db::login_account(&app.db, &email, &password).await;
+            match res {
+                Ok(account) => {
+                    if let Some(c) = w.players.get_mut(&id) {
+                        c.account_email = Some(account.email.clone());
+                        c.state.name = account.username.clone();
+                        c.score = account.score;
+                        c.fish = account.fish;
+                        c.big = account.big_fish;
+                        c.state.x = account.x;
+                        c.state.y = account.y;
+                        c.device = device_info;
+                        reply(c, &ServerMsg::AuthSuccess { account });
+                    }
+                }
+                Err(reason) => {
+                    if let Some(c) = w.players.get(&id) {
+                        reply(c, &ServerMsg::AuthFailed { reason });
+                    }
+                }
+            }
+        }
+        ClientMsg::SaveAccount { gold, score, fish, big_fish, inventory, tools, houses, x, y } => {
+            let email_opt = w.players.get(&id).and_then(|c| c.account_email.clone());
+            if let Some(email) = email_opt {
+                if let Some(c) = w.players.get_mut(&id) {
+                    c.score = score.min(100_000);
+                    c.big = if big_fish.is_finite() { big_fish.clamp(0.0, 50.0) } else { 0.0 };
+                    c.fish = fish.min(5_000);
+                }
+                let db_pool = app.db.clone();
+                tokio::spawn(async move {
+                    let _ = db::save_account_data(&db_pool, &email, gold, score, fish, big_fish, &inventory, &tools, houses, x, y).await;
+                });
             }
         }
     }
@@ -1387,5 +1464,102 @@ async fn api_delete_update(State(app): State<App>, headers: HeaderMap, Json(req)
             Json(serde_json::json!({ "success": true, "message": "Оновлення видалено" })).into_response()
         }
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Помилка БД: {}", e)).into_response(),
+    }
+}
+
+// ============ API акаунтів (Email + Пароль) ============
+
+#[derive(serde::Deserialize)]
+struct ApiRegisterReq {
+    email: String,
+    username: String,
+    password: String,
+}
+
+#[derive(serde::Deserialize)]
+struct ApiLoginReq {
+    email: String,
+    password: String,
+}
+
+#[derive(serde::Deserialize)]
+struct ApiResetPasswordReq {
+    email: String,
+    new_password: String,
+}
+
+async fn api_account_register(
+    State(app): State<App>,
+    Json(payload): Json<ApiRegisterReq>,
+) -> Response {
+    match db::register_account(&app.db, &payload.email, &payload.username, &payload.password).await {
+        Ok(acc) => Json(serde_json::json!({ "success": true, "account": acc })).into_response(),
+        Err(err) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "success": false, "error": err })),
+        ).into_response(),
+    }
+}
+
+async fn api_account_login(
+    State(app): State<App>,
+    Json(payload): Json<ApiLoginReq>,
+) -> Response {
+    match db::login_account(&app.db, &payload.email, &payload.password).await {
+        Ok(acc) => Json(serde_json::json!({ "success": true, "account": acc })).into_response(),
+        Err(err) => (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({ "success": false, "error": err })),
+        ).into_response(),
+    }
+}
+
+async fn api_admin_accounts(
+    State(app): State<App>,
+    headers: HeaderMap,
+    Query(q): Query<HashMap<String, String>>,
+) -> Response {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
+        return status.into_response();
+    }
+    let limit = q.get("limit").and_then(|v| v.parse().ok()).unwrap_or(100);
+    match db::admin_list_accounts(&app.db, limit).await {
+        Ok(accounts) => Json(serde_json::json!({ "accounts": accounts })).into_response(),
+        Err(err) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": err.to_string() })),
+        ).into_response(),
+    }
+}
+
+async fn api_admin_reset_password(
+    State(app): State<App>,
+    headers: HeaderMap,
+    Json(payload): Json<ApiResetPasswordReq>,
+) -> Response {
+    let client_ip = get_client_ip(&headers);
+    if let Err(status) = check_admin_auth(&app, &headers, &client_ip).await {
+        return status.into_response();
+    }
+    if payload.new_password.len() < 6 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "success": false, "error": "Пароль має містити щонайменше 6 символів" })),
+        ).into_response();
+    }
+    match db::admin_reset_account_password(&app.db, &payload.email, &payload.new_password).await {
+        Ok(true) => {
+            let _ = db::add_log(&app.db, "admin", &format!("Скинуто пароль для акаунту {}", payload.email)).await;
+            Json(serde_json::json!({ "success": true, "message": "Пароль успішно змінено" })).into_response()
+        }
+        Ok(false) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({ "success": false, "error": "Акаунт з такою поштою не знайдено" })),
+        ).into_response(),
+        Err(err) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "success": false, "error": err.to_string() })),
+        ).into_response(),
     }
 }

@@ -672,6 +672,10 @@ input:focus, select:focus, textarea:focus {
     <button class="nav-link" data-tab="updates">
       <span>🚀</span> Оновлення сайту
     </button>
+    <button class="nav-link" data-tab="accounts">
+      <span>👥</span> Акаунти гравців
+      <span class="badge" id="badgeAccounts">0</span>
+    </button>
     <button class="nav-link" data-tab="broadcast">
       <span>📢</span> Оголошення гравцям
     </button>
@@ -1112,6 +1116,39 @@ input:focus, select:focus, textarea:focus {
       </div>
     </div>
 
+    <!-- TAB: ACCOUNTS -->
+    <div class="tab-content" id="tab-accounts">
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+          <div class="panel-title" style="margin-bottom:0;">👥 Зареєстровані акаунти гравців</div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <input type="text" id="accountSearchInput" placeholder="Пошук за поштою або ніком..." oninput="filterAccountsTable()" style="padding:6px 12px;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:#fff;font-size:13px;width:240px;">
+            <button class="btn btn-sm btn-primary" onclick="loadAdminAccounts()">🔄 Оновити</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>#ID</th>
+                <th>Електронна пошта</th>
+                <th>Нікнейм</th>
+                <th>Золото</th>
+                <th>Очки</th>
+                <th>Риба</th>
+                <th>Будинки</th>
+                <th>Останній вхід</th>
+                <th style="text-align:right;">Дії</th>
+              </tr>
+            </thead>
+            <tbody id="accountsTableBody">
+              <tr><td colspan="9" class="empty-state">Завантаження акаунтів...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- TAB 8: SETTINGS -->
     <div class="tab-content" id="tab-settings">
       <div class="panel">
@@ -1191,6 +1228,33 @@ input:focus, select:focus, textarea:focus {
       <button class="btn" onclick="closeTicketModal()">Закрити</button>
       <button class="btn btn-primary" id="btnUpdateTicketStatus">Оновити статус</button>
     </div>
+  </div>
+</div>
+
+<!-- Modal for Reset Password -->
+<div class="modal-overlay" id="resetPasswordModal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <div class="modal-title">🔑 Скинути пароль гравця</div>
+      <button class="modal-close" onclick="closeResetPasswordModal()">✕</button>
+    </div>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">
+      Встановіть новий пароль для гравця, якщо він забув доступ до свого акаунту.
+    </p>
+    <form onsubmit="submitResetPassword(event)">
+      <div class="form-group">
+        <label>Електронна пошта</label>
+        <input type="text" id="resetAccEmail" readonly style="opacity:0.8;background:rgba(255,255,255,0.05);cursor:not-allowed;">
+      </div>
+      <div class="form-group">
+        <label>Новий пароль (мінімум 6 символів)</label>
+        <input type="text" id="resetAccNewPass" required minlength="6" placeholder="Введіть новий пароль...">
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
+        <button type="button" class="btn" onclick="closeResetPasswordModal()">Скасувати</button>
+        <button type="submit" class="btn btn-primary">Зберегти новий пароль</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -1398,6 +1462,7 @@ function switchTab(tabId) {
     tickets: 'Тікети підтримки гравців',
     promos: 'Керування промокодами',
     updates: 'Оновлення на сайті',
+    accounts: 'Зареєстровані акаунти гравців',
     broadcast: 'Глобальне оголошення гравцям',
     logs: 'Журнал аудиту дій',
     settings: 'Налаштування сервера'
@@ -1409,6 +1474,9 @@ function switchTab(tabId) {
   }
   if (tabId === 'updates') {
     loadAdminUpdates();
+  }
+  if (tabId === 'accounts') {
+    loadAdminAccounts();
   }
 }
 
@@ -2333,6 +2401,104 @@ async function deleteUpdateSubmit(id) {
     await loadAdminUpdates();
   } catch(err) {
     alert('Не вдалося видалити оновлення: ' + err.message);
+  }
+}
+
+// ==================== АКАУНТИ ГРАВЦІВ ====================
+var cachedAccounts = [];
+
+async function loadAdminAccounts() {
+  var tbody = document.getElementById('accountsTableBody');
+  if (!state.adminKey) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Потрібен ADMIN_KEY для перегляду акаунтів</td></tr>';
+    return;
+  }
+  try {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Завантаження акаунтів...</td></tr>';
+    var res = await api('GET', '/api/admin/accounts?limit=200');
+    if (res && res.accounts) {
+      cachedAccounts = res.accounts;
+      if (document.getElementById('badgeAccounts')) {
+        document.getElementById('badgeAccounts').textContent = cachedAccounts.length;
+      }
+      renderAccountsTable(cachedAccounts);
+    } else {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Не вдалося завантажити список акаунтів</td></tr>';
+    }
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Помилка: ' + escapeHtml(e.message) + '</td></tr>';
+  }
+}
+
+function renderAccountsTable(accounts) {
+  var tbody = document.getElementById('accountsTableBody');
+  if (!accounts || accounts.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Немає зареєстрованих акаунтів</td></tr>';
+    return;
+  }
+  tbody.innerHTML = accounts.map(function(acc) {
+    var lastLoginDate = acc.last_login ? new Date(acc.last_login * 1000).toLocaleString('uk-UA') : 'Ніколи';
+    var emailSafe = escapeHtml(acc.email);
+    var userSafe = escapeHtml(acc.username);
+    return '<tr>' +
+      '<td><span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">#' + acc.id + '</span></td>' +
+      '<td><b style="color:var(--accent-blue);font-family:var(--font-mono);font-size:13px;">' + emailSafe + '</b></td>' +
+      '<td><span style="font-weight:600;">' + userSafe + '</span></td>' +
+      '<td><span style="color:var(--accent-amber);font-family:var(--font-mono);font-weight:700;">' + (acc.gold || 0) + ' 🪙</span></td>' +
+      '<td><span style="font-family:var(--font-mono);">' + (acc.score || 0) + '</span></td>' +
+      '<td><span style="font-family:var(--font-mono);">' + (acc.fish || 0) + ' 🐟</span></td>' +
+      '<td><span style="font-family:var(--font-mono);">' + (acc.houses || 0) + ' 🏠</span></td>' +
+      '<td><span style="font-size:12px;color:var(--text-muted);">' + lastLoginDate + '</span></td>' +
+      '<td style="text-align:right;">' +
+        '<button class="btn btn-sm" style="padding:4px 8px;font-size:12px;background:rgba(245,158,11,0.15);color:var(--accent-amber);border:1px solid rgba(245,158,11,0.3);" onclick="openResetPasswordModal(\'' + emailSafe + '\')">🔑 Скинути пароль</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function filterAccountsTable() {
+  var q = (document.getElementById('accountSearchInput').value || '').toLowerCase().trim();
+  if (!q) {
+    renderAccountsTable(cachedAccounts);
+    return;
+  }
+  var filtered = cachedAccounts.filter(function(a) {
+    return (a.email && a.email.toLowerCase().includes(q)) || (a.username && a.username.toLowerCase().includes(q));
+  });
+  renderAccountsTable(filtered);
+}
+
+function openResetPasswordModal(email) {
+  document.getElementById('resetAccEmail').value = email;
+  document.getElementById('resetAccNewPass').value = '';
+  document.getElementById('resetPasswordModal').classList.add('active');
+}
+
+function closeResetPasswordModal() {
+  document.getElementById('resetPasswordModal').classList.remove('active');
+}
+
+async function submitResetPassword(e) {
+  e.preventDefault();
+  var email = document.getElementById('resetAccEmail').value;
+  var newPass = document.getElementById('resetAccNewPass').value;
+  if (!newPass || newPass.length < 6) {
+    showToast('Пароль має містити щонайменше 6 символів', 'error');
+    return;
+  }
+  try {
+    var res = await api('POST', '/api/admin/account/reset-password', {
+      email: email,
+      new_password: newPass
+    });
+    if (res && res.success) {
+      showToast('Пароль для ' + email + ' успішно змінено!', 'success');
+      closeResetPasswordModal();
+    } else {
+      showToast(res ? res.error : 'Не вдалося скинути пароль', 'error');
+    }
+  } catch (err) {
+    showToast('Помилка: ' + err.message, 'error');
   }
 }
 </script>

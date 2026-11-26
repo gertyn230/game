@@ -42,6 +42,12 @@ pub enum Cmd {
     CraftMenu,
     Settings,
     Quit,
+    // Команди акаунту
+    AccountField(u8),
+    AccountSubmit,
+    AccountSwitchMode,
+    AccountLogout,
+    AccountSaveCloud,
 }
 
 pub struct Btn {

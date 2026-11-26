@@ -94,6 +94,21 @@ pub struct Offer {
     pub price: u32,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct AccountData {
+    pub email: String,
+    pub username: String,
+    pub gold: u32,
+    pub score: u32,
+    pub fish: u32,
+    pub big_fish: f32,
+    pub inventory: Vec<u32>,
+    pub tools: Vec<i32>,
+    pub houses: u32,
+    pub x: f32,
+    pub y: f32,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "t")]
 pub enum ClientMsg {
@@ -101,6 +116,30 @@ pub enum ClientMsg {
         name: String,
         #[serde(default)]
         device_info: Option<DeviceInfo>,
+    },
+    Register {
+        email: String,
+        username: String,
+        password: String,
+        #[serde(default)]
+        device_info: Option<DeviceInfo>,
+    },
+    Login {
+        email: String,
+        password: String,
+        #[serde(default)]
+        device_info: Option<DeviceInfo>,
+    },
+    SaveAccount {
+        gold: u32,
+        score: u32,
+        fish: u32,
+        big_fish: f32,
+        inventory: Vec<u32>,
+        tools: Vec<i32>,
+        houses: u32,
+        x: f32,
+        y: f32,
     },
     Move { x: f32, y: f32, face: u8, moving: bool, boat: bool, coat: bool, held: u8 },
     /// Ресурс на карте добыт (индекс клетки y*40+x).
@@ -116,6 +155,8 @@ pub enum ClientMsg {
 pub enum ServerMsg {
     Welcome { id: u32, version: String },
     Snapshot { players: Vec<PlayerState> },
+    AuthSuccess { account: AccountData },
+    AuthFailed { reason: String },
     Dead { idx: u32, left: u32 },
     World { dead: Vec<(u32, u32)> },
     Market { offers: Vec<Offer> },

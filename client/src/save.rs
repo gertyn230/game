@@ -76,3 +76,30 @@ pub fn store(s: &Save) {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Default, Clone, Debug)]
+pub struct AccountCredentials {
+    pub email: String,
+    pub password: String,
+    pub username: String,
+}
+
+pub fn load_account_creds() -> Option<AccountCredentials> {
+    let s = std::fs::read_to_string(dir().join("account.json")).ok()?;
+    serde_json::from_str(&s).ok()
+}
+
+pub fn store_account_creds(creds: &AccountCredentials) {
+    let d = dir();
+    let _ = std::fs::create_dir_all(&d);
+    if let Ok(json) = serde_json::to_string(creds) {
+        let tmp = d.join("account.tmp");
+        if std::fs::write(&tmp, json).is_ok() {
+            let _ = std::fs::rename(&tmp, d.join("account.json"));
+        }
+    }
+}
+
+pub fn clear_account_creds() {
+    let _ = std::fs::remove_file(dir().join("account.json"));
+}
