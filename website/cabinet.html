@@ -606,22 +606,8 @@ async function handleGoogleSignIn() {
   hideAlert('authAlert');
 
   if (!auth) {
-    const enteredKey = prompt(
-      "Для активації входу через Google потрібен Web API Key з вашої Firebase Console (Проєкт: pixel-village-3a275).\n\n" +
-      "Введіть ваш Web API Key (починається з AIza...):\n" +
-      "(Або скористайтеся входом / реєстрацією через Email + Пароль нижче)"
-    );
-    if (!enteredKey || !enteredKey.trim()) {
-      showAlert('authAlert', 'Google Sign-In потребує Web API Key. Також ви можете прямо зараз зареєструватися через Email + Пароль нижче!');
-      return;
-    }
-    const cleanKey = enteredKey.trim();
-    if (tryInitFirebase(cleanKey)) {
-      localStorage.setItem('pv_firebase_web_key', cleanKey);
-    } else {
-      showAlert('authAlert', 'Не вдалося підключитися до Firebase. Перевірте ключ або увійдіть через Email + Пароль.');
-      return;
-    }
+    showAlert('authAlert', '⚙️ Вхід через Google зараз на фінальному етапі налаштування. Будь ласка, скористайтесь швидкою реєстрацією через форму нижче («✨ Реєстрація») — вона працює миттєво!');
+    return;
   }
 
   try {
