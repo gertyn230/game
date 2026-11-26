@@ -543,36 +543,28 @@ footer {
 </footer>
 
 <script>
-// Safe Firebase Initialization
+// Firebase Official Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyA6_boE1E_6slDacEllzMyZi8zzMD2yGuE",
+  authDomain: "pixel-village-3a275.firebaseapp.com",
+  projectId: "pixel-village-3a275",
+  storageBucket: "pixel-village-3a275.firebasestorage.app",
+  messagingSenderId: "429964932854",
+  appId: "1:429964932854:web:b83f8b03f21a21f4e39ed7",
+  measurementId: "G-JHWW6YX86T"
+};
+
 let auth = null;
 let googleProvider = null;
 
-function tryInitFirebase(apiKey) {
-  if (!apiKey) return false;
-  try {
-    if (!firebase.apps.length) {
-      firebase.initializeApp({
-        apiKey: apiKey,
-        authDomain: "pixel-village-3a275.firebaseapp.com",
-        projectId: "pixel-village-3a275",
-        storageBucket: "pixel-village-3a275.appspot.com",
-        messagingSenderId: "429964932854",
-        appId: "1:429964932854:web:e051c5040d"
-      });
-    }
-    auth = firebase.auth();
-    googleProvider = new firebase.auth.GoogleAuthProvider();
-    return true;
-  } catch (err) {
-    console.warn("Firebase init error:", err);
-    return false;
+try {
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
   }
-}
-
-// Check if user has saved API key
-let savedApiKey = localStorage.getItem('pv_firebase_web_key') || "";
-if (savedApiKey) {
-  tryInitFirebase(savedApiKey);
+  auth = firebase.auth();
+  googleProvider = new firebase.auth.GoogleAuthProvider();
+} catch (err) {
+  console.error("Firebase init error:", err);
 }
 
 let currentAuthMode = 0; // 0 = login, 1 = register
@@ -606,7 +598,7 @@ async function handleGoogleSignIn() {
   hideAlert('authAlert');
 
   if (!auth) {
-    showAlert('authAlert', '⚙️ Вхід через Google зараз на фінальному етапі налаштування. Будь ласка, скористайтесь швидкою реєстрацією через форму нижче («✨ Реєстрація») — вона працює миттєво!');
+    showAlert('authAlert', 'Помилка підключення сервісу Google. Спробуйте оновити сторінку або скористайтеся входом через Email нижче.');
     return;
   }
 
