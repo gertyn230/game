@@ -288,23 +288,17 @@ impl SettingsMenu {
         draw_rectangle(rect.x, srv_card_y, srv_card_w, srv_card_h, srv_bg);
         draw_rectangle_lines(rect.x, srv_card_y, srv_card_w, srv_card_h, 1.5, if srv_hovered { Color::from_rgba(56, 189, 248, 200) } else { Color::from_rgba(51, 65, 85, 150) });
 
-        // Іконка та назва сервера
-        text(font, "🌐", rect.x + 20.0, srv_card_y + srv_card_h * 0.6, fs * 1.6, WHITE);
-        text(font, settings.server_type.name(), rect.x + 70.0, srv_card_y + fs * 1.6, fs * 1.1, Color::from_rgba(56, 189, 248, 255));
-        text(font, settings.server_type.url(), rect.x + 70.0, srv_card_y + fs * 2.8, fs * 0.8, Color::from_rgba(148, 163, 184, 200));
+        // Назва сервера
+        text(font, settings.server_type.name(), rect.x + 20.0, srv_card_y + fs * 1.6, fs * 1.1, Color::from_rgba(56, 189, 248, 255));
+        text(font, settings.server_type.url(), rect.x + 20.0, srv_card_y + fs * 2.8, fs * 0.8, Color::from_rgba(148, 163, 184, 200));
 
-        // Кнопка перемикання справа
+        // Кнопка перемикання справа (завжди активний основний сервер)
         let change_btn_w = fs * 8.0;
         let change_btn_h = fs * 2.2;
         let change_btn_x = rect.x + srv_card_w - change_btn_w - 20.0;
         let change_btn_y = srv_card_y + (srv_card_h - change_btn_h) / 2.0;
         let ch_hovered = is_button_hovered(change_btn_x, change_btn_y, change_btn_w, change_btn_h);
-        draw_modern_button(font, change_btn_x, change_btn_y, change_btn_w, change_btn_h, texts.click_to_change, fs * 0.8, ch_hovered, false);
-
-        if is_button_clicked(rect.x, srv_card_y, srv_card_w, srv_card_h) || is_button_clicked(change_btn_x, change_btn_y, change_btn_w, change_btn_h) {
-            settings.server_type = settings.server_type.next();
-            save_settings(settings);
-        }
+        draw_modern_button(font, change_btn_x, change_btn_y, change_btn_w, change_btn_h, "Активний", fs * 0.8, ch_hovered, false);
 
         // Секція мобільного інтерфейсу (для сенсорних екранів або тестування)
         let mob_section_y = srv_card_y + srv_card_h + fs * 1.2;

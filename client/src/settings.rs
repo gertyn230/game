@@ -41,24 +41,15 @@ impl Default for ServerType {
 
 impl ServerType {
     pub fn url(&self) -> &str {
-        match self {
-            ServerType::Server1 => "wss://api.pixel-village.online/ws",
-            ServerType::Server2 => "wss://game-n6ay.onrender.com/ws",
-        }
+        "wss://api.pixel-village.online/ws"
     }
 
     pub fn next(&self) -> ServerType {
-        match self {
-            ServerType::Server1 => ServerType::Server2,
-            ServerType::Server2 => ServerType::Server1,
-        }
+        ServerType::Server1
     }
 
     pub fn name(&self) -> &str {
-        match self {
-            ServerType::Server1 => "Основний (pixel-village.online)",
-            ServerType::Server2 => "Резервний (Render Cloud)",
-        }
+        "Основний (pixel-village.online)"
     }
 }
 
@@ -432,7 +423,11 @@ fn settings_dir() -> PathBuf {
 pub fn load_settings() -> Settings {
     let path = settings_dir().join("settings.json");
     if let Ok(s) = std::fs::read_to_string(&path) {
-        if let Ok(settings) = serde_json::from_str(&s) {
+        if let Ok(mut settings) = serde_json::from_str::<Settings>(&s) {
+            if settings.server_type != ServerType::Server1 {
+                settings.server_type = ServerType::Server1;
+                save_settings(&settings);
+            }
             return settings;
         }
     }
