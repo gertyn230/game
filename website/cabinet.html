@@ -593,7 +593,7 @@ function hideAlert(id) {
   el.style.display = 'none';
 }
 
-// Google Sign-In with safe fallback
+// Google Sign-In with safe fallback and redirect support
 async function handleGoogleSignIn() {
   hideAlert('authAlert');
 
@@ -604,33 +604,35 @@ async function handleGoogleSignIn() {
 
   try {
     const result = await auth.signInWithPopup(googleProvider);
-    const user = result.user;
-    const resp = await fetch(`${API_BASE}/api/account/google`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: user.email,
-        username: user.displayName || user.email.split('@')[0],
-        firebase_uid: user.uid
-      })
-    });
-    const data = await resp.json();
-    if (data.success) {
-      saveSession(data.account);
-    } else {
-      showAlert('authAlert', data.error || 'Помилка авторизації через Google');
-    }
+    await processGoogleUser(result.user);
   } catch (err) {
-    console.error("Google Auth error:", err);
-    let msg = err.message || 'Скасовано або помилка підключення';
-    if (err.code === 'auth/unauthorized-domain') {
-      msg = 'Домен pixel-village.online не додано до Authorized domains у Firebase Console.';
-    } else if (err.code === 'auth/popup-blocked') {
-      msg = 'Браузер заблокував спливаюче вікно входу. Дозвольте спливаючі вікна для цього сайту.';
-    } else if (msg.includes('Failed to fetch') || err.name === 'TypeError') {
-      msg = 'Запит заблоковано блокувальником реклами (AdBlock / Brave Shields) або відсутній домен у Firebase. Будь ласка, призупиніть AdBlock для цього сайту!';
+    console.warn("Popup sign-in failed, trying redirect mode:", err);
+    // If popup blocked or fetch failed due to AdBlock/browser popup policy, use seamless Redirect mode!
+    try {
+      showAlert('authAlert', 'Перенаправляємо на сторінку входу Google...', false);
+      await auth.signInWithRedirect(googleProvider);
+    } catch (redirectErr) {
+      console.error("Redirect sign-in error:", redirectErr);
+      showAlert('authAlert', 'Помилка входу через Google: ' + (redirectErr.message || err.message));
     }
-    showAlert('authAlert', 'Google Sign-In: ' + msg);
+  }
+}
+
+async function processGoogleUser(user) {
+  const resp = await fetch(`${API_BASE}/api/account/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: user.email,
+      username: user.displayName || user.email.split('@')[0],
+      firebase_uid: user.uid
+    })
+  });
+  const data = await resp.json();
+  if (data.success) {
+    saveSession(data.account);
+  } else {
+    showAlert('authAlert', data.error || 'Помилка авторизації через Google');
   }
 }
 
@@ -827,14 +829,27 @@ async function submitTicket() {
   }
 }
 
-// Auto-restore session
-window.addEventListener('DOMContentLoaded', () => {
+// Auto-restore session and handle Google Redirect Result
+window.addEventListener('DOMContentLoaded', async () => {
   const saved = localStorage.getItem('pv_account');
   if (saved) {
     try {
       currentUser = JSON.parse(saved);
       showDashboard();
+      return;
     } catch(e) {}
+  }
+
+  // Handle returning from Google Redirect Auth
+  if (auth) {
+    try {
+      const result = await auth.getRedirectResult();
+      if (result && result.user) {
+        await processGoogleUser(result.user);
+      }
+    } catch (redirectErr) {
+      console.warn("getRedirectResult error:", redirectErr);
+    }
   }
 });
 </script>
