@@ -87,6 +87,9 @@ impl Ui {
     pub fn btns_push_circle(&mut self, r: Rect, cmd: Cmd) {
         self.next.push(Btn { r, cmd });
     }
+    pub fn hit_area(&mut self, r: Rect, cmd: Cmd) {
+        self.next.push(Btn { r, cmd });
+    }
     pub fn hit(&self, p: Vec2) -> Option<Cmd> {
         self.btns.iter().rev().find(|b| b.r.contains(p)).map(|b| b.cmd)
     }
