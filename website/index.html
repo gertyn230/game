@@ -631,7 +631,7 @@ a.btn.g:hover {
 <a href="https://t.me/pixel_village">Telegram<small data-i18n="community_telegram_desc">Оновлення та анонси</small></a>
 </div></div></section>
 </main>
-<footer>© 2026 Pixel Village</footer>
+<footer>© 2026 Pixel Village. <a href="/privacy">Політика конфіденційності</a> • <a href="/terms">Умови використання</a></footer>
 <script>
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const C=$('#w'),X0=C.getContext('2d');
@@ -854,7 +854,7 @@ const translations = {
     community_h2: 'Приєднуйся до спільноти',
     community_discord_desc: 'Спілкування та новини',
     community_telegram_desc: 'Оновлення та анонси',
-    footer: '© 2026 Pixel Village'
+    footer: '© 2026 Pixel Village. <a href="/privacy">Політика конфіденційності</a> • <a href="/terms">Умови використання</a>'
   },
   en: {
     title: 'Pixel Village — Build your own little world',
@@ -943,7 +943,7 @@ const translations = {
     community_h2: 'Join the community',
     community_discord_desc: 'Chat and share',
     community_telegram_desc: 'News and updates',
-    footer: '© 2026 Pixel Village'
+    footer: '© 2026 Pixel Village. <a href="/privacy">Privacy Policy</a> • <a href="/terms">Terms of Service</a>'
   },
   ru: {
     title: 'Pixel Village — Построй свой маленький мир',
@@ -1032,7 +1032,7 @@ const translations = {
     community_h2: 'Присоединяйся к сообществу',
     community_discord_desc: 'Общение и новости',
     community_telegram_desc: 'Анонсы и обновления',
-    footer: '© 2026 Pixel Village'
+    footer: '© 2026 Pixel Village. <a href="/privacy">Политика конфиденциальности</a> • <a href="/terms">Условия использования</a>'
   }
 };
 
@@ -1189,7 +1189,7 @@ function setLang(lang) {
   if (socLinks[1]) socLinks[1].querySelector('small').textContent = t.community_telegram_desc;
 
   // Footer
-  if ($('footer')) $('footer').textContent = t.footer;
+  if ($('footer')) $('footer').innerHTML = t.footer;
 
   // Оновлення biome табів (для explore)
   BI[0][0] = t.explore_tab1_name;

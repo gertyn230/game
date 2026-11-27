@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Політика конфіденційності — Pixel Village</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=DM+Sans:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+:root{
+  --sheet:#0f1b16;--soft:#18271f;--ink:#e9f2ec;--mute:#9fb5a7;--leaf:#4fae5a;
+  --river:#38a3e0;--sun:#ffc83d;--line:rgba(233,242,236,.14);--bg:#121a22;
+}
+body{
+  font:500 16px/1.7 'DM Sans',system-ui,sans-serif;
+  color:var(--ink);
+  background:radial-gradient(ellipse at 50% 0%, #1a2f26 0%, #0d1612 100%);
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+h1,h2,h3,.logo{font-family:'Bricolage Grotesque',sans-serif}
+a{color:var(--sun);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* Header */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 0 clamp(16px, 3.5vw, 44px);
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 27, 22, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--line);
+  box-sizing: border-box;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 20px;
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 1vw, 12px);
+  list-style: none;
+  white-space: nowrap;
+  padding: 0;
+}
+.nav-links li {
+  white-space: nowrap;
+}
+.nav-links a {
+  color: var(--mute);
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 6px clamp(8px, 1vw, 14px);
+  border-radius: 999px;
+  transition: all .2s;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.nav-links a:hover, .nav-links a.active {
+  color: #fff;
+  background: rgba(255,255,255,0.12);
+}
+.btn-nav-dl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--sun);
+  color: #10261c !important;
+  font-weight: 800;
+  font-size: 13.5px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(255, 200, 61, 0.3);
+  transition: transform .15s;
+}
+.btn-nav-dl:hover {
+  transform: translateY(-2px);
+}
+
+.lang {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 3px 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.lang button {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.lang button:hover {
+  color: #fff;
+}
+.lang button.active {
+  background: var(--sun);
+  color: #10261c !important;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.2);
+}
+
+/* Content Container */
+.container {
+  max-width: 900px;
+  width: 92%;
+  margin: 40px auto 60px;
+  flex: 1;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 36px;
+}
+.page-header h1 {
+  font-size: clamp(34px, 5.5vw, 52px);
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.page-header p {
+  color: var(--mute);
+  font-size: 16.5px;
+  margin-top: 10px;
+}
+
+.legal-card {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: clamp(24px, 4vw, 42px);
+  margin-bottom: 24px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.3);
+}
+
+.legal-card h2 {
+  font-size: 24px;
+  color: #fff;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.legal-card h3 {
+  font-size: 18px;
+  color: var(--sun);
+  margin: 20px 0 8px;
+}
+
+.legal-card p {
+  color: var(--ink);
+  font-size: 15.5px;
+  margin-bottom: 14px;
+}
+
+.legal-card ul {
+  list-style: disc;
+  margin-left: 24px;
+  margin-bottom: 16px;
+  color: var(--mute);
+}
+
+.legal-card li {
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.legal-card li strong, .legal-card li b {
+  color: #fff;
+}
+
+.badge-tag {
+  display: inline-block;
+  background: rgba(79, 174, 90, 0.15);
+  border: 1px solid rgba(79, 174, 90, 0.4);
+  color: #86efac;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+footer {
+  text-align: center;
+  padding: 24px;
+  color: var(--mute);
+  font-size: 14px;
+  border-top: 1px solid var(--line);
+  line-height: 1.8;
+}
+
+/* Mobile Nav */
+@media (max-width: 900px) {
+  .nav {
+    height: auto;
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+  .nav-links {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .nav-links a {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a class="logo" href="/">🏡 Pixel Village</a>
+  <ul class="nav-links">
+    <li><a href="/" id="navHome">Головна</a></li>
+    <li><a href="/updates" id="navUpdates">📰 Оновлення</a></li>
+    <li><a href="/wiki" id="navWiki">📖 База знань</a></li>
+    <li><a href="/cabinet" id="navCabinet">👤 Кабінет</a></li>
+    <li><a href="/#download" class="btn-nav-dl" id="navDownload">Завантажити</a></li>
+  </ul>
+  <div class="lang">
+    <button onclick="setLang('uk')" class="active" data-lang="uk">🇺🇦 UA</button>
+    <button onclick="setLang('en')" data-lang="en">🇬🇧 EN</button>
+    <button onclick="setLang('ru')" data-lang="ru">🇷🇺 RU</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="page-header">
+    <span class="badge-tag" id="lastUpdated">Оновлено: Листопад 2026</span>
+    <h1 id="pageTitle">Політика конфіденційності</h1>
+    <p id="pageDesc">Дізнайтеся, як ми захищаємо та обробляємо ваші дані у Pixel Village</p>
+  </div>
+
+  <div class="legal-card" id="legalContent">
+    <!-- Content dynamically updated via setLang -->
+  </div>
+</div>
+
+<footer>
+  <p id="footerText">
+    © 2026 Pixel Village. Усі права захищено.<br>
+    <a href="/">Головна</a> • <a href="/updates">Оновлення</a> • <a href="/wiki">База знань</a> • <a href="/cabinet">Кабінет</a> • 
+    <a href="/privacy" style="color:#fff;font-weight:700">Політика конфіденційності</a> • <a href="/terms">Умови використання</a>
+  </p>
+</footer>
+
+<script>
+const translations = {
+  uk: {
+    title: 'Політика конфіденційності — Pixel Village',
+    nav_home: 'Головна',
+    nav_updates: '📰 Оновлення',
+    nav_wiki: '📖 База знань',
+    nav_cabinet: '👤 Кабінет',
+    nav_download: 'Завантажити',
+    updated: 'Оновлено: Листопад 2026',
+    page_title: 'Політика конфіденційності',
+    page_desc: 'Дізнайтеся, як ми захищаємо та обробляємо ваші дані у грі та сервісах Pixel Village',
+    footer: '© 2026 Pixel Village. Усі права захищено.<br><a href="/">Головна</a> • <a href="/updates">Оновлення</a> • <a href="/wiki">База знань</a> • <a href="/cabinet">Кабінет</a> • <a href="/privacy" style="color:#fff;font-weight:700">Політика конфіденційності</a> • <a href="/terms">Умови використання</a>',
+    content: `
+      <h2>🛡️ 1. Загальні положення</h2>
+      <p>Ця Політика конфіденційності пояснює, яку інформацію збирає, використовує та захищає команда проекту <b>Pixel Village</b> під час використання клієнтів гри (для Windows, macOS, Linux, Android та iOS), нашого веб-сайту <code>https://pixel-village.online</code> та ігрових серверів.</p>
+      <p>Ми з великою повагою ставимося до приватності наших гравців і дотримуємося принципу мінімізації даних: збираємо лише те, що суворо необхідно для функціонування мультиплеєра та збереження вашого прогресу.</p>
+
+      <h2>📋 2. Яку інформацію ми збираємо</h2>
+      <h3>2.1. Дані облікового запису (Акаунт)</h3>
+      <ul>
+        <li><b>Електронна пошта (Email):</b> використовується як унікальний логін для доступу до акаунту, відновлення пароля та захисту від несанкціонованого доступу.</li>
+        <li><b>Ігровий нікнейм:</b> публічне ім'я персонажа, яке бачать інші гравці у віртуальному селі та в рейтингах.</li>
+        <li><b>Пароль:</b> зберігається виключно у вигляді надійного криптографічного одностороннього хешу. Ми ніколи не зберігаємо і не знаємо ваш відкритий пароль.</li>
+        <li><b>Авторизація через Google:</b> якщо ви обираєте вхід через Google, ми отримуємо від сервісу Google Firebase безпечний ідентифікатор користувача (UID) та email для швидкої прив'язки облікового запису без необхідності вводити пароль.</li>
+      </ul>
+
+      <h3>2.2. Ігровий прогрес та дані світу</h3>
+      <ul>
+        <li>Кількість золота, очки досвіду, інвентар предметів, інструменти, спіймана риба.</li>
+        <li>Зведені вами будинки, мости та координати знаходження персонажа на сервері.</li>
+        <li>Це дозволяє продовжувати гру з того ж місця на будь-якому вашому пристрої (ПК або смартфон).</li>
+      </ul>
+
+      <h3>2.3. Технічні та діагностичні дані</h3>
+      <ul>
+        <li><b>IP-адреса:</b> тимчасово фіксується при мережевому підключенні до сервера виключно для маршрутизації зв'язку, захисту від DDoS-атак та системи запобігання підбору паролів (Rate Limiting).</li>
+        <li><b>Платформа та версія:</b> операційна система (Windows, Android тощо) та версія клієнта для перевірки автооновлень та діагностики помилок.</li>
+      </ul>
+
+      <h2>🎯 3. Для чого ми використовуємо ці дані</h2>
+      <ul>
+        <li><b>Автентифікація:</b> щоб тільки ви мали доступ до своїх ресурсів та поселення.</li>
+        <li><b>Синхронізація мультиплеєра:</b> щоб передавати позиції та дії персонажів у реал-таймі між усіма підключеними гравцями.</li>
+        <li><b>Підтримка користувачів:</b> для розгляду ваших тікетів підтримки та вирішення можливих технічних запитань.</li>
+        <li><b>Чесна гра:</b> виявлення чітів, ботів або спроб зламу сервера.</li>
+      </ul>
+
+      <h2>🔒 4. Безпека та захист інформації</h2>
+      <p>Ми використовуємо сучасні стандарти кібербезпеки:</p>
+      <ul>
+        <li>Увесь веб-трафік та зв'язок з сервером зашифровано за протоколами HTTPS / TLS.</li>
+        <li>Сервер бази даних розміщено в захищеному європейському дата-центрі з обмеженим доступом та регулярним створенням резервних копій.</li>
+        <li>Одноразові 6-значні коди швидкого входу мають обмежений термін дії (15 хвилин) та автоматично згорають після першого успішного використання.</li>
+      </ul>
+
+      <h2>🤝 5. Передача даних третім сторонам</h2>
+      <p>Ми <b>НІКОЛИ не продаємо, не передаємо і не здаємо в оренду</b> ваші персональні дані третім особам чи рекламним компаніям. Для забезпечення інфраструктури використовуються виключно надійні платформи:</p>
+      <ul>
+        <li><b>Google Firebase Authentication</b> — для безпечного входу через Google (відповідно до політики конфіденційності Google).</li>
+        <li><b>Cloudflare</b> — для забезпечення швидкої доставки контенту та захисту від DDoS-атак.</li>
+      </ul>
+
+      <h2>👤 6. Права користувача та видалення акаунту</h2>
+      <p>Ви маєте повний контроль над своїми даними:</p>
+      <ul>
+        <li>Ви можете в будь-який момент змінити свій пароль або переглянути статистику в <a href="/cabinet">Особистому кабінеті</a>.</li>
+        <li><b>Повне видалення даних:</b> якщо ви бажаєте безповоротно видалити свій обліковий запис, прогрес та всі пов'язані записи — надішліть запит через форму тікета в кабінеті або зверніться до розробників у Telegram/Discord. Ваші дані будуть видалені протягом 48 годин.</li>
+      </ul>
+
+      <h2>👶 7. Захист неповнолітніх</h2>
+      <p>Pixel Village — це безпечна гра для гравців будь-якого віку. Ми свідомо не збираємо жодних персональних даних від дітей віком до 13 років без згоди батьків чи опікунів.</p>
+
+      <h2>📬 8. Зв'язок з нами</h2>
+      <p>Якщо у вас виникли запитання щодо цієї Політики або захисту даних, напишіть нам:</p>
+      <ul>
+        <li>Через розділ підтримки в <a href="/cabinet">Особистому кабінеті</a></li>
+        <li>У нашій спільноті в <a href="https://discord.gg/atJW5ArM3R" target="_blank">Discord</a></li>
+        <li>У нашому каналі в <a href="https://t.me/pixel_village" target="_blank">Telegram</a></li>
+      </ul>
+    `
+  },
+  en: {
+    title: 'Privacy Policy — Pixel Village',
+    nav_home: 'Home',
+    nav_updates: '📰 Updates',
+    nav_wiki: '📖 Knowledge Base',
+    nav_cabinet: '👤 Cabinet',
+    nav_download: 'Download',
+    updated: 'Last Updated: November 2026',
+    page_title: 'Privacy Policy',
+    page_desc: 'Learn how we protect and process your data across Pixel Village game and services',
+    footer: '© 2026 Pixel Village. All rights reserved.<br><a href="/">Home</a> • <a href="/updates">Updates</a> • <a href="/wiki">Knowledge Base</a> • <a href="/cabinet">Cabinet</a> • <a href="/privacy" style="color:#fff;font-weight:700">Privacy Policy</a> • <a href="/terms">Terms of Service</a>',
+    content: `
+      <h2>🛡️ 1. Overview</h2>
+      <p>This Privacy Policy explains how the <b>Pixel Village</b> project collects, uses, and safeguards information when you play our game (on Windows, macOS, Linux, Android, or iOS), browse our website at <code>https://pixel-village.online</code>, or connect to our game servers.</p>
+      <p>We respect your privacy and follow a data minimization philosophy: we only collect what is strictly necessary to run the multiplayer world and persist your gameplay progress.</p>
+
+      <h2>📋 2. What Information We Collect</h2>
+      <h3>2.1. Account Information</h3>
+      <ul>
+        <li><b>Email address:</b> Used as a unique identifier to sign in, restore access, and safeguard your account against unauthorized takeover.</li>
+        <li><b>In-game nickname:</b> Your character name visible to other players in the virtual village and public leaderboards.</li>
+        <li><b>Password:</b> Stored exclusively as a strong cryptographic one-way salted hash. We never store, transmit, or have access to your plain-text password.</li>
+        <li><b>Google Sign-In:</b> If you choose to log in with Google, we receive an authentication User ID (UID) and email from Google Firebase to bind your game profile without requiring a separate password.</li>
+      </ul>
+
+      <h3>2.2. Game Progress & Settlement Data</h3>
+      <ul>
+        <li>Gold amount, score, item inventory, equipped tools, and fishing stats.</li>
+        <li>Houses built, bridges constructed, and character coordinates in the game world.</li>
+        <li>This ensures seamless cross-play so you can play on your PC or smartphone interchangeably.</li>
+      </ul>
+
+      <h3>2.3. Technical & Telemetry Data</h3>
+      <ul>
+        <li><b>IP address:</b> Temporarily logged during live socket connections strictly for routing, DDoS protection, and rate-limiting brute-force attempts.</li>
+        <li><b>OS Platform & Client Version:</b> Platform details (Windows, Android, etc.) used to verify update compatibility and debug crashes.</li>
+      </ul>
+
+      <h2>🎯 3. How We Use Your Data</h2>
+      <ul>
+        <li><b>Authentication:</b> Ensuring only you can access your resources, houses, and character.</li>
+        <li><b>Multiplayer Synchronization:</b> Streaming positions and actions in real time between all players in the village.</li>
+        <li><b>Customer Support:</b> Addressing tickets, bug reports, and assistance requests submitted by players.</li>
+        <li><b>Fair Play & Security:</b> Preventing cheats, bots, network abuse, or server exploitation.</li>
+      </ul>
+
+      <h2>🔒 4. Data Security</h2>
+      <p>We implement industry-standard safeguards:</p>
+      <ul>
+        <li>All website and server transmissions are encrypted using modern HTTPS / TLS / WSS protocols.</li>
+        <li>Game databases are hosted on a secure European dedicated VPS with strict firewall policies and regular automated backups.</li>
+        <li>One-time 6-digit game login codes expire after 15 minutes and self-destruct upon initial use.</li>
+      </ul>
+
+      <h2>🤝 5. Third-Party Services</h2>
+      <p>We <b>NEVER sell, rent, or trade</b> your personal information with advertisers or data brokers. Third-party providers are limited to essential infrastructure:</p>
+      <ul>
+        <li><b>Google Firebase Authentication</b> — for secure Google sign-in (governed by Google's Privacy Policy).</li>
+        <li><b>Cloudflare</b> — for content caching, DNS resolution, and DDoS mitigation.</li>
+      </ul>
+
+      <h2>👤 6. User Rights & Account Deletion</h2>
+      <p>You maintain full ownership of your data:</p>
+      <ul>
+        <li>You can change your password and view account statistics anytime inside the <a href="/cabinet">Player Cabinet</a>.</li>
+        <li><b>Right to erasure (Delete Account):</b> You may request complete deletion of your account, nickname, progress, and logs by submitting a support ticket in your cabinet or contacting the dev team on Telegram/Discord. Data will be purged within 48 hours.</li>
+      </ul>
+
+      <h2>👶 7. Children's Privacy</h2>
+      <p>Pixel Village is a family-friendly sandbox. We do not knowingly collect personal information from children under the age of 13 without appropriate parental or guardian consent.</p>
+
+      <h2>📬 8. Contact Us</h2>
+      <p>If you have any questions or privacy inquiries, contact us through:</p>
+      <ul>
+        <li>Support tickets inside the <a href="/cabinet">Player Cabinet</a></li>
+        <li>Our community server on <a href="https://discord.gg/atJW5ArM3R" target="_blank">Discord</a></li>
+        <li>Our official channel on <a href="https://t.me/pixel_village" target="_blank">Telegram</a></li>
+      </ul>
+    `
+  },
+  ru: {
+    title: 'Политика конфиденциальности — Pixel Village',
+    nav_home: 'Главная',
+    nav_updates: '📰 Обновления',
+    nav_wiki: '📖 База знаний',
+    nav_cabinet: '👤 Кабинет',
+    nav_download: 'Скачать',
+    updated: 'Обновлено: Ноябрь 2026',
+    page_title: 'Политика конфиденциальности',
+    page_desc: 'Узнайте, как мы защищаем и обрабатываем ваши данные в игре и сервисах Pixel Village',
+    footer: '© 2026 Pixel Village. Все права защищены.<br><a href="/">Главная</a> • <a href="/updates">Обновления</a> • <a href="/wiki">База знаний</a> • <a href="/cabinet">Кабинет</a> • <a href="/privacy" style="color:#fff;font-weight:700">Политика конфиденциальности</a> • <a href="/terms">Условия использования</a>',
+    content: `
+      <h2>🛡️ 1. Общие положения</h2>
+      <p>Настоящая Политика конфиденциальности объясняет, какую информацию собирает, использует и защищает команда проекта <b>Pixel Village</b> при использовании клиентов игры (для Windows, macOS, Linux, Android и iOS), нашего веб-сайта <code>https://pixel-village.online</code> и игровых серверов.</p>
+      <p>Мы уважаем право на приватность и придерживаемся принципа минимизации: мы собираем исключительно то, что необходимо для работы мультиплеера и сохранения вашего игрового процесса.</p>
+
+      <h2>📋 2. Какую информацию мы собираем</h2>
+      <h3>2.1. Данные аккаунта</h3>
+      <ul>
+        <li><b>Электронная почта (Email):</b> используется в качестве логина для входа, восстановления доступа и защиты от взлома.</li>
+        <li><b>Игровой никнейм:</b> видимое имя вашего персонажа в деревне и таблицах лидеров.</li>
+        <li><b>Пароль:</b> хранится исключительно в виде криптографического одностороннего хеша. Мы никогда не храним и не знаем ваш исходный пароль.</li>
+        <li><b>Google Авторизация:</b> при входе через Google мы получаем безопасный идентификатор пользователя (UID) и email от Google Firebase для мгновенной привязки профиля.</li>
+      </ul>
+
+      <h3>2.2. Игровой прогресс и мир</h3>
+      <ul>
+        <li>Баланс золота, очки опыта, предметы инвентаря, экипированные инструменты и статистика рыбалки.</li>
+        <li>Построенные дома, мосты и координаты персонажа на карте сервера.</li>
+        <li>Это позволяет продолжать игру с любого вашего устройства (ПК или смартфон).</li>
+      </ul>
+
+      <h3>2.3. Технические данные</h3>
+      <ul>
+        <li><b>IP-адрес:</b> временно фиксируется при подключении исключительно для маршрутизации, защиты от DDoS-атак и предотвращения подбора паролей.</li>
+        <li><b>ОС и версия:</b> сведения о платформе (Windows, Android и т.д.) для проверки совместимости обновлений и анализа ошибок.</li>
+      </ul>
+
+      <h2>🎯 3. Для чего используются данные</h2>
+      <ul>
+        <li><b>Аутентификация:</b> чтобы доступ к вашим постройкам и ресурсам был только у вас.</li>
+        <li><b>Синхронизация мультиплеера:</b> онлайн-передача перемещений и действий между всеми игроками в деревне.</li>
+        <li><b>Служба поддержки:</b> обработка тикетов и помощь игрокам при возникновении вопросов.</li>
+        <li><b>Честная игра:</b> выявление читов, ботов и предотвращение атак на сервер.</li>
+      </ul>
+
+      <h2>🔒 4. Безопасность данных</h2>
+      <p>Мы применяем современные стандарты защиты:</p>
+      <ul>
+        <li>Весь трафик зашифрован с использованием протоколов HTTPS / TLS.</li>
+        <li>База данных размещена на выделенном европейском VPS с ограниченным доступом и регулярными бэкапами.</li>
+        <li>Одноразовые 6-значные коды входа действуют всего 15 минут и сгорают сразу после применения.</li>
+      </ul>
+
+      <h2>🤝 5. Передача третьим лицам</h2>
+      <p>Мы <b>НИКОГДА не продаем и не передаем</b> ваши персональные данные третьим лицам или рекламным сетям. Сторонние сервисы ограничены технической инфраструктурой:</p>
+      <ul>
+        <li><b>Google Firebase Authentication</b> — для безопасного входа через Google.</li>
+        <li><b>Cloudflare</b> — для защиты от DDoS-атак и ускорения загрузки сайта.</li>
+      </ul>
+
+      <h2>👤 6. Права пользователя и удаление аккаунта</h2>
+      <p>Вы полностью контролируете свои данные:</p>
+      <ul>
+        <li>Вы можете изменить пароль или посмотреть статистику в <a href="/cabinet">Личном кабинете</a>.</li>
+        <li><b>Удаление аккаунта:</b> по вашему запросу через тикет в кабинете или в Telegram/Discord аккаунт и весь игровой прогресс будут безвозвратно удалены в течение 48 часов.</li>
+      </ul>
+
+      <h2>👶 7. Защита детей</h2>
+      <p>Pixel Village — дружелюбная игра для всей семьи. Мы не собираем намеренно персональные данные детей до 13 лет без согласия родителей или опекунов.</p>
+
+      <h2>📬 8. Контакты</h2>
+      <p>По любым вопросам конфиденциальности вы можете связаться с нами:</p>
+      <ul>
+        <li>Через раздел поддержки в <a href="/cabinet">Личном кабинете</a></li>
+        <li>В нашем сообществе в <a href="https://discord.gg/atJW5ArM3R" target="_blank">Discord</a></li>
+        <li>В нашем официальном канале в <a href="https://t.me/pixel_village" target="_blank">Telegram</a></li>
+      </ul>
+    `
+  }
+};
+
+function setLang(lang) {
+  localStorage.setItem('lang', lang);
+  document.documentElement.lang = lang;
+  const t = translations[lang] || translations.uk;
+  document.title = t.title;
+
+  document.querySelectorAll('.lang button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+
+  const el = id => document.getElementById(id);
+  if (el('navHome')) el('navHome').textContent = t.nav_home;
+  if (el('navUpdates')) el('navUpdates').textContent = t.nav_updates;
+  if (el('navWiki')) el('navWiki').textContent = t.nav_wiki;
+  if (el('navCabinet')) el('navCabinet').textContent = t.nav_cabinet;
+  if (el('navDownload')) el('navDownload').textContent = t.nav_download;
+
+  if (el('lastUpdated')) el('lastUpdated').textContent = t.updated;
+  if (el('pageTitle')) el('pageTitle').textContent = t.page_title;
+  if (el('pageDesc')) el('pageDesc').textContent = t.page_desc;
+  if (el('legalContent')) el('legalContent').innerHTML = t.content;
+  if (el('footerText')) el('footerText').innerHTML = t.footer;
+}
+
+const savedLang = localStorage.getItem('lang');
+const browserLang = navigator.language.split('-')[0];
+const defaultLang = savedLang || (['uk', 'ru'].includes(browserLang) ? browserLang : 'uk');
+setLang(defaultLang);
+</script>
+
+</body>
+</html>
