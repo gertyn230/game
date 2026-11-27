@@ -173,6 +173,26 @@ footer {
   font-size: 14px;
   border-top: 1px solid var(--line);
 }
+/* Mobile Nav */
+@media (max-width: 720px) {
+  .nav {
+    height: auto;
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+  .nav-links {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .nav-links a {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+}
 </style>
 </head>
 <body>
@@ -181,9 +201,9 @@ footer {
   <a class="logo" href="/">🏡 Pixel Village</a>
   <ul class="nav-links">
     <li><a href="/">Головна</a></li>
-    <li><a href="/updates.html">📰 Оновлення</a></li>
-    <li><a href="/wiki.html" class="active">📖 База знань</a></li>
-    <li><a href="/cabinet.html">👤 Кабінет</a></li>
+    <li><a href="/updates">📰 Оновлення</a></li>
+    <li><a href="/wiki" class="active">📖 База знань</a></li>
+    <li><a href="/cabinet">👤 Кабінет</a></li>
     <li><a href="/#download" class="btn-nav-dl">Завантажити</a></li>
   </ul>
 </header>
@@ -284,7 +304,7 @@ footer {
 </div>
 
 <footer>
-  <p>© 2026 Pixel Village. <a href="/">Головна</a> • <a href="/cabinet.html">Особистий кабінет</a> • <a href="/updates.html">Оновлення</a></p>
+  <p>© 2026 Pixel Village. <a href="/">Головна</a> • <a href="/cabinet">Особистий кабінет</a> • <a href="/updates">Оновлення</a></p>
 </footer>
 
 </body>

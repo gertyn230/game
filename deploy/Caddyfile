@@ -63,8 +63,18 @@ admin.pixel-village.online {
 
 http://pixel-village.online, http://www.pixel-village.online, https://pixel-village.online, https://www.pixel-village.online {
     root * /var/www/pixel-village
-    file_server
+
+    # 1. Clean URL redirect: /index.html -> /
+    redir /index.html / 301
+
+    # 2. Clean URL redirect: /page.html -> /page
+    @has_html path_regexp html ^/(.*)\.html$
+    redir @has_html /{re.html.1} 301
+
+    # 3. Serve static files with .html fallback
     try_files {path} {path}.html /index.html
+    file_server
+
     log {
         output file /var/log/caddy/www.log
         format json

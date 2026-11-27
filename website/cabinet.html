@@ -377,6 +377,26 @@ footer {
   font-size: 14px;
   border-top: 1px solid var(--line);
 }
+/* Mobile Nav */
+@media (max-width: 720px) {
+  .nav {
+    height: auto;
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+  .nav-links {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .nav-links a {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+}
 </style>
 </head>
 <body>
@@ -385,9 +405,9 @@ footer {
   <a class="logo" href="/">🏡 Pixel Village</a>
   <ul class="nav-links">
     <li><a href="/">Головна</a></li>
-    <li><a href="/updates.html">📰 Оновлення</a></li>
-    <li><a href="/wiki.html">📖 База знань</a></li>
-    <li><a href="/cabinet.html" class="active" style="color:var(--leaf);font-weight:700">👤 Кабінет</a></li>
+    <li><a href="/updates">📰 Оновлення</a></li>
+    <li><a href="/wiki">📖 База знань</a></li>
+    <li><a href="/cabinet" class="active" style="color:var(--leaf);font-weight:700">👤 Кабінет</a></li>
     <li><a href="/#download" class="btn-nav-dl">Завантажити</a></li>
   </ul>
 </header>
@@ -476,7 +496,7 @@ footer {
         <div>
           <h3 style="color:#fff;font-size:19px;margin-bottom:4px">⚡ Швидкий вхід у гру без введення пароля</h3>
           <p style="color:var(--mute);font-size:14px;max-width:550px">
-            Запустіть гру Pixel Village на комп'ютері чи телефоні, оберіть <b>«⚡ Код з сайту»</b> та введіть цей код:
+            Запустіть гру Pixel Village на комп'ютері чи телефоні, оберіть вкладку <b>«Код з сайту»</b> та натисніть «Вставити» або введіть цей код:
           </p>
         </div>
         <div class="code-display">
@@ -539,7 +559,7 @@ footer {
 </div>
 
 <footer>
-  <p>© 2026 Pixel Village. Усі права захищено. <a href="/">Головна</a> • <a href="/updates.html">Оновлення</a> • <a href="/wiki.html">База знань</a></p>
+  <p>© 2026 Pixel Village. Усі права захищено. <a href="/">Головна</a> • <a href="/updates">Оновлення</a> • <a href="/wiki">База знань</a></p>
 </footer>
 
 <script>
@@ -744,11 +764,37 @@ async function fetchLoginCode() {
 }
 
 function copyLoginCode() {
-  const code = document.getElementById('gameLoginCode').textContent;
-  if (code && code !== '------' && code !== '...') {
-    navigator.clipboard.writeText(code);
-    alert('Код ' + code + ' скопійовано! Вставте його в грі у вкладці «Код з сайту».');
+  const digitsEl = document.getElementById('gameLoginCode');
+  const code = digitsEl ? digitsEl.textContent.trim() : '';
+  if (!code || code === '------' || code === '...' || code === 'ПОМИЛКА') return;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).catch(() => copyFallback(code));
+  } else {
+    copyFallback(code);
   }
+
+  const btn = document.querySelector('.btn-copy');
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = '✅ Скопійовано!';
+    btn.style.background = 'var(--leaf)';
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.style.background = '';
+    }, 2000);
+  }
+}
+
+function copyFallback(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch(e){}
+  document.body.removeChild(ta);
 }
 
 async function redeemPromo() {

@@ -975,13 +975,13 @@ async fn main() {
                     #[cfg(target_os = "windows")]
                     {
                         let _ = std::process::Command::new("rundll32")
-                            .args(["url.dll,FileProtocolHandler", "https://pixel-village.online/cabinet.html"])
+                            .args(["url.dll,FileProtocolHandler", "https://pixel-village.online/cabinet"])
                             .spawn();
                     }
                     #[cfg(not(target_os = "windows"))]
                     {
                         let _ = std::process::Command::new("xdg-open")
-                            .arg("https://pixel-village.online/cabinet.html")
+                            .arg("https://pixel-village.online/cabinet")
                             .spawn();
                     }
                     acc_ui.mode = 3;

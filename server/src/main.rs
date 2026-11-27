@@ -338,7 +338,7 @@ async fn api_version() -> Json<serde_json::Value> {
             "📋 Підтримка та тікети безпосередньо з веб-кабінету",
             "🚀 Багатосторінковий портал: Кабінет, База знань, Оновлення"
         ],
-        "download": "https://pixel-village.online/cabinet.html"
+        "download": "https://pixel-village.online/cabinet"
     }))
 }
 

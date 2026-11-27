@@ -490,8 +490,8 @@ a.btn.g:hover {
 <li><a href="#home">Головна</a></li>
 <li><a href="#about">Про гру</a></li>
 <li><a href="#features">Особливості</a></li>
-<li><a href="/wiki.html">📖 База знань</a></li>
-<li><a href="/updates.html">📰 Оновлення</a></li>
+<li><a href="/wiki">📖 База знань</a></li>
+<li><a href="/updates">📰 Оновлення</a></li>
 </ul>
 <div class="nav-right">
 <div class="lang">
@@ -499,7 +499,7 @@ a.btn.g:hover {
 <button onclick="setLang('en')" data-lang="en">🇬🇧 EN</button>
 <button onclick="setLang('ru')" data-lang="ru">🇷🇺 RU</button>
 </div>
-<a class="btn-nav-acc" href="/cabinet.html">👤 Кабінет</a>
+<a class="btn-nav-acc" href="/cabinet">👤 Кабінет</a>
 <a class="btn-nav-dl" href="#download">Завантажити</a>
 <button id="mb" aria-label="Menu">☰ Меню</button>
 </div>
@@ -1292,17 +1292,12 @@ function toastFloat(msg, type='success') {
 async function checkServerStatus() {
   const start = performance.now();
   try {
-    const vpsPromise = fetch(API_URL + '/api/players').then(r => r.json()).catch(() => null);
-    const renderPromise = fetch('https://game-n6ay.onrender.com/api/players').then(r => r.json()).catch(() => null);
-    const [vpsData, renderData] = await Promise.all([vpsPromise, renderPromise]);
-
+    const res = await fetch(API_URL + '/api/players');
+    const vpsData = await res.json();
     const ping = Math.round(performance.now() - start);
     document.getElementById('srvPing').textContent = '(' + ping + 'ms)';
 
-    const vpsCount = vpsData ? (vpsData.count || (vpsData.players ? vpsData.players.length : 0)) : 0;
-    const renderCount = renderData ? (renderData.count || (renderData.players ? renderData.players.length : 0)) : 0;
-    const totalOnline = vpsCount + renderCount;
-
+    const totalOnline = vpsData ? (vpsData.count || (vpsData.players ? vpsData.players.length : 0)) : 0;
     document.getElementById('srvOnline').textContent = totalOnline;
     document.getElementById('srvStatusText').textContent = 'Сервер онлайн';
     const dot = document.querySelector('.srv-dot');
