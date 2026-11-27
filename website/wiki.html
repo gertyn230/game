@@ -94,6 +94,36 @@ a:hover{text-decoration:underline}
   transform: translateY(-2px);
 }
 
+.lang {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 3px 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.lang button {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.lang button:hover {
+  color: #fff;
+}
+.lang button.active {
+  background: var(--sun);
+  color: #10261c !important;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.2);
+}
+
 .container {
   max-width: 960px;
   width: 92%;
@@ -200,112 +230,323 @@ footer {
 <header class="nav">
   <a class="logo" href="/">🏡 Pixel Village</a>
   <ul class="nav-links">
-    <li><a href="/">Головна</a></li>
-    <li><a href="/updates">📰 Оновлення</a></li>
-    <li><a href="/wiki" class="active">📖 База знань</a></li>
-    <li><a href="/cabinet">👤 Кабінет</a></li>
-    <li><a href="/#download" class="btn-nav-dl">Завантажити</a></li>
+    <li><a href="/" id="navHome">Головна</a></li>
+    <li><a href="/updates" id="navUpdates">📰 Оновлення</a></li>
+    <li><a href="/wiki" class="active" id="navWiki">📖 База знань</a></li>
+    <li><a href="/cabinet" id="navCabinet">👤 Кабінет</a></li>
+    <li><a href="/#download" class="btn-nav-dl" id="navDownload">Завантажити</a></li>
   </ul>
+  <div class="lang">
+    <button onclick="setLang('uk')" class="active" data-lang="uk">🇺🇦 UA</button>
+    <button onclick="setLang('en')" data-lang="en">🇬🇧 EN</button>
+    <button onclick="setLang('ru')" data-lang="ru">🇷🇺 RU</button>
+  </div>
 </header>
 
 <div class="container">
   <div class="page-header">
-    <h1>База знань Pixel Village</h1>
-    <p>Все, що потрібно знати про виживання, крафт, інструменти та будівництво</p>
+    <h1 id="pageTitle">База знань Pixel Village</h1>
+    <p id="pageDesc">Все, що потрібно знати про виживання, крафт, інструменти та будівництво</p>
   </div>
 
   <!-- Керування -->
   <div class="guide-sec">
-    <h2>🎮 Керування у грі</h2>
+    <h2 id="secControlsTitle">🎮 Керування у грі</h2>
     <div class="guide-grid">
       <div class="guide-item">
-        <h3>Пересування</h3>
-        <p>Кнопки <span class="key-badge">W</span> <span class="key-badge">A</span> <span class="key-badge">S</span> <span class="key-badge">D</span> або стрілочки. На Android — віртуальний джойстик у лівій частині екрану.</p>
+        <h3 id="cMoveTitle">Пересування</h3>
+        <p id="cMoveDesc">Кнопки <span class="key-badge">W</span> <span class="key-badge">A</span> <span class="key-badge">S</span> <span class="key-badge">D</span> або стрілочки. На Android — віртуальний джойстик у лівій частині екрану.</p>
       </div>
       <div class="guide-item">
-        <h3>Дія / Видобуток</h3>
-        <p><span class="key-badge">Space</span> (пробіл) або лівий клік миші. На Android — велика кругла кнопка Дії праворуч.</p>
+        <h3 id="cActionTitle">Дія / Видобуток</h3>
+        <p id="cActionDesc"><span class="key-badge">Space</span> (пробіл) або лівий клік миші. На Android — велика кругла кнопка Дії праворуч.</p>
       </div>
       <div class="guide-item">
-        <h3>Меню та Інвентар</h3>
-        <p><span class="key-badge">I</span> — Інвентар, <span class="key-badge">C</span> — Крафт, <span class="key-badge">Esc</span> — Головне меню та налаштування гри.</p>
+        <h3 id="cInvTitle">Меню та Інвентар</h3>
+        <p id="cInvDesc"><span class="key-badge">I</span> — Інвентар, <span class="key-badge">C</span> — Крафт, <span class="key-badge">Esc</span> — Головне меню та налаштування гри.</p>
       </div>
       <div class="guide-item">
-        <h3>Швидкі дії</h3>
-        <p><span class="key-badge">F</span> — поїсти, <span class="key-badge">R</span> — попити, <span class="key-badge">G</span> — копати землю, <span class="key-badge">T</span> — приручити вовка, <span class="key-badge">B</span> — сісти у човен.</p>
+        <h3 id="cQuickTitle">Швидкі дії</h3>
+        <p id="cQuickDesc"><span class="key-badge">F</span> — поїсти, <span class="key-badge">R</span> — попити, <span class="key-badge">G</span> — копати землю, <span class="key-badge">T</span> — приручити вовка, <span class="key-badge">B</span> — сісти у човен.</p>
       </div>
     </div>
   </div>
 
   <!-- Показники виживання -->
   <div class="guide-sec">
-    <h2>❤️ Показники виживання</h2>
+    <h2 id="secSurvTitle">❤️ Показники виживання</h2>
     <div class="guide-grid">
       <div class="guide-item">
-        <h3>🍖 Голод (Hunger)</h3>
-        <p>Зменшується з часом. Збирайте ягоди з кущів або полюйте на тварин для м'яса. Натискайте <span class="key-badge">F</span> щоб поїсти.</p>
+        <h3 id="sHungerTitle">🍖 Голод (Hunger)</h3>
+        <p id="sHungerDesc">Зменшується з часом. Збирайте ягоди з кущів або полюйте на тварин для м'яса. Натискайте <span class="key-badge">F</span> щоб поїсти.</p>
       </div>
       <div class="guide-item">
-        <h3>💧 Спрага (Thirst)</h3>
-        <p>Підійдіть до будь-якої водойми або річки та натисніть <span class="key-badge">R</span>, щоб відновити рівень води.</p>
+        <h3 id="sThirstTitle">💧 Спрага (Thirst)</h3>
+        <p id="sThirstDesc">Підійдіть до будь-якої водойми або річки та натисніть <span class="key-badge">R</span>, щоб відновити рівень води.</p>
       </div>
       <div class="guide-item">
-        <h3>⚡ Енергія (Energy)</h3>
-        <p>Витрачається на біг та рубку ресурсів. Відновлюється біля палаючого вогнища або під час відпочинку.</p>
+        <h3 id="sEnergyTitle">⚡ Енергія (Energy)</h3>
+        <p id="sEnergyDesc">Витрачається на біг та рубку ресурсів. Відновлюється біля палаючого вогнища або під час відпочинку.</p>
       </div>
       <div class="guide-item">
-        <h3>❤️ Здоров'я (HP)</h3>
-        <p>Падає якщо ви голодні чи зневоднені, або якщо на вас нападають вовки чи ведмеді. Підтримуйте ситість для регенерації.</p>
+        <h3 id="sHpTitle">❤️ Здоров'я (HP)</h3>
+        <p id="sHpDesc">Падає якщо ви голодні чи зневоднені, або якщо на вас нападають вовки чи ведмеді. Підтримуйте ситість для регенерації.</p>
       </div>
     </div>
   </div>
 
   <!-- Інструменти та крафт -->
   <div class="guide-sec">
-    <h2>🛠️ Інструменти та крафт</h2>
+    <h2 id="secCraftTitle">🛠️ Інструменти та крафт</h2>
     <div class="guide-grid">
       <div class="guide-item">
-        <h3>🪵 Дерев'яна сокира та кирка</h3>
-        <p>Початкові інструменти. Дозволяють швидше рубати дерева та добувати каміння, мідну та залізну руду.</p>
+        <h3 id="crWoodTitle">🪵 Дерев'яна сокира та кирка</h3>
+        <p id="crWoodDesc">Початкові інструменти. Дозволяють швидше рубати дерева та добувати каміння, мідну та залізну руду.</p>
       </div>
       <div class="guide-item">
-        <h3>⚔️ Мідне та залізне спорядження</h3>
-        <p>Спис збільшує радіус атаки та шкоду по тваринах. Залізний плащ захищає від нічного холоду та атак диких звірів.</p>
+        <h3 id="crMetalTitle">⚔️ Мідне та залізне спорядження</h3>
+        <p id="crMetalDesc">Спис збільшує радіус атаки та шкоду по тваринах. Залізний плащ захищає від нічного холоду та атак диких звірів.</p>
       </div>
       <div class="guide-item">
-        <h3>🎣 Вудка та Риболовля</h3>
-        <p>Скрафтіть вудку, підійдіть до води та закиньте гачок. Коли поплавок пірнає — підсікайте та балансуйте натяг лески!</p>
+        <h3 id="crFishTitle">🎣 Вудка та Риболовля</h3>
+        <p id="crFishDesc">Скрафтіть вудку, підійдіть до води та закиньте гачок. Коли поплавок пірнає — підсікайте та балансуйте натяг лески!</p>
       </div>
       <div class="guide-item">
-        <h3>🏠 Будинки та Мости</h3>
-        <p>Будуйте мости через річки, щоб відкривати нові острови. Зводьте затишні будинки, розширюючи своє село!</p>
+        <h3 id="crBuildTitle">🏠 Будинки та Мости</h3>
+        <p id="crBuildDesc">Будуйте мости через річки, щоб відкривати нові острови. Зводьте затишні будинки, розширюючи своє село!</p>
       </div>
     </div>
   </div>
 
   <!-- Тварини та приручення -->
   <div class="guide-sec">
-    <h2>🐺 Тварини та Пес-помічник</h2>
+    <h2 id="secAnimalsTitle">🐺 Тварини та Пес-помічник</h2>
     <div class="guide-grid">
       <div class="guide-item">
-        <h3>🐇 Кролики та Олені</h3>
-        <p>Мирні тварини, які тікають при вашому наближенні. Джерело свіжого м'яса та шкіри.</p>
+        <h3 id="anPreyTitle">🐇 Кролики та Олені</h3>
+        <p id="anPreyDesc">Мирні тварини, які тікають при вашому наближенні. Джерело свіжого м'яса та шкіри.</p>
       </div>
       <div class="guide-item">
-        <h3>🐺 Приручення Вовка</h3>
-        <p>Якщо підійти до вовка зі шматком м'яса в інвентарі та натиснути <span class="key-badge">T</span>, він стане вашим вірним псом-охоронцем!</p>
+        <h3 id="anWolfTitle">🐺 Приручення Вовка</h3>
+        <p id="anWolfDesc">Якщо підійти до вовка зі шматком м'яса в інвентарі та натиснути <span class="key-badge">T</span>, він стане вашим вірним псом-охоронцем!</p>
       </div>
       <div class="guide-item">
-        <h3>🐻 Ведмеді</h3>
-        <p>Небезпечні лісові хижаки. Не підходьте без списа або теплого одягу!</p>
+        <h3 id="anBearTitle">🐻 Ведмеді</h3>
+        <p id="anBearDesc">Небезпечні лісові хижаки. Не підходьте без списа або теплого одягу!</p>
       </div>
     </div>
   </div>
 </div>
 
 <footer>
-  <p>© 2026 Pixel Village. <a href="/">Головна</a> • <a href="/cabinet">Особистий кабінет</a> • <a href="/updates">Оновлення</a></p>
+  <p id="footerText">© 2026 Pixel Village. <a href="/">Головна</a> • <a href="/cabinet">Особистий кабінет</a> • <a href="/updates">Оновлення</a></p>
 </footer>
+
+<script>
+const translations = {
+  uk: {
+    title: 'База знань та Гайд — Pixel Village',
+    nav_home: 'Головна',
+    nav_updates: '📰 Оновлення',
+    nav_wiki: '📖 База знань',
+    nav_cabinet: '👤 Кабінет',
+    nav_download: 'Завантажити',
+    page_title: 'База знань Pixel Village',
+    page_desc: 'Все, що потрібно знати про виживання, крафт, інструменти та будівництво',
+    sec_controls: '🎮 Керування у грі',
+    c_move_t: 'Пересування',
+    c_move_d: 'Кнопки <span class="key-badge">W</span> <span class="key-badge">A</span> <span class="key-badge">S</span> <span class="key-badge">D</span> або стрілочки. На Android — віртуальний джойстик у лівій частині екрану.',
+    c_act_t: 'Дія / Видобуток',
+    c_act_d: '<span class="key-badge">Space</span> (пробіл) або лівий клік миші. На Android — велика кругла кнопка Дії праворуч.',
+    c_inv_t: 'Меню та Інвентар',
+    c_inv_d: '<span class="key-badge">I</span> — Інвентар, <span class="key-badge">C</span> — Крафт, <span class="key-badge">Esc</span> — Головне меню та налаштування гри.',
+    c_quick_t: 'Швидкі дії',
+    c_quick_d: '<span class="key-badge">F</span> — поїсти, <span class="key-badge">R</span> — попити, <span class="key-badge">G</span> — копати землю, <span class="key-badge">T</span> — приручити вовка, <span class="key-badge">B</span> — сісти у човен.',
+    sec_surv: '❤️ Показники виживання',
+    s_hunger_t: '🍖 Голод (Hunger)',
+    s_hunger_d: 'Зменшується з часом. Збирайте ягоди з кущів або полюйте на тварин для м\'яса. Натискайте <span class="key-badge">F</span> щоб поїсти.',
+    s_thirst_t: '💧 Спрага (Thirst)',
+    s_thirst_d: 'Підійдіть до будь-якої водойми або річки та натисніть <span class="key-badge">R</span>, щоб відновити рівень води.',
+    s_energy_t: '⚡ Енергія (Energy)',
+    s_energy_d: 'Витрачається на біг та рубку ресурсів. Відновлюється біля палаючого вогнища або під час відпочинку.',
+    s_hp_t: '❤️ Здоров\'я (HP)',
+    s_hp_d: 'Падає якщо ви голодні чи зневоднені, або якщо на вас нападають вовки чи ведмеді. Підтримуйте ситість для регенерації.',
+    sec_craft: '🛠️ Інструменти та крафт',
+    cr_wood_t: '🪵 Дерев\'яна сокира та кирка',
+    cr_wood_d: 'Початкові інструменти. Дозволяють швидше рубати дерева та добувати каміння, мідну та залізну руду.',
+    cr_metal_t: '⚔️ Мідне та залізне спорядження',
+    cr_metal_d: 'Спис збільшує радіус атаки та шкоду по тваринах. Залізний плащ захищає від нічного холоду та атак диких звірів.',
+    cr_fish_t: '🎣 Вудка та Риболовля',
+    cr_fish_d: 'Скрафтіть вудку, підійдіть до води та закиньте гачок. Коли поплавок пірнає — підсікайте та балансуйте натяг лески!',
+    cr_build_t: '🏠 Будинки та Мости',
+    cr_build_d: 'Будуйте мости через річки, щоб відкривати нові острови. Зводьте затишні будинки, розширюючи своє село!',
+    sec_animals: '🐺 Тварини та Пес-помічник',
+    an_prey_t: '🐇 Кролики та Олені',
+    an_prey_d: 'Мирні тварини, які тікають при вашому наближенні. Джерело свіжого м\'яса та шкіри.',
+    an_wolf_t: '🐺 Приручення Вовка',
+    an_wolf_d: 'Якщо підійти до вовка зі шматком м\'яса в інвентарі та натиснути <span class="key-badge">T</span>, він стане вашим вірним псом-охоронцем!',
+    an_bear_t: '🐻 Ведмеді',
+    an_bear_d: 'Небезпечні лісові хижаки. Не підходьте без списа або теплого одягу!',
+    footer: '© 2026 Pixel Village. <a href="/">Головна</a> • <a href="/cabinet">Особистий кабінет</a> • <a href="/updates">Оновлення</a>'
+  },
+  en: {
+    title: 'Knowledge Base & Guide — Pixel Village',
+    nav_home: 'Home',
+    nav_updates: '📰 Updates',
+    nav_wiki: '📖 Knowledge Base',
+    nav_cabinet: '👤 Cabinet',
+    nav_download: 'Download',
+    page_title: 'Pixel Village Knowledge Base',
+    page_desc: 'Everything you need to know about survival, crafting, tools, and village building',
+    sec_controls: '🎮 In-Game Controls',
+    c_move_t: 'Movement',
+    c_move_d: 'Keys <span class="key-badge">W</span> <span class="key-badge">A</span> <span class="key-badge">S</span> <span class="key-badge">D</span> or arrow keys. On Android — virtual joystick on the left side of the screen.',
+    c_act_t: 'Action / Harvest',
+    c_act_d: '<span class="key-badge">Space</span> bar or left mouse click. On Android — large circular Action button on the right.',
+    c_inv_t: 'Menu & Inventory',
+    c_inv_d: '<span class="key-badge">I</span> — Inventory, <span class="key-badge">C</span> — Crafting, <span class="key-badge">Esc</span> — Main menu and settings.',
+    c_quick_t: 'Quick Actions',
+    c_quick_d: '<span class="key-badge">F</span> — eat, <span class="key-badge">R</span> — drink, <span class="key-badge">G</span> — till soil, <span class="key-badge">T</span> — tame wolf, <span class="key-badge">B</span> — board boat.',
+    sec_surv: '❤️ Survival Stats',
+    s_hunger_t: '🍖 Hunger',
+    s_hunger_d: 'Decreases over time. Forage berries from bushes or hunt animals for meat. Press <span class="key-badge">F</span> to eat.',
+    s_thirst_t: '💧 Thirst',
+    s_thirst_d: 'Approach any water body or river and press <span class="key-badge">R</span> to replenish your water meter.',
+    s_energy_t: '⚡ Energy',
+    s_energy_d: 'Consumed by sprinting and resource harvesting. Restored near an active campfire or while resting.',
+    s_hp_t: '❤️ Health (HP)',
+    s_hp_d: 'Drops if you starve, dehydrate, or are attacked by wolves and bears. Maintain high hunger to regenerate.',
+    sec_craft: '🛠️ Tools & Crafting',
+    cr_wood_t: '🪵 Wooden Axe & Pickaxe',
+    cr_wood_d: 'Starter tools. Allows chopping trees faster and mining stone, copper, and iron ores.',
+    cr_metal_t: '⚔️ Copper & Iron Gear',
+    cr_metal_d: 'Spears increase attack range and damage. The iron cloak protects against freezing night cold and predator attacks.',
+    cr_fish_t: '🎣 Fishing Rod & Fishing',
+    cr_fish_d: 'Craft a rod, approach water, and cast your line. When the bobber dips, strike and balance line tension!',
+    cr_build_t: '🏠 Houses & Bridges',
+    cr_build_d: 'Build bridges across rivers to unlock new islands. Erect cozy houses to expand your growing village!',
+    sec_animals: '🐺 Animals & Canine Companion',
+    an_prey_t: '🐇 Rabbits & Deer',
+    an_prey_d: 'Docile animals that flee when you approach. Great source of fresh meat and leather.',
+    an_wolf_t: '🐺 Taming a Wolf',
+    an_wolf_d: 'Approach a wild wolf with meat in your inventory and press <span class="key-badge">T</span> to make it your loyal guard dog!',
+    an_bear_t: '🐻 Bears',
+    an_bear_d: 'Dangerous forest predators. Do not engage without a spear or warm protective armor!',
+    footer: '© 2026 Pixel Village. <a href="/">Home</a> • <a href="/cabinet">Cabinet</a> • <a href="/updates">Updates</a>'
+  },
+  ru: {
+    title: 'База знаний и Гайд — Pixel Village',
+    nav_home: 'Главная',
+    nav_updates: '📰 Обновления',
+    nav_wiki: '📖 База знаний',
+    nav_cabinet: '👤 Кабинет',
+    nav_download: 'Скачать',
+    page_title: 'База знаний Pixel Village',
+    page_desc: 'Всё, что нужно знать о выживании, крафте, инструментах и строительстве деревни',
+    sec_controls: '🎮 Управление в игре',
+    c_move_t: 'Передвижение',
+    c_move_d: 'Кнопки <span class="key-badge">W</span> <span class="key-badge">A</span> <span class="key-badge">S</span> <span class="key-badge">D</span> или стрелочки. На Android — виртуальный джойстик в левой части экрана.',
+    c_act_t: 'Действие / Добыча',
+    c_act_d: '<span class="key-badge">Space</span> (пробел) или левый клик мыши. На Android — большая круглая кнопка Действия справа.',
+    c_inv_t: 'Меню и Инвентарь',
+    c_inv_d: '<span class="key-badge">I</span> — Инвентарь, <span class="key-badge">C</span> — Крафт, <span class="key-badge">Esc</span> — Главное меню и настройки.',
+    c_quick_t: 'Быстрые действия',
+    c_quick_d: '<span class="key-badge">F</span> — поесть, <span class="key-badge">R</span> — попить, <span class="key-badge">G</span> — копать землю, <span class="key-badge">T</span> — приручить волка, <span class="key-badge">B</span> — сесть в лодку.',
+    sec_surv: '❤️ Показатели выживания',
+    s_hunger_t: '🍖 Голод (Hunger)',
+    s_hunger_d: 'Уменьшается со временем. Собирайте ягоды с кустов или охотьтесь на животных ради мяса. Нажмите <span class="key-badge">F</span> чтобы поесть.',
+    s_thirst_t: '💧 Жажда (Thirst)',
+    s_thirst_d: 'Подойдите к водоёму или реке и нажмите <span class="key-badge">R</span>, чтобы восполнить запас воды.',
+    s_energy_t: '⚡ Энергия (Energy)',
+    s_energy_d: 'Тратится на бег и добычу ресурсов. Восстанавливается у горящего костра или во время отдыха.',
+    s_hp_t: '❤️ Здоровье (HP)',
+    s_hp_d: 'Падает при голоде, жажде или атаках волков и медведей. Поддерживайте сытость для регенерации.',
+    sec_craft: '🛠️ Инструменты и крафт',
+    cr_wood_t: '🪵 Деревянный топор и кирка',
+    cr_wood_d: 'Начальные инструменты. Позволяют быстрее рубить деревья и добывать камень, медную и железную руду.',
+    cr_metal_t: '⚔️ Медное и железное снаряжение',
+    cr_metal_d: 'Копьё увеличивает радиус атаки и урон. Железный плащ защищает от ночного холода и атак диких зверей.',
+    cr_fish_t: '🎣 Удочка и Рыбалка',
+    cr_fish_d: 'Скрафтите удочку, подойдите к воде и забросьте крючок. Когда поплавок ныряет — подсекайте и балансируйте натяжение!',
+    cr_build_t: '🏠 Дома и Мосты',
+    cr_build_d: 'Стройте мосты через реки, открывая новые острова. Возводите уютные дома, развивая свою деревню!',
+    sec_animals: '🐺 Животные и Пёс-помощник',
+    an_prey_t: '🐇 Кролики и Олени',
+    an_prey_d: 'Мирные животные, убегающие при вашем приближении. Источник свежего мяса и кожи.',
+    an_wolf_t: '🐺 Приручение Волка',
+    an_wolf_d: 'Подойдите к волку с куском мяса в инвентаре и нажмите <span class="key-badge">T</span>, чтобы сделать его верным защитником!',
+    an_bear_t: '🐻 Медведи',
+    an_bear_d: 'Опасные лесные хищники. Не подходите без копья или тёплой защитной одежды!',
+    footer: '© 2026 Pixel Village. <a href="/">Главная</a> • <a href="/cabinet">Личный кабинет</a> • <a href="/updates">Обновления</a>'
+  }
+};
+
+function setLang(lang) {
+  localStorage.setItem('lang', lang);
+  document.documentElement.lang = lang;
+  const t = translations[lang] || translations.uk;
+  document.title = t.title;
+
+  document.querySelectorAll('.lang button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+
+  const el = id => document.getElementById(id);
+  if (el('navHome')) el('navHome').textContent = t.nav_home;
+  if (el('navUpdates')) el('navUpdates').textContent = t.nav_updates;
+  if (el('navWiki')) el('navWiki').textContent = t.nav_wiki;
+  if (el('navCabinet')) el('navCabinet').textContent = t.nav_cabinet;
+  if (el('navDownload')) el('navDownload').textContent = t.nav_download;
+
+  if (el('pageTitle')) el('pageTitle').textContent = t.page_title;
+  if (el('pageDesc')) el('pageDesc').textContent = t.page_desc;
+
+  if (el('secControlsTitle')) el('secControlsTitle').textContent = t.sec_controls;
+  if (el('cMoveTitle')) el('cMoveTitle').textContent = t.c_move_t;
+  if (el('cMoveDesc')) el('cMoveDesc').innerHTML = t.c_move_d;
+  if (el('cActionTitle')) el('cActionTitle').textContent = t.c_act_t;
+  if (el('cActionDesc')) el('cActionDesc').innerHTML = t.c_act_d;
+  if (el('cInvTitle')) el('cInvTitle').textContent = t.c_inv_t;
+  if (el('cInvDesc')) el('cInvDesc').innerHTML = t.c_inv_d;
+  if (el('cQuickTitle')) el('cQuickTitle').textContent = t.c_quick_t;
+  if (el('cQuickDesc')) el('cQuickDesc').innerHTML = t.c_quick_d;
+
+  if (el('secSurvTitle')) el('secSurvTitle').textContent = t.sec_surv;
+  if (el('sHungerTitle')) el('sHungerTitle').textContent = t.s_hunger_t;
+  if (el('sHungerDesc')) el('sHungerDesc').innerHTML = t.s_hunger_d;
+  if (el('sThirstTitle')) el('sThirstTitle').textContent = t.s_thirst_t;
+  if (el('sThirstDesc')) el('sThirstDesc').innerHTML = t.s_thirst_d;
+  if (el('sEnergyTitle')) el('sEnergyTitle').textContent = t.s_energy_t;
+  if (el('sEnergyDesc')) el('sEnergyDesc').innerHTML = t.s_energy_d;
+  if (el('sHpTitle')) el('sHpTitle').textContent = t.s_hp_t;
+  if (el('sHpDesc')) el('sHpDesc').innerHTML = t.s_hp_d;
+
+  if (el('secCraftTitle')) el('secCraftTitle').textContent = t.sec_craft;
+  if (el('crWoodTitle')) el('crWoodTitle').textContent = t.cr_wood_t;
+  if (el('crWoodDesc')) el('crWoodDesc').innerHTML = t.cr_wood_d;
+  if (el('crMetalTitle')) el('crMetalTitle').textContent = t.cr_metal_t;
+  if (el('crMetalDesc')) el('crMetalDesc').innerHTML = t.cr_metal_d;
+  if (el('crFishTitle')) el('crFishTitle').textContent = t.cr_fish_t;
+  if (el('crFishDesc')) el('crFishDesc').innerHTML = t.cr_fish_d;
+  if (el('crBuildTitle')) el('crBuildTitle').textContent = t.cr_build_t;
+  if (el('crBuildDesc')) el('crBuildDesc').innerHTML = t.cr_build_d;
+
+  if (el('secAnimalsTitle')) el('secAnimalsTitle').textContent = t.sec_animals;
+  if (el('anPreyTitle')) el('anPreyTitle').textContent = t.an_prey_t;
+  if (el('anPreyDesc')) el('anPreyDesc').innerHTML = t.an_prey_d;
+  if (el('anWolfTitle')) el('anWolfTitle').textContent = t.an_wolf_t;
+  if (el('anWolfDesc')) el('anWolfDesc').innerHTML = t.an_wolf_d;
+  if (el('anBearTitle')) el('anBearTitle').textContent = t.an_bear_t;
+  if (el('anBearDesc')) el('anBearDesc').innerHTML = t.an_bear_d;
+
+  if (el('footerText')) el('footerText').innerHTML = t.footer;
+}
+
+const savedLang = localStorage.getItem('lang');
+const browserLang = navigator.language.split('-')[0];
+const defaultLang = savedLang || (['uk', 'ru'].includes(browserLang) ? browserLang : 'uk');
+setLang(defaultLang);
+</script>
 
 </body>
 </html>

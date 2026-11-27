@@ -98,6 +98,36 @@ a:hover{text-decoration:underline}
   transform: translateY(-2px);
 }
 
+.lang {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 3px 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.lang button {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.lang button:hover {
+  color: #fff;
+}
+.lang button.active {
+  background: var(--sun);
+  color: #10261c !important;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.2);
+}
+
 /* Container */
 .container {
   max-width: 1080px;
@@ -404,28 +434,33 @@ footer {
 <header class="nav">
   <a class="logo" href="/">🏡 Pixel Village</a>
   <ul class="nav-links">
-    <li><a href="/">Головна</a></li>
-    <li><a href="/updates">📰 Оновлення</a></li>
-    <li><a href="/wiki">📖 База знань</a></li>
-    <li><a href="/cabinet" class="active" style="color:var(--leaf);font-weight:700">👤 Кабінет</a></li>
-    <li><a href="/#download" class="btn-nav-dl">Завантажити</a></li>
+    <li><a href="/" id="navHome">Головна</a></li>
+    <li><a href="/updates" id="navUpdates">📰 Оновлення</a></li>
+    <li><a href="/wiki" id="navWiki">📖 База знань</a></li>
+    <li><a href="/cabinet" class="active" style="color:var(--leaf);font-weight:700" id="navCabinet">👤 Кабінет</a></li>
+    <li><a href="/#download" class="btn-nav-dl" id="navDownload">Завантажити</a></li>
   </ul>
+  <div class="lang">
+    <button onclick="setLang('uk')" class="active" data-lang="uk">🇺🇦 UA</button>
+    <button onclick="setLang('en')" data-lang="en">🇬🇧 EN</button>
+    <button onclick="setLang('ru')" data-lang="ru">🇷🇺 RU</button>
+  </div>
 </header>
 
 <div class="container">
 
   <!-- АВТОРИЗАЦІЯ (ЯКЩО НЕ ВВІЙШОВ) -->
   <div class="auth-box card" id="authSection">
-    <h2 style="font-size:28px;text-align:center;margin-bottom:6px">Вхід у Pixel Village</h2>
-    <p style="text-align:center;color:var(--mute);margin-bottom:24px">Грайте на одному акаунті на ПК та смартфоні</p>
+    <h2 style="font-size:28px;text-align:center;margin-bottom:6px" id="authTitle">Вхід у Pixel Village</h2>
+    <p style="text-align:center;color:var(--mute);margin-bottom:24px" id="authSubtitle">Грайте на одному акаунті на ПК та смартфоні</p>
 
     <!-- Google Button -->
     <button class="btn-google" id="btnGoogleAuth" onclick="handleGoogleSignIn()">
       <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
-      Продовжити через Google
+      <span id="txtGoogleAuth">Продовжити через Google</span>
     </button>
 
-    <div class="divider"><span>АБО ЧЕРЕЗ EMAIL</span></div>
+    <div class="divider"><span id="txtOrEmail">АБО ЧЕРЕЗ EMAIL</span></div>
 
     <div class="auth-tabs">
       <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab(0)">🔑 Вхід</button>
@@ -436,17 +471,17 @@ footer {
 
     <form id="authForm" onsubmit="handleEmailAuth(event)">
       <div class="form-group">
-        <label>Електронна пошта</label>
+        <label id="lblEmail">Електронна пошта</label>
         <input type="email" id="authEmail" placeholder="name@example.com" required>
       </div>
 
       <div class="form-group" id="groupUsername" style="display:none">
-        <label>Ігровий нікнейм</label>
+        <label id="lblUsername">Ігровий нікнейм</label>
         <input type="text" id="authUsername" placeholder="Нікнейм (2-24 символи)">
       </div>
 
       <div class="form-group">
-        <label>Пароль</label>
+        <label id="lblPassword">Пароль</label>
         <input type="password" id="authPassword" placeholder="Мінімум 6 символів" required>
       </div>
 
@@ -468,25 +503,25 @@ footer {
             <span class="online-pill" id="dashOnlineStatus"><span class="online-dot"></span> <span id="dashOnlineText">Офлайн</span></span>
           </div>
         </div>
-        <button class="btn-logout" onclick="handleLogout()">🚪 Вийти з акаунту</button>
+        <button class="btn-logout" id="btnLogout" onclick="handleLogout()">🚪 Вийти з акаунту</button>
       </div>
 
       <!-- Live Stats -->
       <div class="stat-grid">
         <div class="stat-box">
-          <span class="stat-label">🪙 Золото</span>
+          <span class="stat-label" id="lblStatGold">🪙 Золото</span>
           <span class="stat-val" id="statGold" style="color:var(--gold)">0</span>
         </div>
         <div class="stat-box">
-          <span class="stat-label">🏆 Очки прогресу</span>
+          <span class="stat-label" id="lblStatScore">🏆 Очки прогресу</span>
           <span class="stat-val" id="statScore" style="color:var(--sun)">0</span>
         </div>
         <div class="stat-box">
-          <span class="stat-label">🐟 Рибальський улов</span>
+          <span class="stat-label" id="lblStatFish">🐟 Рибальський улов</span>
           <span class="stat-val" id="statFish" style="color:var(--river)">0 шт</span>
         </div>
         <div class="stat-box">
-          <span class="stat-label">🏠 Побудовані будинки</span>
+          <span class="stat-label" id="lblStatHouses">🏠 Побудовані будинки</span>
           <span class="stat-val" id="statHouses" style="color:var(--leaf)">0</span>
         </div>
       </div>
@@ -494,15 +529,15 @@ footer {
       <!-- Швидкий вхід за кодом у гру -->
       <div class="code-banner">
         <div>
-          <h3 style="color:#fff;font-size:19px;margin-bottom:4px">⚡ Швидкий вхід у гру без введення пароля</h3>
-          <p style="color:var(--mute);font-size:14px;max-width:550px">
+          <h3 style="color:#fff;font-size:19px;margin-bottom:4px" id="codeBannerTitle">⚡ Швидкий вхід у гру без введення пароля</h3>
+          <p style="color:var(--mute);font-size:14px;max-width:550px" id="codeBannerDesc">
             Запустіть гру Pixel Village на комп'ютері чи телефоні, оберіть вкладку <b>«Код з сайту»</b> та натисніть «Вставити» або введіть цей код:
           </p>
         </div>
         <div class="code-display">
           <div class="code-digits" id="gameLoginCode">------</div>
-          <button class="btn-copy" onclick="copyLoginCode()">📋 Копіювати</button>
-          <button class="btn-copy" style="background:var(--leaf)" onclick="fetchLoginCode()">🔄 Новий код</button>
+          <button class="btn-copy" id="btnCopyCode" onclick="copyLoginCode()">📋 Копіювати</button>
+          <button class="btn-copy" id="btnNewCode" style="background:var(--leaf)" onclick="fetchLoginCode()">🔄 Новий код</button>
         </div>
       </div>
 
@@ -511,18 +546,18 @@ footer {
         
         <!-- Активація промокоду -->
         <div class="sec-card">
-          <h3>🎁 Активація промокоду</h3>
-          <p style="font-size:13.5px;color:var(--mute);margin-bottom:12px">Введіть промокод щоб отримати бонуси прямо на свій акаунт:</p>
+          <h3 id="secPromoTitle">🎁 Активація промокоду</h3>
+          <p style="font-size:13.5px;color:var(--mute);margin-bottom:12px" id="secPromoDesc">Введіть промокод щоб отримати бонуси прямо на свій акаунт:</p>
           <div class="alert" id="promoAlert"></div>
           <div style="display:flex;gap:8px">
             <input type="text" id="promoInput" placeholder="НАПРИКЛАД: START2026" style="flex:1;padding:10px 14px;border-radius:10px;background:rgba(0,0,0,0.3);border:1px solid var(--line);color:#fff;text-transform:uppercase">
-            <button class="btn-primary" style="width:auto;margin:0;padding:10px 18px" onclick="redeemPromo()">Активувати</button>
+            <button class="btn-primary" id="btnRedeemPromo" style="width:auto;margin:0;padding:10px 18px" onclick="redeemPromo()">Активувати</button>
           </div>
         </div>
 
         <!-- Зміна пароля -->
         <div class="sec-card">
-          <h3>🔑 Зміна пароля</h3>
+          <h3 id="secPwdTitle">🔑 Зміна пароля</h3>
           <div class="alert" id="pwdAlert"></div>
           <div class="form-group" style="margin-bottom:10px">
             <input type="password" id="oldPwd" placeholder="Поточний пароль" style="padding:8px 12px">
@@ -530,12 +565,12 @@ footer {
           <div class="form-group" style="margin-bottom:10px">
             <input type="password" id="newPwd" placeholder="Новий пароль (мін. 6 символів)" style="padding:8px 12px">
           </div>
-          <button class="btn-primary" style="margin-top:4px" onclick="handleChangePassword()">Зберегти новий пароль</button>
+          <button class="btn-primary" id="btnSavePwd" style="margin-top:4px" onclick="handleChangePassword()">Зберегти новий пароль</button>
         </div>
 
         <!-- Тікет підтримки -->
         <div class="sec-card" style="grid-column:span 2">
-          <h3>📩 Звернутися до підтримки / Повідомити про баг</h3>
+          <h3 id="secTicketTitle">📩 Звернутися до підтримки / Повідомити про баг</h3>
           <div class="alert" id="ticketAlert"></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px">
             <select id="ticketType" style="padding:10px;border-radius:10px;background:rgba(0,0,0,0.3);border:1px solid var(--line);color:#fff">
@@ -547,7 +582,7 @@ footer {
             <input type="text" id="ticketSubject" placeholder="Коротка тема звернення" style="padding:10px;border-radius:10px;background:rgba(0,0,0,0.3);border:1px solid var(--line);color:#fff">
           </div>
           <textarea id="ticketMsg" rows="3" placeholder="Опишіть ваше питання або проблему..." style="width:100%;padding:10px;border-radius:10px;background:rgba(0,0,0,0.3);border:1px solid var(--line);color:#fff;margin-bottom:10px"></textarea>
-          <button class="btn-primary" style="width:auto;padding:10px 24px" onclick="submitTicket()">Надіслати звернення</button>
+          <button class="btn-primary" id="btnSubmitTicket" style="width:auto;padding:10px 24px" onclick="submitTicket()">Надіслати звернення</button>
         </div>
 
       </div>
@@ -559,10 +594,224 @@ footer {
 </div>
 
 <footer>
-  <p>© 2026 Pixel Village. Усі права захищено. <a href="/">Головна</a> • <a href="/updates">Оновлення</a> • <a href="/wiki">База знань</a></p>
+  <p id="footerText">© 2026 Pixel Village. Усі права захищено. <a href="/">Головна</a> • <a href="/updates">Оновлення</a> • <a href="/wiki">База знань</a></p>
 </footer>
 
 <script>
+// Translations for Cabinet
+const translations = {
+  uk: {
+    title: 'Особистий кабінет гравця — Pixel Village',
+    nav_home: 'Головна',
+    nav_updates: '📰 Оновлення',
+    nav_wiki: '📖 База знань',
+    nav_cabinet: '👤 Кабінет',
+    nav_download: 'Завантажити',
+    auth_title: 'Вхід у Pixel Village',
+    auth_subtitle: 'Грайте на одному акаунті на ПК та смартфоні',
+    google_auth: 'Продовжити через Google',
+    or_email: 'АБО ЧЕРЕЗ EMAIL',
+    tab_login: '🔑 Вхід',
+    tab_register: '✨ Реєстрація',
+    lbl_email: 'Електронна пошта',
+    lbl_username: 'Ігровий нікнейм',
+    ph_username: 'Нікнейм (2-24 символи)',
+    lbl_password: 'Пароль',
+    ph_password: 'Мінімум 6 символів',
+    btn_login: 'Увійти',
+    btn_register: 'Зареєструватися',
+    btn_logout: '🚪 Вийти з акаунту',
+    stat_gold: '🪙 Золото',
+    stat_score: '🏆 Очки прогресу',
+    stat_fish: '🐟 Рибальський улов',
+    stat_houses: '🏠 Побудовані будинки',
+    code_title: '⚡ Швидкий вхід у гру без введення пароля',
+    code_desc: 'Запустіть гру Pixel Village на комп\'ютері чи телефоні, оберіть вкладку <b>«Код з сайту»</b> та натисніть «Вставити» або введіть цей код:',
+    btn_copy: '📋 Копіювати',
+    btn_copied: '✅ Скопійовано!',
+    btn_new_code: '🔄 Новий код',
+    sec_promo_t: '🎁 Активація промокоду',
+    sec_promo_d: 'Введіть промокод щоб отримати бонуси прямо на свій акаунт:',
+    btn_redeem: 'Активувати',
+    sec_pwd_t: '🔑 Зміна пароля',
+    ph_old_pwd: 'Поточний пароль',
+    ph_new_pwd: 'Новий пароль (мін. 6 символів)',
+    btn_save_pwd: 'Зберегти новий пароль',
+    sec_ticket_t: '📩 Звернутися до підтримки / Повідомити про баг',
+    opt_question: '❓ Питання',
+    opt_bug: '🐛 Помилка / Баг',
+    opt_idea: '💡 Ідея / Пропозиція',
+    opt_report: '⚠️ Скарга на порушника',
+    ph_subj: 'Коротка тема звернення',
+    ph_msg: 'Опишіть ваше питання або проблему...',
+    btn_ticket: 'Надіслати звернення',
+    footer: '© 2026 Pixel Village. Усі права захищено. <a href="/">Головна</a> • <a href="/updates">Оновлення</a> • <a href="/wiki">База знань</a>'
+  },
+  en: {
+    title: 'Player Cabinet — Pixel Village',
+    nav_home: 'Home',
+    nav_updates: '📰 Updates',
+    nav_wiki: '📖 Knowledge Base',
+    nav_cabinet: '👤 Cabinet',
+    nav_download: 'Download',
+    auth_title: 'Sign In to Pixel Village',
+    auth_subtitle: 'Play on one account across PC and mobile',
+    google_auth: 'Continue with Google',
+    or_email: 'OR VIA EMAIL',
+    tab_login: '🔑 Sign In',
+    tab_register: '✨ Register',
+    lbl_email: 'Email address',
+    lbl_username: 'In-game nickname',
+    ph_username: 'Nickname (2-24 characters)',
+    lbl_password: 'Password',
+    ph_password: 'At least 6 characters',
+    btn_login: 'Sign In',
+    btn_register: 'Register',
+    btn_logout: '🚪 Sign Out',
+    stat_gold: '🪙 Gold',
+    stat_score: '🏆 Score Points',
+    stat_fish: '🐟 Fish Caught',
+    stat_houses: '🏠 Houses Built',
+    code_title: '⚡ Fast In-Game Login Without Password',
+    code_desc: 'Launch Pixel Village on desktop or phone, select <b>«Code from Web»</b> tab and press «Paste» or enter this code:',
+    btn_copy: '📋 Copy',
+    btn_copied: '✅ Copied!',
+    btn_new_code: '🔄 New Code',
+    sec_promo_t: '🎁 Promo Code Redemption',
+    sec_promo_d: 'Enter a promo code to receive instant bonus items on your account:',
+    btn_redeem: 'Redeem',
+    sec_pwd_t: '🔑 Change Password',
+    ph_old_pwd: 'Current password',
+    ph_new_pwd: 'New password (min. 6 chars)',
+    btn_save_pwd: 'Save New Password',
+    sec_ticket_t: '📩 Contact Support / Report a Bug',
+    opt_question: '❓ Question',
+    opt_bug: '🐛 Bug / Issue',
+    opt_idea: '💡 Idea / Suggestion',
+    opt_report: '⚠️ Player Report',
+    ph_subj: 'Subject summary',
+    ph_msg: 'Describe your issue or suggestion in detail...',
+    btn_ticket: 'Submit Ticket',
+    footer: '© 2026 Pixel Village. All rights reserved. <a href="/">Home</a> • <a href="/updates">Updates</a> • <a href="/wiki">Knowledge Base</a>'
+  },
+  ru: {
+    title: 'Личный кабинет игрока — Pixel Village',
+    nav_home: 'Главная',
+    nav_updates: '📰 Обновления',
+    nav_wiki: '📖 База знаний',
+    nav_cabinet: '👤 Кабинет',
+    nav_download: 'Скачать',
+    auth_title: 'Вход в Pixel Village',
+    auth_subtitle: 'Играйте на одном аккаунте на ПК и смартфоне',
+    google_auth: 'Продолжить через Google',
+    or_email: 'ИЛИ ЧЕРЕЗ EMAIL',
+    tab_login: '🔑 Вход',
+    tab_register: '✨ Регистрация',
+    lbl_email: 'Электронная почта',
+    lbl_username: 'Игровой никнейм',
+    ph_username: 'Никнейм (2-24 символа)',
+    lbl_password: 'Пароль',
+    ph_password: 'Минимум 6 символов',
+    btn_login: 'Войти',
+    btn_register: 'Зарегистрироваться',
+    btn_logout: '🚪 Выйти из аккаунта',
+    stat_gold: '🪙 Золото',
+    stat_score: '🏆 Очки прогресса',
+    stat_fish: '🐟 Рыбный улов',
+    stat_houses: '🏠 Построенные дома',
+    code_title: '⚡ Быстрый вход в игру без ввода пароля',
+    code_desc: 'Запустите игру Pixel Village на ПК или телефоне, выберите вкладку <b>«Код с сайта»</b> и нажмите «Вставить» или введите этот код:',
+    btn_copy: '📋 Копировать',
+    btn_copied: '✅ Скопировано!',
+    btn_new_code: '🔄 Новый код',
+    sec_promo_t: '🎁 Активация промокода',
+    sec_promo_d: 'Введите промокод для получения наград прямо на свой аккаунт:',
+    btn_redeem: 'Активировать',
+    sec_pwd_t: '🔑 Смена пароля',
+    ph_old_pwd: 'Текущий пароль',
+    ph_new_pwd: 'Новый пароль (мин. 6 символов)',
+    btn_save_pwd: 'Сохранить новый пароль',
+    sec_ticket_t: '📩 Поддержка / Сообщить о баге',
+    opt_question: '❓ Вопрос',
+    opt_bug: '🐛 Ошибка / Баг',
+    opt_idea: '💡 Идея / Предложение',
+    opt_report: '⚠️ Жалоба на игрока',
+    ph_subj: 'Краткая тема обращения',
+    ph_msg: 'Опишите ваш вопрос или проблему подробно...',
+    btn_ticket: 'Отправить обращение',
+    footer: '© 2026 Pixel Village. Все права защищены. <a href="/">Главная</a> • <a href="/updates">Обновления</a> • <a href="/wiki">База знаний</a>'
+  }
+};
+
+let currentLang = 'uk';
+
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('lang', lang);
+  document.documentElement.lang = lang;
+  const t = translations[lang] || translations.uk;
+  document.title = t.title;
+
+  document.querySelectorAll('.lang button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+
+  const el = id => document.getElementById(id);
+  if (el('navHome')) el('navHome').textContent = t.nav_home;
+  if (el('navUpdates')) el('navUpdates').textContent = t.nav_updates;
+  if (el('navWiki')) el('navWiki').textContent = t.nav_wiki;
+  if (el('navCabinet')) el('navCabinet').textContent = t.nav_cabinet;
+  if (el('navDownload')) el('navDownload').textContent = t.nav_download;
+
+  if (el('authTitle')) el('authTitle').textContent = t.auth_title;
+  if (el('authSubtitle')) el('authSubtitle').textContent = t.auth_subtitle;
+  if (el('txtGoogleAuth')) el('txtGoogleAuth').textContent = t.google_auth;
+  if (el('txtOrEmail')) el('txtOrEmail').textContent = t.or_email;
+  if (el('tabLogin')) el('tabLogin').textContent = t.tab_login;
+  if (el('tabRegister')) el('tabRegister').textContent = t.tab_register;
+
+  if (el('lblEmail')) el('lblEmail').textContent = t.lbl_email;
+  if (el('lblUsername')) el('lblUsername').textContent = t.lbl_username;
+  if (el('authUsername')) el('authUsername').placeholder = t.ph_username;
+  if (el('lblPassword')) el('lblPassword').textContent = t.lbl_password;
+  if (el('authPassword')) el('authPassword').placeholder = t.ph_password;
+  if (el('btnSubmitAuth')) el('btnSubmitAuth').textContent = currentAuthMode === 0 ? t.btn_login : t.btn_register;
+
+  if (el('btnLogout')) el('btnLogout').textContent = t.btn_logout;
+  if (el('lblStatGold')) el('lblStatGold').textContent = t.stat_gold;
+  if (el('lblStatScore')) el('lblStatScore').textContent = t.stat_score;
+  if (el('lblStatFish')) el('lblStatFish').textContent = t.stat_fish;
+  if (el('lblStatHouses')) el('lblStatHouses').textContent = t.stat_houses;
+
+  if (el('codeBannerTitle')) el('codeBannerTitle').textContent = t.code_title;
+  if (el('codeBannerDesc')) el('codeBannerDesc').innerHTML = t.code_desc;
+  if (el('btnCopyCode')) el('btnCopyCode').textContent = t.btn_copy;
+  if (el('btnNewCode')) el('btnNewCode').textContent = t.btn_new_code;
+
+  if (el('secPromoTitle')) el('secPromoTitle').textContent = t.sec_promo_t;
+  if (el('secPromoDesc')) el('secPromoDesc').textContent = t.sec_promo_d;
+  if (el('btnRedeemPromo')) el('btnRedeemPromo').textContent = t.btn_redeem;
+
+  if (el('secPwdTitle')) el('secPwdTitle').textContent = t.sec_pwd_t;
+  if (el('oldPwd')) el('oldPwd').placeholder = t.ph_old_pwd;
+  if (el('newPwd')) el('newPwd').placeholder = t.ph_new_pwd;
+  if (el('btnSavePwd')) el('btnSavePwd').textContent = t.btn_save_pwd;
+
+  if (el('secTicketTitle')) el('secTicketTitle').textContent = t.sec_ticket_t;
+  const tType = el('ticketType');
+  if (tType && tType.options.length >= 4) {
+    tType.options[0].textContent = t.opt_question;
+    tType.options[1].textContent = t.opt_bug;
+    tType.options[2].textContent = t.opt_idea;
+    tType.options[3].textContent = t.opt_report;
+  }
+  if (el('ticketSubject')) el('ticketSubject').placeholder = t.ph_subj;
+  if (el('ticketMsg')) el('ticketMsg').placeholder = t.ph_msg;
+  if (el('btnSubmitTicket')) el('btnSubmitTicket').textContent = t.btn_ticket;
+
+  if (el('footerText')) el('footerText').innerHTML = t.footer;
+}
+
 // Firebase Official Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyA6_boE1E_6slDacEllzMyZi8zzMD2yGuE",
@@ -597,7 +846,8 @@ function switchAuthTab(mode) {
   document.getElementById('tabLogin').classList.toggle('active', mode === 0);
   document.getElementById('tabRegister').classList.toggle('active', mode === 1);
   document.getElementById('groupUsername').style.display = mode === 1 ? 'block' : 'none';
-  document.getElementById('btnSubmitAuth').textContent = mode === 0 ? 'Увійти' : 'Зареєструватися';
+  const t = translations[currentLang] || translations.uk;
+  document.getElementById('btnSubmitAuth').textContent = mode === 0 ? t.btn_login : t.btn_register;
   hideAlert('authAlert');
 }
 
@@ -627,7 +877,6 @@ async function handleGoogleSignIn() {
     await processGoogleUser(result.user);
   } catch (err) {
     console.warn("Popup sign-in failed, trying redirect mode:", err);
-    // If popup blocked or fetch failed due to AdBlock/browser popup policy, use seamless Redirect mode!
     try {
       showAlert('authAlert', 'Перенаправляємо на сторінку входу Google...', false);
       await auth.signInWithRedirect(googleProvider);
@@ -733,10 +982,10 @@ async function fetchProfile() {
       const onTxt = document.getElementById('dashOnlineText');
       if (p.is_online) {
         onPill.className = 'online-pill on';
-        onTxt.textContent = '🟢 Онлайн у грі зараз';
+        onTxt.textContent = currentLang === 'en' ? '🟢 Online in game' : (currentLang === 'ru' ? '🟢 Онлайн в игре' : '🟢 Онлайн у грі зараз');
       } else {
         onPill.className = 'online-pill off';
-        onTxt.textContent = '⚪ Офлайн';
+        onTxt.textContent = currentLang === 'en' ? '⚪ Offline' : (currentLang === 'ru' ? '⚪ Офлайн' : '⚪ Офлайн');
       }
     }
   } catch(e) {}
@@ -774,10 +1023,11 @@ function copyLoginCode() {
     copyFallback(code);
   }
 
-  const btn = document.querySelector('.btn-copy');
+  const btn = document.getElementById('btnCopyCode');
   if (btn) {
     const orig = btn.textContent;
-    btn.textContent = '✅ Скопійовано!';
+    const t = translations[currentLang] || translations.uk;
+    btn.textContent = t.btn_copied;
     btn.style.background = 'var(--leaf)';
     setTimeout(() => {
       btn.textContent = orig;
@@ -877,6 +1127,11 @@ async function submitTicket() {
 
 // Auto-restore session and handle Google Redirect Result
 window.addEventListener('DOMContentLoaded', async () => {
+  const savedLang = localStorage.getItem('lang');
+  const browserLang = navigator.language.split('-')[0];
+  const defaultLang = savedLang || (['uk', 'ru'].includes(browserLang) ? browserLang : 'uk');
+  setLang(defaultLang);
+
   const saved = localStorage.getItem('pv_account');
   if (saved) {
     try {

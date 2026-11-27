@@ -94,6 +94,36 @@ a:hover{text-decoration:underline}
   transform: translateY(-2px);
 }
 
+.lang {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 3px 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.lang button {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.lang button:hover {
+  color: #fff;
+}
+.lang button.active {
+  background: var(--sun);
+  color: #10261c !important;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.2);
+}
+
 .container {
   max-width: 900px;
   width: 92%;
@@ -195,29 +225,34 @@ footer {
 <header class="nav">
   <a class="logo" href="/">🏡 Pixel Village</a>
   <ul class="nav-links">
-    <li><a href="/">Головна</a></li>
-    <li><a href="/updates" class="active">📰 Оновлення</a></li>
-    <li><a href="/wiki">📖 База знань</a></li>
-    <li><a href="/cabinet">👤 Кабінет</a></li>
-    <li><a href="/#download" class="btn-nav-dl">Завантажити</a></li>
+    <li><a href="/" id="navHome">Головна</a></li>
+    <li><a href="/updates" class="active" id="navUpdates">📰 Оновлення</a></li>
+    <li><a href="/wiki" id="navWiki">📖 База знань</a></li>
+    <li><a href="/cabinet" id="navCabinet">👤 Кабінет</a></li>
+    <li><a href="/#download" class="btn-nav-dl" id="navDownload">Завантажити</a></li>
   </ul>
+  <div class="lang">
+    <button onclick="setLang('uk')" class="active" data-lang="uk">🇺🇦 UA</button>
+    <button onclick="setLang('en')" data-lang="en">🇬🇧 EN</button>
+    <button onclick="setLang('ru')" data-lang="ru">🇷🇺 RU</button>
+  </div>
 </header>
 
 <div class="container">
   <div class="page-header">
-    <h1>Журнал оновлень</h1>
-    <p>Історія патчів, нові можливості та вдосконалення Pixel Village</p>
+    <h1 id="pageTitle">Журнал оновлень</h1>
+    <p id="pageDesc">Історія патчів, нові можливості та вдосконалення Pixel Village</p>
   </div>
 
   <div id="updatesList">
     <!-- Версія 1.8.1 -->
     <div class="update-card" style="border:1.5px solid var(--leaf)">
       <div class="update-meta">
-        <span class="badge-version" style="background:var(--leaf);color:#fff">v1.8.1 (Остання версія)</span>
-        <span class="update-date">26 Листопада 2026</span>
+        <span class="badge-version" style="background:var(--leaf);color:#fff" id="bLatest">v1.8.1 (Остання версія)</span>
+        <span class="update-date" id="d181">26 Листопада 2026</span>
       </div>
-      <h2 class="update-title">✨ Швидкий вхід безпосередньо в грі та оновлений інтерфейс</h2>
-      <p class="update-desc">
+      <h2 class="update-title" id="t181">✨ Швидкий вхід безпосередньо в грі та оновлений інтерфейс</h2>
+      <p class="update-desc" id="desc181">
         Повне оновлення та виправлення інтерфейсу входу:<br>
         • <b>Миттєвий старт без браузера:</b> реєстрація та вхід доступні прямо в самій грі за 5 секунд.<br>
         • <b>Чистий піксельний шрифт:</b> видалено непідтримувані гліфи смайликів, які відображалися у вигляді порожніх квадратів [].<br>
@@ -230,10 +265,10 @@ footer {
     <div class="update-card">
       <div class="update-meta">
         <span class="badge-version">v1.8.0</span>
-        <span class="update-date">26 Листопада 2026</span>
+        <span class="update-date" id="d180">26 Листопада 2026</span>
       </div>
-      <h2 class="update-title">🔐 Обов'язкова авторизація, Google Вхід та Особистий кабінет</h2>
-      <p class="update-desc">
+      <h2 class="update-title" id="t180">🔐 Обов'язкова авторизація, Google Вхід та Особистий кабінет</h2>
+      <p class="update-desc" id="desc180">
         Повноцінна інтеграція системи акаунтів! Тепер весь ігровий прогрес гарантовано зберігається в хмарі на VPS.<br>
         • Додано веб-кабінет гравця з онлайн-статистикою.<br>
         • Вхід через Google в один клік з авто-редиректом.<br>
@@ -247,10 +282,10 @@ footer {
     <div class="update-card">
       <div class="update-meta">
         <span class="badge-version">v1.7.5</span>
-        <span class="update-date">21 Листопада 2026</span>
+        <span class="update-date" id="d175">21 Листопада 2026</span>
       </div>
-      <h2 class="update-title">🌐 Онлайн мультиплеєр та оптимізація</h2>
-      <p class="update-desc">
+      <h2 class="update-title" id="t175">🌐 Онлайн мультиплеєр та оптимізація</h2>
+      <p class="update-desc" id="desc175">
         Підключено високошвидкісний європейський сервер pixel-village.online, додано підтримку промокодів та систему тікетів для зв'язку з гравцями.
       </p>
     </div>
@@ -259,10 +294,10 @@ footer {
     <div class="update-card">
       <div class="update-meta">
         <span class="badge-version">v1.7.3</span>
-        <span class="update-date">18 Листопада 2026</span>
+        <span class="update-date" id="d173">18 Листопада 2026</span>
       </div>
-      <h2 class="update-title">🎒 Новий інвентар та крафт</h2>
-      <p class="update-desc">
+      <h2 class="update-title" id="t173">🎒 Новий інвентар та крафт</h2>
+      <p class="update-desc" id="desc173">
         Додано крафт на гарячі клавіші, розширені налаштування керування та покращено штучний інтелект диких тварин і ворогів.
       </p>
     </div>
@@ -271,10 +306,10 @@ footer {
     <div class="update-card">
       <div class="update-meta">
         <span class="badge-version">v1.6.0</span>
-        <span class="update-date">12 Листопада 2026</span>
+        <span class="update-date" id="d160">12 Листопада 2026</span>
       </div>
-      <h2 class="update-title">⚙️ Переробка меню налаштувань</h2>
-      <p class="update-desc">
+      <h2 class="update-title" id="t160">⚙️ Переробка меню налаштувань</h2>
+      <p class="update-desc" id="desc160">
         Повністю переписане меню з 4 категоріями: Мова (UA, EN, RU), Аудіо, Керування, Графіка. Оптимізована архітектура гри.
       </p>
     </div>
@@ -283,10 +318,10 @@ footer {
     <div class="update-card">
       <div class="update-meta">
         <span class="badge-version">v1.5.0</span>
-        <span class="update-date">07 Листопада 2026</span>
+        <span class="update-date" id="d150">07 Листопада 2026</span>
       </div>
-      <h2 class="update-title">🚀 Система автооновлення клієнта</h2>
-      <p class="update-desc">
+      <h2 class="update-title" id="t150">🚀 Система автооновлення клієнта</h2>
+      <p class="update-desc" id="desc150">
         Гра автоматично перевіряє наявність нових версій через GitHub Releases та завантажує оновлення прямо у клієнті.
       </p>
     </div>
@@ -294,19 +329,155 @@ footer {
 </div>
 
 <footer>
-  <p>© 2026 Pixel Village. <a href="/">Головна</a> • <a href="/cabinet">Особистий кабінет</a> • <a href="/wiki">База знань</a></p>
+  <p id="footerText">© 2026 Pixel Village. <a href="/">Головна</a> • <a href="/cabinet">Особистий кабінет</a> • <a href="/wiki">База знань</a></p>
 </footer>
 
 <script>
-// Спроба динамічно довантажити оновлення з бекенду
-fetch('https://api.pixel-village.online/api/updates')
-  .then(res => res.json())
-  .then(data => {
-    if (Array.isArray(data) && data.length > 0) {
-      // Можна додати динамічний рендеринг за наявності нових записів
-    }
-  })
-  .catch(()=>{});
+const translations = {
+  uk: {
+    title: 'Історія оновлень — Pixel Village',
+    nav_home: 'Головна',
+    nav_updates: '📰 Оновлення',
+    nav_wiki: '📖 База знань',
+    nav_cabinet: '👤 Кабінет',
+    nav_download: 'Завантажити',
+    page_title: 'Журнал оновлень',
+    page_desc: 'Історія патчів, нові можливості та вдосконалення Pixel Village',
+    b_latest: 'v1.8.1 (Остання версія)',
+    d181: '26 Листопада 2026',
+    t181: '✨ Швидкий вхід безпосередньо в грі та оновлений інтерфейс',
+    desc181: 'Повне оновлення та виправлення інтерфейсу входу:<br>• <b>Миттєвий старт без браузера:</b> реєстрація та вхід доступні прямо в самій грі за 5 секунд.<br>• <b>Чистий піксельний шрифт:</b> видалено непідтримувані гліфи смайликів, які відображалися у вигляді порожніх квадратів [].<br>• <b>Акуратна верстка:</b> виправлено накладання тексту помилок та оптимізовано розташування полів вводу.<br>• <b>Авто-збереження:</b> гравець більше не мусить вводити пароль щоразу при запуску гри.',
+    d180: '26 Листопада 2026',
+    t180: '🔐 Обов\'язкова авторизація, Google Вхід та Особистий кабінет',
+    desc180: 'Повноцінна інтеграція системи акаунтів! Тепер весь ігровий прогрес гарантовано зберігається в хмарі на VPS.<br>• Додано веб-кабінет гравця з онлайн-статистикою.<br>• Вхід через Google в один клік з авто-редиректом.<br>• Захист від підбору паролів (Rate Limiting) та самостійна зміна пароля.<br>• Активація промокодів та тікети підтримки прямо з сайту.<br>• Багатосторінковий портал: Кабінет, База знань, Оновлення.',
+    d175: '21 Листопада 2026',
+    t175: '🌐 Онлайн мультиплеєр та оптимізація',
+    desc175: 'Підключено високошвидкісний європейський сервер pixel-village.online, додано підтримку промокодів та систему тікетів для зв\'язку з гравцями.',
+    d173: '18 Листопада 2026',
+    t173: '🎒 Новий інвентар та крафт',
+    desc173: 'Додано крафт на гарячі клавіші, розширені налаштування керування та покращено штучний інтелект диких тварин і ворогів.',
+    d160: '12 Листопада 2026',
+    t160: '⚙️ Переробка меню налаштувань',
+    desc160: 'Повністю переписане меню з 4 категоріями: Мова (UA, EN, RU), Аудіо, Керування, Графіка. Оптимізована архітектура гри.',
+    d150: '07 Листопада 2026',
+    t150: '🚀 Система автооновлення клієнта',
+    desc150: 'Гра автоматично перевіряє наявність нових версій через GitHub Releases та завантажує оновлення прямо у клієнті.',
+    footer: '© 2026 Pixel Village. <a href="/">Головна</a> • <a href="/cabinet">Особистий кабінет</a> • <a href="/wiki">База знань</a>'
+  },
+  en: {
+    title: 'Update Changelog — Pixel Village',
+    nav_home: 'Home',
+    nav_updates: '📰 Updates',
+    nav_wiki: '📖 Knowledge Base',
+    nav_cabinet: '👤 Cabinet',
+    nav_download: 'Download',
+    page_title: 'Update Changelog',
+    page_desc: 'Patch history, new features, and improvements in Pixel Village',
+    b_latest: 'v1.8.1 (Latest)',
+    d181: 'November 26, 2026',
+    t181: '✨ Fast In-Game Login & Revamped Interface',
+    desc181: 'Full login interface revamp and bug fixes:<br>• <b>Instant start without browser:</b> registration and login available right inside the game in 5 seconds.<br>• <b>Clean pixel font:</b> removed unsupported emoji glyphs that previously rendered as blank boxes [].<br>• <b>Refined layout:</b> fixed overlapping error messages and optimized input field placements.<br>• <b>Auto-save session:</b> no need to re-enter your password on every game launch.',
+    d180: 'November 26, 2026',
+    t180: '🔐 Required Authorization, Google Login & Web Cabinet',
+    desc180: 'Full account system integration! Now all game progress is cloud-saved on the VPS.<br>• Added web player cabinet with live stats.<br>• One-click Google sign-in with auto-redirect.<br>• Rate limiting brute-force protection and self-service password change.<br>• Promo code redemption and support tickets directly on the site.<br>• Multi-page portal: Cabinet, Wiki, Updates.',
+    d175: 'November 21, 2026',
+    t175: '🌐 Online Multiplayer & Optimization',
+    desc175: 'High-speed European server pixel-village.online connected, added promo codes and ticket support system.',
+    d173: 'November 18, 2026',
+    t173: '🎒 New Inventory & Crafting',
+    desc173: 'Added hotkey crafting, keybind customization, and improved wild animal and mob AI.',
+    d160: 'November 12, 2026',
+    t160: '⚙️ Settings Menu Overhaul',
+    desc160: 'Completely redesigned menu with 4 categories: Language (UA, EN, RU), Audio, Controls, Graphics. Modular game code.',
+    d150: 'November 07, 2026',
+    t150: '🚀 Client Auto-Update System',
+    desc150: 'The game automatically checks for new releases on GitHub and downloads updates inside the client.',
+    footer: '© 2026 Pixel Village. <a href="/">Home</a> • <a href="/cabinet">Cabinet</a> • <a href="/wiki">Knowledge Base</a>'
+  },
+  ru: {
+    title: 'История обновлений — Pixel Village',
+    nav_home: 'Главная',
+    nav_updates: '📰 Обновления',
+    nav_wiki: '📖 База знаний',
+    nav_cabinet: '👤 Кабинет',
+    nav_download: 'Скачать',
+    page_title: 'Журнал обновлений',
+    page_desc: 'История патчей, новые возможности и улучшения Pixel Village',
+    b_latest: 'v1.8.1 (Последняя версия)',
+    d181: '26 Ноября 2026',
+    t181: '✨ Быстрый вход прямо в игре и обновлённый интерфейс',
+    desc181: 'Полное обновление и исправление интерфейса входа:<br>• <b>Мгновенный старт без браузера:</b> регистрация и вход доступны прямо в самой игре за 5 секунд.<br>• <b>Чистый пиксельный шрифт:</b> удалены неподдерживаемые глифы смайликов, отображавшиеся в виде пустых квадратов [].<br>• <b>Аккуратная верстка:</b> исправлено наложение текста ошибок и оптимизировано расположение полей ввода.<br>• <b>Автосохранение:</b> больше не нужно вводить пароль при каждом запуске игры.',
+    d180: '26 Ноября 2026',
+    t180: '🔐 Обязательная авторизация, Google Вход и Личный кабинет',
+    desc180: 'Полноценная интеграция системы аккаунтов! Теперь весь прогресс гарантированно сохраняется в облаке на VPS.<br>• Добавлен веб-кабинет игрока с онлайн-статистикой.<br>• Вход через Google в один клик с авто-редиректом.<br>• Защита от подбора паролей (Rate Limiting) и самостоятельная смена пароля.<br>• Активация промокодов и тикеты поддержки прямо с сайта.<br>• Многостраничный портал: Кабинет, База знаний, Обновления.',
+    d175: '21 Ноября 2026',
+    t175: '🌐 Онлайн мультиплеер и оптимизация',
+    desc175: 'Подключен высокоскоростной сервер pixel-village.online, добавлена система промокодов и тикетов для связи с разработчиками.',
+    d173: '18 Ноября 2026',
+    t173: '🎒 Новый инвентарь и крафт',
+    desc173: 'Добавлен крафт на горячие клавиши, расширенная настройка управления и улучшен ИИ диких животных.',
+    d160: '12 Ноября 2026',
+    t160: '⚙️ Переработка меню настроек',
+    desc160: 'Полностью переписанное меню с 4 категориями: Язык (UA, EN, RU), Аудио, Управление, Графика. Оптимизированная архитектура игры.',
+    d150: '07 Ноября 2026',
+    t150: '🚀 Система автообновления клиента',
+    desc150: 'Игра автоматически проверяет наличие новых версий через GitHub Releases и скачивает обновления прямо в клиенте.',
+    footer: '© 2026 Pixel Village. <a href="/">Главная</a> • <a href="/cabinet">Личный кабинет</a> • <a href="/wiki">База знаний</a>'
+  }
+};
+
+function setLang(lang) {
+  localStorage.setItem('lang', lang);
+  document.documentElement.lang = lang;
+  const t = translations[lang] || translations.uk;
+  document.title = t.title;
+
+  document.querySelectorAll('.lang button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+
+  const el = id => document.getElementById(id);
+  if (el('navHome')) el('navHome').textContent = t.nav_home;
+  if (el('navUpdates')) el('navUpdates').textContent = t.nav_updates;
+  if (el('navWiki')) el('navWiki').textContent = t.nav_wiki;
+  if (el('navCabinet')) el('navCabinet').textContent = t.nav_cabinet;
+  if (el('navDownload')) el('navDownload').textContent = t.nav_download;
+
+  if (el('pageTitle')) el('pageTitle').textContent = t.page_title;
+  if (el('pageDesc')) el('pageDesc').textContent = t.page_desc;
+
+  if (el('bLatest')) el('bLatest').textContent = t.b_latest;
+  if (el('d181')) el('d181').textContent = t.d181;
+  if (el('t181')) el('t181').textContent = t.t181;
+  if (el('desc181')) el('desc181').innerHTML = t.desc181;
+
+  if (el('d180')) el('d180').textContent = t.d180;
+  if (el('t180')) el('t180').textContent = t.t180;
+  if (el('desc180')) el('desc180').innerHTML = t.desc180;
+
+  if (el('d175')) el('d175').textContent = t.d175;
+  if (el('t175')) el('t175').textContent = t.t175;
+  if (el('desc175')) el('desc175').innerHTML = t.desc175;
+
+  if (el('d173')) el('d173').textContent = t.d173;
+  if (el('t173')) el('t173').textContent = t.t173;
+  if (el('desc173')) el('desc173').innerHTML = t.desc173;
+
+  if (el('d160')) el('d160').textContent = t.d160;
+  if (el('t160')) el('t160').textContent = t.t160;
+  if (el('desc160')) el('desc160').innerHTML = t.desc160;
+
+  if (el('d150')) el('d150').textContent = t.d150;
+  if (el('t150')) el('t150').textContent = t.t150;
+  if (el('desc150')) el('desc150').innerHTML = t.desc150;
+
+  if (el('footerText')) el('footerText').innerHTML = t.footer;
+}
+
+const savedLang = localStorage.getItem('lang');
+const browserLang = navigator.language.split('-')[0];
+const defaultLang = savedLang || (['uk', 'ru'].includes(browserLang) ? browserLang : 'uk');
+setLang(defaultLang);
 </script>
 
 </body>
