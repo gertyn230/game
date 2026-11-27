@@ -518,7 +518,7 @@ a.btn.g:hover {
 </div>
 </div></section>
 
-<div class="win"><p>Будуй будинки, дороги та мости. Все під твоїм контролем.</p></div>
+<div class="win"><p id="win1Text">Будуй будинки, дороги та мости. Все під твоїм контролем.</p></div>
 <section class="sheet" id="about"><div class="in two">
 <h2>Твоє пікселізоване село</h2>
 <div><p class="lead">Pixel Village — це гра де ти створюєш своє власне село. Будуй будинки, прокладай дороги, саджай поля та спостерігай як жителі гуляють вулицями. Без таймерів, без поспіху — будуй у своєму темпі.</p>
@@ -535,7 +535,7 @@ a.btn.g:hover {
 <div class="t e"><canvas class="ic" data-i="5" data-s="3"></canvas><h3>Ділися своїм світом</h3><p>Роби скріншоти та обмінюйся ідеями з іншими будівельниками.</p></div>
 </div></div></section>
 
-<div class="win"><p>Перетни річку і карта зміниться.</p></div>
+<div class="win"><p id="win2Text">Перетни річку і карта зміниться.</p></div>
 <section class="sheet" id="explore"><div class="in">
 <h2>Чотири біоми, одна карта</h2>
 <div class="ex"><div role="tablist">
@@ -1071,11 +1071,10 @@ function setLang(lang) {
   if (navA('#download')) navA('#download').textContent = t.nav_download;
 
   // Win секції
-  const wins = $$('.win p');
-  if (wins[0]) wins[0].textContent = t.win1;
+  if ($('#win1Text')) $('#win1Text').textContent = t.win1;
+  if ($('#win2Text')) $('#win2Text').textContent = t.win2;
   if ($('#promoWinText')) $('#promoWinText').textContent = t.win_promo;
-  if (wins[2]) wins[2].textContent = t.win2;
-  else if (wins[1] && !$('#promoWinText')) wins[1].textContent = t.win2;
+  if ($('#mb')) $('#mb').textContent = lang === 'en' ? '☰ Menu' : '☰ Меню';
 
   // About секція
   if ($('#about h2')) $('#about h2').textContent = t.about_h2;
